@@ -1,0 +1,8 @@
+name: isaac-sim-warehouse-bridge
+backend: sim
+script: ../isaac/sim/scripts/16_bridge_ros.py
+description: Headless Isaac Sim warehouse simulation with ROS 2 bridge (/clock, /odom, /tf, /scan)
+cwd: .
+args:
+  - --duration
+  - "120"

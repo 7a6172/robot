@@ -41,5 +41,12 @@
     - Executed live headless Isaac Sim run via `caasi sim run` (Run ID: `20261003-154048-isaac-sim-smoke`, PID 110981, 60 physics frames stepped at 2432 steps/s, exit code 0, 11 provenance artifacts captured).
     - Re-evaluated Phase 1 candidate gaps (none are blockers; existing tools and patterns handle all requirements).
     - Identified two minor friction points (`cwd` relative resolution and Isaac Lab launcher override flag).
-- **Current State**: Phase 2 workspace initialized, fully verified, and live simulation run completed with zero modifications to `caasi` core and zero modifications to read-only trees (`openmover_robot`, `openmover_ws`).
-- **Next Concrete Step**: Review Phase 2 report with user and decide on next integration milestone (Phase 3: Live ROS 2 + Isaac Sim + Nav2 integration).
+  - **Phase 3: Multi-Subsystem Integration completed**:
+    - [Phase 3 Summary Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-03/phase-03-report.md)
+    - [Phase 3 Case Study Evidence](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-03/case_studies.md)
+    - Verified live Isaac Sim warehouse simulation with ROS 2 bridge (`/clock`, `/odom`, `/tf`, `/scan`, `/cmd_vel`). Measured cold startup (150.3s with RTX PSO compilation) vs warm startup (10.2s).
+    - Verified Nav2 closed-loop navigation against live simulation: `laserscan_multi_merger` (360° scan on `/scan`), `slam_toolbox` mapping, Nav2 costmap generation, and path execution driving robot to goal `pos=(+0.89, -0.01)`.
+    - Executed simultaneous decoupled runs under `caasi run list` (`backend: sim` and `backend: ros`).
+    - Verified Isaac Lab evaluation campaign scheduler (`33_run_campaign.py --dry_run`, 56 maps, 4.38h budget) and Gym RL environment (`21_run_openmover_nav.py`, `backend: lab`, 20 steps @ 35 env-steps/s on CUDA:0).
+- **Current State**: Phase 3 multi-subsystem integration fully verified across Isaac Sim, ROS 2, Nav2, and Isaac Lab. Zero modifications to `caasi` core and zero modifications to read-only trees (`openmover_robot`, `openmover_ws`).
+- **Next Concrete Step**: Review Phase 3 results with user and determine Phase 4 goals (full campaign sweeps, multi-seed benchmarks, metric aggregation, and artifact exports).

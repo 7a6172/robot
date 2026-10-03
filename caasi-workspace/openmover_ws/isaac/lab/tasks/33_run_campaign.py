@@ -39,9 +39,10 @@ import sys
 import time
 from pathlib import Path
 
-LAB = Path(__file__).resolve().parent
+TASKS_DIR = Path(__file__).resolve().parent
+LAB = TASKS_DIR.parent
 ISAACLAB = Path.home() / "isaaclab"
-RUNNER = LAB / "21_run_openmover_nav.py"
+RUNNER = TASKS_DIR / "21_run_openmover_nav.py"
 MAPS = LAB / "maps" / "gen"
 PRESENTATION = ("f4_b1_m00", "f6_b2_m00")
 ARMS = ("shield", "astar_dwa", "astar_dwa_shield")

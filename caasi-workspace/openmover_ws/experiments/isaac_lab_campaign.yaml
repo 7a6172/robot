@@ -1,0 +1,7 @@
+name: isaac-lab-campaign
+backend: python
+script: ../isaac/lab/tasks/33_run_campaign.py
+description: OpenMover Isaac Lab evaluation campaign sweep runner
+cwd: .
+args:
+  - --dry_run
