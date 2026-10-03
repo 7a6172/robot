@@ -3,7 +3,7 @@
 ## Repository Baseline
 - **Root Repository Location**: `/home/zar/Documents/phd/robot/`
 - **Baseline Commit**: `79dc52f80f156b36c1383a5cb19315dc87eb858e`
-- **Latest Checkpoint**: `e4f8c6b` (Phase 1 completion)
+- **Latest Checkpoint**: `a7c9c61` (Phase 3 completion)
 - **Branch**: `master`
 - **Scope Tracked**:
   - `caasi/`: Caasi package, CLI tools, documentation, tests, and persistent `/plan`
