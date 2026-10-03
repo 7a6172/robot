@@ -83,5 +83,5 @@
       * `caasi run start experiments/lab_campaign.yaml`: planned 56-map procedural evaluation campaign (`final-lab-campaign`, run `20261004-000642-final-lab-campaign`, 4.38h estimate, status `succeeded`).
       * Complete Level 6 execution provenance and process lifecycle (`caasi run stop`) verified.
     - Verified full regression test suite: **870 passing tests** in 185.94s (11 new tests in `tests/test_build.py`).
-    - Safety verified: `/openmover_robot` and `/openmover_ws` read-only trees remain 100% untouched.
-- **Current State**: Phase 6 dogfooding and end-to-end closed-loop validation complete. Ready for Git commit and Phase 7 direction discussion.
+- **Current State**: Phase 6 closed. Migration and equivalence audit completed ([Migration Audit Report](file:///home/zar/Documents/phd/robot/caasi/plan/audits/migration_and_equivalence_audit.md)). Phase 7 architectural proposal created ([Phase 7 Proposal](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/phase-07-proposal.md)) covering Multi-Node Lifecycle, Target-Aware Deployment, Transparent Remote Execution, and Artifact Routing across generalized robotics projects. Awaiting user review and approval before Phase 7 implementation.
+
