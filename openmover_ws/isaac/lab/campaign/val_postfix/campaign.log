@@ -1,0 +1,42 @@
+[camp] plan: 6 runs (2 maps x arms ['astar_dwa_shield', 'shield', 'astar_dwa'])
+[camp]   astar_dwa_shield f1_b0_m01 seeds=4 horizon=98s steps=1982 est~1.5 min
+[camp]   shield           f1_b0_m01 seeds=4 horizon=98s steps=1982 est~1.5 min
+[camp]   astar_dwa        f1_b0_m01 seeds=4 horizon=98s steps=1982 est~1.5 min
+[camp]   astar_dwa_shield f1_b0_m00 seeds=4 horizon=96s steps=1950 est~1.5 min
+[camp]   shield           f1_b0_m00 seeds=4 horizon=96s steps=1950 est~1.5 min
+[camp]   astar_dwa        f1_b0_m00 seeds=4 horizon=96s steps=1950 est~1.5 min
+[camp] estimated total wall clock: 0.15 h
+
+[camp] [1/6] [camp] === astar_dwa_shield f1_b0_m01 (seeds=4, horizon=98 s, steps=1982) ===
+[camp] cmd: /home/zar/isaaclab/_isaac_sim/python.sh /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/21_run_openmover_nav.py --task Isaac-Nav-Openmover-v0 --map_file /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/gen/f1_b0_m01.json --policy astar_dwa --num_envs 4 --num_steps 1982 --seed 42 --episode_cap 190.0 --results_json /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/campaign/val_postfix/results/astar_dwa_shield/f1_b0_m01.json --shield
+[camp] done in 128 s: success=0.5 collision=0.0 ttg=81.75
+
+[camp] [2/6] [camp] === shield           f1_b0_m01 (seeds=4, horizon=98 s, steps=1982) ===
+[camp] cmd: /home/zar/isaaclab/_isaac_sim/python.sh /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/21_run_openmover_nav.py --task Isaac-Nav-Openmover-v0 --map_file /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/gen/f1_b0_m01.json --policy trained --num_envs 4 --num_steps 1982 --seed 42 --episode_cap 190.0 --results_json /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/campaign/val_postfix/results/shield/f1_b0_m01.json --checkpoint /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/logs/rsl_rl/openmover_nav/bc_init_v3/model_0.pt --shield
+[camp] done in 95 s: success=0.0 collision=0.0 ttg=None
+
+[camp] [3/6] [camp] === astar_dwa        f1_b0_m01 (seeds=4, horizon=98 s, steps=1982) ===
+[camp] cmd: /home/zar/isaaclab/_isaac_sim/python.sh /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/21_run_openmover_nav.py --task Isaac-Nav-Openmover-v0 --map_file /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/gen/f1_b0_m01.json --policy astar_dwa --num_envs 4 --num_steps 1982 --seed 42 --episode_cap 190.0 --results_json /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/campaign/val_postfix/results/astar_dwa/f1_b0_m01.json
+[camp] done in 102 s: success=1.0 collision=1.0 ttg=82.48750114440918
+
+[camp] [4/6] [camp] === astar_dwa_shield f1_b0_m00 (seeds=4, horizon=96 s, steps=1950) ===
+[camp] cmd: /home/zar/isaaclab/_isaac_sim/python.sh /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/21_run_openmover_nav.py --task Isaac-Nav-Openmover-v0 --map_file /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/gen/f1_b0_m00.json --policy astar_dwa --num_envs 4 --num_steps 1950 --seed 42 --episode_cap 190.0 --results_json /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/campaign/val_postfix/results/astar_dwa_shield/f1_b0_m00.json --shield
+[camp] done in 103 s: success=1.0 collision=0.0 ttg=80.27500343322754
+
+[camp] [5/6] [camp] === shield           f1_b0_m00 (seeds=4, horizon=96 s, steps=1950) ===
+[camp] cmd: /home/zar/isaaclab/_isaac_sim/python.sh /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/21_run_openmover_nav.py --task Isaac-Nav-Openmover-v0 --map_file /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/gen/f1_b0_m00.json --policy trained --num_envs 4 --num_steps 1950 --seed 42 --episode_cap 190.0 --results_json /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/campaign/val_postfix/results/shield/f1_b0_m00.json --checkpoint /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/logs/rsl_rl/openmover_nav/bc_init_v3/model_0.pt --shield
+[camp] done in 73 s: success=0.0 collision=0.0 ttg=None
+
+[camp] [6/6] [camp] === astar_dwa        f1_b0_m00 (seeds=4, horizon=96 s, steps=1950) ===
+[camp] cmd: /home/zar/isaaclab/_isaac_sim/python.sh /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/21_run_openmover_nav.py --task Isaac-Nav-Openmover-v0 --map_file /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/gen/f1_b0_m00.json --policy astar_dwa --num_envs 4 --num_steps 1950 --seed 42 --episode_cap 190.0 --results_json /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/campaign/val_postfix/results/astar_dwa/f1_b0_m00.json
+[camp] done in 98 s: success=1.0 collision=1.0 ttg=82.56250190734863
+
+[camp] campaign pass complete: 6/6 runs produced results (0 failed)
+
+[camp] ===== summary =====
+[camp] astar_dwa_shield: 2 maps | success=0.750 | collision=0.000 | ttg=81.0 s
+[camp]   corridor     n= 2 success=0.750 collision=0.000
+[camp] shield: 2 maps | success=0.000 | collision=0.000 | ttg=None s
+[camp]   corridor     n= 2 success=0.000 collision=0.000
+[camp] astar_dwa: 2 maps | success=1.000 | collision=1.000 | ttg=82.5 s
+[camp]   corridor     n= 2 success=1.000 collision=1.000

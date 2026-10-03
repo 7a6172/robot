@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>openmover_msgs</name>
+  <version>2.0.0</version>
+  <description>Custom messages and services of the OpenMover robot (ROS 2 port of the ROS 1 package, identical interface definitions).</description>
+  <maintainer email="zar@my.swjtu.edu.cn">zar</maintainer>
+  <author email="muhua.zhang@my.swjtu.edu.cn">ZHANG Muhua (original ROS 1 implementation)</author>
+  <author email="zar@my.swjtu.edu.cn">zar (ROS 2 Jazzy port)</author>
+  <license>private</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

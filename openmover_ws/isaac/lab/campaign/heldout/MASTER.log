@@ -1,0 +1,11 @@
+[heldout] START 3-arm held-out batch on heldout.json 13:13:28
+[heldout] === shield  avail_RAM=10408MiB  13:13:28 ===
+[heldout] rc=0 shield done 13:16:25
+[heldout]   -> {"arm": "shield", "map": "heldout", "policy": "trained", "shield": true, "seed": 42, "num_envs": 10, "num_steps": 2971, "horizon_s": 147.52, "n_first_episodes": 10, "mean_success": 0.0, "mean_collision": 0.0, "mean_ttg_success": null, "baseline_stats": null, "shield_stats": {"shield": 22549, "hyst": 12099, "escape": 1546, "retreat": 1335, "pin": 252, "oob": 0, "steps": 29710}}
+[heldout] === astar_dwa  avail_RAM=10171MiB  13:16:25 ===
+[heldout] rc=0 astar_dwa done 13:19:52
+[heldout]   -> {"arm": "astar_dwa", "map": "heldout", "policy": "astar_dwa", "shield": false, "seed": 42, "num_envs": 10, "num_steps": 2971, "horizon_s": 147.52, "n_first_episodes": 10, "mean_success": 1.0, "mean_collision": 0.9, "mean_ttg_success": 103.34500122070312, "baseline_stats": {"plan": 1500, "replan": 1490, "dwa_reject": 0, "stuck": 0, "steps": 29710}, "shield_stats": null}
+[heldout] === astar_dwa_shield  avail_RAM=10267MiB  13:19:52 ===
+[heldout] rc=0 astar_dwa_shield done 13:23:42
+[heldout]   -> {"arm": "astar_dwa_shield", "map": "heldout", "policy": "astar_dwa", "shield": true, "seed": 42, "num_envs": 10, "num_steps": 2971, "horizon_s": 147.52, "n_first_episodes": 10, "mean_success": 1.0, "mean_collision": 0.0, "mean_ttg_success": 105.74500198364258, "baseline_stats": {"plan": 1500, "replan": 1490, "dwa_reject": 0, "stuck": 0, "steps": 29710}, "shield_stats": {"shield": 5711, "hyst": 4808, "escape": 259, "retreat": 236, "pin": 6, "oob": 0, "steps": 29710}}
+[heldout] ALL 3 HELD-OUT RUNS DONE 13:23:42

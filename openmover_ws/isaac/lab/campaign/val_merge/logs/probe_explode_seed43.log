@@ -1,0 +1,201 @@
+[INFO]: Parsing configuration from: openmover_lab.openmover_nav_cfg:OpenmoverNavEnvCfg
+Loading user config located at: '/home/zar/isaacsim/kit/data/Kit/IsaacLab/3.0/user.config.json'
+2026-09-06T04:27:34Z [0ms] [Warning] [omni.ext.plugin] [ext: isaaclab_visualizers] Extensions config 'extension.toml' doesn't exist '/home/zar/isaaclab/source/isaaclab_visualizers' or '/home/zar/isaaclab/source/isaaclab_visualizers/config'
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1788668855.030770 2471512 descriptor_database.cc:633] File already exists in database: grpc/health/v1/health.proto
+W0000 00:00:1788668855.030803 2471512 message.cc:301] Protobuf GeneratedMessageFactory: File is already registered: grpc/health/v1/health.proto
+2026-09-06T04:27:35Z [271ms] [Warning] [omni.usd_config.extension] Enable omni.materialx.libs extension to use MaterialX
+[ISAACLAB] AppLauncher initialization complete
+2026-09-06T04:27:36Z [1,684ms] [Warning] [isaaclab_physx.physics.physx_manager] TGS solver with enable_external_forces_every_iteration=False may cause noisy velocities.
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 43
+	Physics step-size     : 0.008333333333333333
+	Rendering step-size   : 0.05
+	Environment step-size : 0.05
+[INFO]: Registered backend 'physx' for factory Articulation.
+[INFO]: Registered backend 'physx' for factory RayCaster.
+[INFO]: Registered backend 'physx' for factory ContactSensor.
+[INFO] Generating terrains randomly took Last: 0.005255 s
+[INFO]: Time taken for scene creation Last: 0.277463 s, Mean: 0.277463 s, Std: 0.000000 s, N: 1
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 4
+	Environment spacing   : 6.0
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : []
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-09-06T04:27:37Z [2,830ms] [Warning] [usdrt.population.plugin] Last global time was not created. Did you call setEnableUsdNoticeHandling?
+2026-09-06T04:27:37Z [2,855ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,855ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,855ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,855ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Simulation parameters for joints in /World/envs/env_.*/Robot:
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                        Simulation Joint Information (Prim path: /World/envs/env_.*/Robot)                                                       |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+| Index | Name                   | Stiffness | Damping | Armature | Static Friction | Dynamic Friction | Viscous Friction |   Position Limits   | Velocity Limits | Effort Limits |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+|   0   | ball_front_left_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   1   | ball_front_right_joint |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   2   | ball_rear_left_joint   |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   3   | ball_rear_right_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   4   | wheel_left_joint       |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
+|   5   | wheel_right_joint      |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+2026-09-06T04:27:37Z [2,953ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,953ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,953ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,954ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Read mesh prim: /World/ground/terrain/mesh with 368 vertices and 1488 faces.
+2026-09-06T04:27:37Z [2,962ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,962ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,962ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,962ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,987ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,987ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,987ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,987ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,987ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,987ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,987ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T04:27:37Z [2,987ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Time taken for simulation start Last: 1.027485 s, Mean: 1.027485 s, Std: 0.000000 s, N: 1
+[INFO]: Completed setting up the environment...
+[nav] obstacle table built (warm cache): 4 tiles, obstacles/tile 10-10
+[nav] custom map spawn/goal fixed from /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/gen/f1_b0_m01.json
+[nav] geodesic grid: 4 tiles x 40x40 cells (res 0.25 m, inflate 0.2 m)
+
+===== PROBE setup (3s) =====
+map=f1_b0_m01 spawn=[8.938, 1.062] goal=[1.062, 8.938] boxes=10 size=[10.0, 10.0]
+num_envs=4 act_dim=2 decimation=6 physics_dt=0.008333 step_dt=0.0500
+body_names=['base_link', 'ball_front_left_link', 'ball_front_right_link', 'ball_rear_left_link', 'ball_rear_right_link', 'wheel_left_link', 'wheel_right_link']
+joint_names=['ball_front_left_joint', 'ball_front_right_joint', 'ball_rear_left_joint', 'ball_rear_right_joint', 'wheel_left_joint', 'wheel_right_joint']
+wheel_idx=[4, 5]
+default_root_pose[0]=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+default_joint_pos[0]=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+robot mass total=3.0371 kg per-body=[2.248070001602173, 0.033510319888591766, 0.033510319888591766, 0.033510319888591766, 0.033510319888591766, 0.32751837372779846, 0.32751837372779846]
+env0 origin=(-5.00,-5.00,+0.00) -> map x=0 edge at world x=-10.00, map x=10 edge at world x=+0.00
+env1 origin=(-5.00,+5.00,+0.00) -> map x=0 edge at world x=-10.00, map x=10 edge at world x=+0.00
+env2 origin=(+5.00,-5.00,+0.00) -> map x=0 edge at world x=+0.00, map x=10 edge at world x=+10.00
+env3 origin=(+5.00,+5.00,+0.00) -> map x=0 edge at world x=+0.00, map x=10 edge at world x=+10.00
+physics cfg type=PhysxCfg
+  physx.enable_ccd=False
+  physx.max_depenetration_velocity=n/a
+  physx.num_position_iterations=n/a
+  physx.num_velocity_iterations=n/a
+  physx.enable_stabilization=False
+  physx.solver_type=1
+  physx.num_subscenes=n/a
+  physx.bounce_threshold_velocity=0.5
+  physx.friction_offset_threshold=0.04
+  physx.friction_correlation_distance=0.025
+  physx.gpu_max_rigid_contact_count=8388608
+  physx.max_bias_coefficient=n/a
+
+===== REPLAY: env.reset() + 12 zero-action substeps =====
+  [post-reset] env0: map=(  8.938,  1.062) z=+0.0000 v=( +0.000, +0.000, +0.000) |vxy|=  0.000 wz= +0.000 yaw=+1.517 cf=     0.00 wheel_jv=[0.0, 0.0] ball_jv=[0.0, 0.0, 0.0, 0.0] tq=[0.000]
+  [post-reset] env1: map=(  8.938,  1.062) z=+0.0000 v=( +0.000, +0.000, +0.000) |vxy|=  0.000 wz= +0.000 yaw=-1.544 cf=     0.00 wheel_jv=[0.0, 0.0] ball_jv=[0.0, 0.0, 0.0, 0.0] tq=[0.000]
+  [post-reset] env2: map=(  8.938,  1.062) z=+0.0000 v=( +0.000, +0.000, +0.000) |vxy|=  0.000 wz= +0.000 yaw=+2.324 cf=     0.00 wheel_jv=[0.0, 0.0] ball_jv=[0.0, 0.0, 0.0, 0.0] tq=[0.000]
+  [post-reset] env3: map=(  8.938,  1.062) z=+0.0000 v=( +0.000, +0.000, +0.000) |vxy|=  0.000 wz= +0.000 yaw=+0.867 cf=     0.00 wheel_jv=[0.0, 0.0] ball_jv=[0.0, 0.0, 0.0, 0.0] tq=[0.000]
+  body z env0: {'base_link': -0.0, 'ball_front_left_link': 0.0202, 'ball_front_right_link': 0.0202, 'ball_rear_left_link': 0.0202, 'ball_rear_right_link': 0.0202, 'wheel_left_link': 0.0504, 'wheel_right_link': 0.0504}
+  body z env1: {'base_link': -0.0, 'ball_front_left_link': 0.0202, 'ball_front_right_link': 0.0202, 'ball_rear_left_link': 0.0202, 'ball_rear_right_link': 0.0202, 'wheel_left_link': 0.0504, 'wheel_right_link': 0.0504}
+  body z env2: {'base_link': -0.0, 'ball_front_left_link': 0.0202, 'ball_front_right_link': 0.0202, 'ball_rear_left_link': 0.0202, 'ball_rear_right_link': 0.0202, 'wheel_left_link': 0.0504, 'wheel_right_link': 0.0504}
+  body z env3: {'base_link': -0.0, 'ball_front_left_link': 0.0202, 'ball_front_right_link': 0.0202, 'ball_rear_left_link': 0.0202, 'ball_rear_right_link': 0.0202, 'wheel_left_link': 0.0504, 'wheel_right_link': 0.0504}
+    replay sub0: map_x=[8.945, 8.939, 8.938, 8.938] map_y=[1.067, 1.063, 1.062, 1.062] z=[0.014, 0.0034, -0.0001, -0.0001] |vxy|=[12.409, 1.915, 0.003, 0.02] wz=[77.117, -3.832, 0.045, 0.05] cf=[0.0, 0.0, 0.0, 0.0]
+    replay sub1: map_x=[9.024, 8.944, 8.938, 8.938] map_y=[1.178, 1.071, 1.062, 1.062] z=[0.2334, 0.026, -0.0001, -0.0001] |vxy|=[12.091, 1.868, 0.0, 0.0] wz=[61.221, -3.914, 0.006, -0.002] cf=[0.0, 0.0, 0.0, 0.0]
+    replay sub2: map_x=[9.049, 8.95, 8.938, 8.938] map_y=[1.305, 1.078, 1.062, 1.062] z=[0.4626, 0.0488, -0.0001, -0.0001] |vxy|=[12.373, 1.864, 0.0, 0.0] wz=[83.374, -3.989, -0.0, -0.001] cf=[0.0, 0.0, 0.0, 0.0]
+    replay sub3: map_x=[9.041, 8.955, 8.938, 8.938] map_y=[1.405, 1.087, 1.062, 1.062] z=[0.6611, 0.0719, -0.0001, -0.0001] |vxy|=[12.695, 1.858, 0.0, 0.0] wz=[94.395, -4.123, 0.002, -0.0] cf=[0.0, 0.0, 0.0, 0.0]
+    replay sub4: map_x=[9.051, 8.961, 8.938, 8.938] map_y=[1.473, 1.096, 1.062, 1.062] z=[0.8294, 0.0953, -0.0001, -0.0001] |vxy|=[12.7, 1.733, 0.001, 0.0] wz=[84.038, -4.001, -0.0, 0.0] cf=[0.0, 55.95, 0.0, 0.0]
+    replay sub5: map_x=[9.107, 8.967, 8.938, 8.938] map_y=[1.534, 1.105, 1.062, 1.062] z=[0.9944, 0.1196, -0.0001, -0.0001] |vxy|=[12.439, 1.727, 0.001, 0.0] wz=[66.222, -4.156, -0.001, 0.0] cf=[0.0, 0.0, 0.0, 0.0]
+    replay sub6: map_x=[9.191, 8.974, 8.938, 8.938] map_y=[1.618, 1.115, 1.062, 1.062] z=[1.182, 0.1439, -0.0001, -0.0001] |vxy|=[12.14, 1.721, 0.0, 0.0] wz=[54.733, -4.342, 0.002, 0.0] cf=[0.0, 0.0, 0.0, 0.0]
+    replay sub7: map_x=[9.265, 8.981, 8.938, 8.938] map_y=[1.732, 1.125, 1.062, 1.062] z=[1.3962, 0.1681, -0.0001, -0.0001] |vxy|=[12.054, 1.714, 0.0, 0.0] wz=[58.227, -4.556, 0.001, -0.0] cf=[0.0, 0.0, 0.0, 0.0]
+    replay sub8: map_x=[9.302, 8.989, 8.938, 8.938] map_y=[1.861, 1.135, 1.062, 1.062] z=[1.6184, 0.1921, -0.0001, -0.0001] |vxy|=[12.245, 1.706, 0.001, 0.0] wz=[73.85, -4.791, -0.0, -0.0] cf=[0.0, 0.0, 0.0, 0.0]
+    replay sub9: map_x=[9.304, 8.998, 8.938, 8.938] map_y=[1.976, 1.145, 1.062, 1.062] z=[1.8243, 0.2159, -0.0001, -0.0001] |vxy|=[12.558, 1.699, 0.0, 0.0] wz=[89.844, -5.045, -0.001, -0.0] cf=[0.0, 0.0, 0.0, 0.0]
+    replay sub10: map_x=[9.3, 9.008, 8.938, 8.938] map_y=[2.063, 1.156, 1.062, 1.062] z=[2.0022, 0.2392, -0.0001, -0.0001] |vxy|=[12.768, 1.691, 0.0, 0.0] wz=[93.7, -5.312, 0.001, 0.0] cf=[0.0, 0.0, 0.0, 0.0]
+    replay sub11: map_x=[9.323, 9.018, 8.938, 8.938] map_y=[2.127, 1.166, 1.062, 1.062] z=[2.1607, 0.2621, -0.0001, -0.0001] |vxy|=[12.731, 1.683, 0.0, 0.0] wz=[81.539, -5.588, 0.001, 0.0] cf=[0.0, 0.0, 0.0, 0.0]
+  replay env0: max_disp=1.133 final_disp=1.133 max|vxy|=12.768 max|dyaw|=5.531 z=[+0.0140,+2.1607] max_cf=0.00
+  replay env1: max_disp=0.132 final_disp=0.132 max|vxy|=1.915 max|dyaw|=0.037 z=[+0.0034,+0.2621] max_cf=55.95
+  replay env2: max_disp=0.000 final_disp=0.000 max|vxy|=0.003 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  replay env3: max_disp=0.000 final_disp=0.000 max|vxy|=0.020 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+
+===== GRID: 16 yaws at the map spawn (envs = 4 yaws each) =====
+spawn clearance=0.937 m
+  yaw=+0.000 (  +0.0 deg): max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  yaw=+0.393 ( +22.5 deg): max_disp=0.000 max|vxy|=0.002 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  yaw=+0.785 ( +45.0 deg): max_disp=0.000 max|vxy|=0.019 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  yaw=+1.178 ( +67.5 deg): max_disp=0.000 max|vxy|=0.027 max|dyaw|=0.002 z=[-0.0010,-0.0001] max_cf=0.00
+  yaw=+1.571 ( +90.0 deg): max_disp=0.022 max|vxy|=0.609 max|dyaw|=0.024 z=[+0.0005,+0.0308] max_cf=0.00
+  yaw=+1.963 (+112.5 deg): max_disp=0.000 max|vxy|=0.023 max|dyaw|=0.000 z=[-0.0002,-0.0001] max_cf=0.00
+  yaw=+2.356 (+135.0 deg): max_disp=0.000 max|vxy|=0.029 max|dyaw|=0.000 z=[-0.0002,-0.0001] max_cf=0.00
+  yaw=+2.749 (+157.5 deg): max_disp=0.000 max|vxy|=0.025 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  yaw=+3.142 (+180.0 deg): max_disp=0.000 max|vxy|=0.000 max|dyaw|=6.283 z=[-0.0001,-0.0001] max_cf=0.00
+  yaw=+3.534 (+202.5 deg): max_disp=0.000 max|vxy|=0.003 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  yaw=+3.927 (+225.0 deg): max_disp=0.000 max|vxy|=0.006 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  yaw=+4.320 (+247.5 deg): max_disp=0.000 max|vxy|=0.024 max|dyaw|=0.000 z=[-0.0003,-0.0001] max_cf=0.00
+  yaw=+4.712 (+270.0 deg): max_disp=0.022 max|vxy|=0.609 max|dyaw|=0.024 z=[+0.0005,+0.0308] max_cf=0.00
+  yaw=+5.105 (+292.5 deg): max_disp=0.000 max|vxy|=0.022 max|dyaw|=0.000 z=[-0.0002,-0.0001] max_cf=0.00
+  yaw=+5.498 (+315.0 deg): max_disp=0.000 max|vxy|=0.029 max|dyaw|=0.000 z=[-0.0002,-0.0001] max_cf=0.00
+  yaw=+5.890 (+337.5 deg): max_disp=0.000 max|vxy|=0.025 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+
+===== POINTS: 8 map points x 4 cardinal yaws =====
+  spawn_SE_pocket        clr=0.937 yaw=+0.000: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  spawn_SE_pocket        clr=0.937 yaw=+1.571: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  spawn_SE_pocket        clr=0.937 yaw=+3.142: max_disp=0.003 max|vxy|=0.207 max|dyaw|=0.008 z=[+0.0003,+0.0181] max_cf=0.00
+  spawn_SE_pocket        clr=0.937 yaw=-1.571: max_disp=0.148 max|vxy|=3.834 max|dyaw|=0.070 z=[+0.0058,+0.3483] max_cf=166.49  <== LAUNCH
+  corridor_mid           clr=0.937 yaw=+0.000: max_disp=0.667 max|vxy|=15.754 max|dyaw|=1.191 z=[+0.0302,+1.2932] max_cf=0.00  <== LAUNCH
+  corridor_mid           clr=0.937 yaw=+1.571: max_disp=0.006 max|vxy|=0.192 max|dyaw|=0.006 z=[-0.0001,+0.0029] max_cf=0.00
+  corridor_mid           clr=0.937 yaw=+3.142: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  corridor_mid           clr=0.937 yaw=-1.571: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  SW_pocket(m00-like)    clr=0.937 yaw=+0.000: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  SW_pocket(m00-like)    clr=0.937 yaw=+1.571: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  SW_pocket(m00-like)    clr=0.937 yaw=+3.142: max_disp=0.001 max|vxy|=0.061 max|dyaw|=6.283 z=[-0.0009,-0.0001] max_cf=0.00
+  SW_pocket(m00-like)    clr=0.937 yaw=-1.571: max_disp=0.049 max|vxy|=1.328 max|dyaw|=0.034 z=[+0.0022,+0.0637] max_cf=50.49
+  goal_NW_pocket         clr=0.937 yaw=+0.000: max_disp=0.005 max|vxy|=0.170 max|dyaw|=0.004 z=[-0.0001,+0.0022] max_cf=0.00
+  goal_NW_pocket         clr=0.937 yaw=+1.571: max_disp=0.001 max|vxy|=0.061 max|dyaw|=0.001 z=[-0.0009,-0.0001] max_cf=0.00
+  goal_NW_pocket         clr=0.937 yaw=+3.142: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  goal_NW_pocket         clr=0.937 yaw=-1.571: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  map_centre             clr=1.125 yaw=+0.000: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  map_centre             clr=1.125 yaw=+1.571: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  map_centre             clr=1.125 yaw=+3.142: max_disp=0.532 max|vxy|=13.527 max|dyaw|=1.384 z=[+0.0088,+0.9525] max_cf=0.00  <== LAUNCH
+  map_centre             clr=1.125 yaw=-1.571: max_disp=0.000 max|vxy|=0.055 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  near_east_border       clr=0.475 yaw=+0.000: max_disp=0.015 max|vxy|=0.711 max|dyaw|=0.005 z=[+0.0020,+0.0607] max_cf=39.88
+  near_east_border       clr=0.475 yaw=+1.571: max_disp=0.000 max|vxy|=0.052 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  near_east_border       clr=0.475 yaw=+3.142: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  near_east_border       clr=0.475 yaw=-1.571: max_disp=0.000 max|vxy|=0.055 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  near_west_border       clr=0.475 yaw=+0.000: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  near_west_border       clr=0.475 yaw=+1.571: max_disp=0.000 max|vxy|=0.022 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  near_west_border       clr=0.475 yaw=+3.142: max_disp=0.001 max|vxy|=0.063 max|dyaw|=6.283 z=[-0.0009,-0.0001] max_cf=0.00
+  near_west_border       clr=0.475 yaw=-1.571: max_disp=0.027 max|vxy|=0.757 max|dyaw|=0.035 z=[+0.0016,+0.0536] max_cf=34.70
+  corridor_east_mid      clr=0.575 yaw=+0.000: max_disp=0.001 max|vxy|=0.057 max|dyaw|=0.001 z=[-0.0010,-0.0001] max_cf=0.00
+  corridor_east_mid      clr=0.575 yaw=+1.571: max_disp=0.000 max|vxy|=0.015 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  corridor_east_mid      clr=0.575 yaw=+3.142: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  corridor_east_mid      clr=0.575 yaw=-1.571: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+
+===== DROP: spawn teleport with z offsets (landing behaviour) =====
+  z_off=+0.000 yaw=+0.000: max_disp=0.000 max|vxy|=0.000 max|dyaw|=0.000 z=[-0.0001,-0.0001] max_cf=0.00
+  z_off=+0.000 yaw=+1.571: max_disp=1.085 max|vxy|=4.771 max|dyaw|=6.008 z=[+0.0169,+2.3387] max_cf=102.85  <== LAUNCH
+  z_off=+0.000 yaw=+3.142: max_disp=0.003 max|vxy|=0.121 max|dyaw|=6.281 z=[-0.0003,+0.0004] max_cf=0.00
+  z_off=+0.000 yaw=-1.571: max_disp=0.001 max|vxy|=0.062 max|dyaw|=0.001 z=[-0.0009,-0.0001] max_cf=0.00
+  z_off=+0.002 yaw=+0.000: max_disp=0.000 max|vxy|=0.033 max|dyaw|=0.000 z=[-0.0001,+0.0013] max_cf=0.00
+  z_off=+0.002 yaw=+1.571: max_disp=0.000 max|vxy|=0.033 max|dyaw|=0.000 z=[-0.0001,+0.0013] max_cf=0.00
+  z_off=+0.002 yaw=+3.142: max_disp=0.000 max|vxy|=0.033 max|dyaw|=0.000 z=[-0.0001,+0.0013] max_cf=0.00
+  z_off=+0.002 yaw=-1.571: max_disp=0.000 max|vxy|=0.033 max|dyaw|=0.000 z=[-0.0001,+0.0013] max_cf=0.00
+  z_off=+0.010 yaw=+0.000: max_disp=0.000 max|vxy|=0.026 max|dyaw|=0.000 z=[-0.0001,+0.0093] max_cf=0.00
+  z_off=+0.010 yaw=+1.571: max_disp=0.000 max|vxy|=0.025 max|dyaw|=0.000 z=[-0.0001,+0.0093] max_cf=0.00
+  z_off=+0.010 yaw=+3.142: max_disp=0.000 max|vxy|=0.025 max|dyaw|=6.283 z=[-0.0001,+0.0093] max_cf=0.00
+  z_off=+0.010 yaw=-1.571: max_disp=0.000 max|vxy|=0.025 max|dyaw|=0.000 z=[-0.0001,+0.0093] max_cf=0.00
+  z_off=+0.030 yaw=+0.000: max_disp=0.000 max|vxy|=0.046 max|dyaw|=0.000 z=[-0.0001,+0.0293] max_cf=0.00
+  z_off=+0.030 yaw=+1.571: max_disp=0.000 max|vxy|=0.046 max|dyaw|=0.000 z=[-0.0001,+0.0293] max_cf=0.00
+  z_off=+0.030 yaw=+3.142: max_disp=0.000 max|vxy|=0.046 max|dyaw|=0.000 z=[-0.0001,+0.0293] max_cf=0.00
+  z_off=+0.030 yaw=-1.571: max_disp=0.000 max|vxy|=0.046 max|dyaw|=0.000 z=[-0.0001,+0.0293] max_cf=0.00
+  z_off=+0.100 yaw=+0.000: max_disp=0.000 max|vxy|=0.003 max|dyaw|=0.000 z=[-0.0001,+0.0993] max_cf=0.00
+  z_off=+0.100 yaw=+1.571: max_disp=0.000 max|vxy|=0.003 max|dyaw|=0.000 z=[-0.0001,+0.0993] max_cf=0.00
+  z_off=+0.100 yaw=+3.142: max_disp=0.000 max|vxy|=0.003 max|dyaw|=6.283 z=[-0.0001,+0.0993] max_cf=0.00
+  z_off=+0.100 yaw=-1.571: max_disp=0.000 max|vxy|=0.003 max|dyaw|=0.000 z=[-0.0001,+0.0993] max_cf=0.00
+  z_off=+0.300 yaw=+0.000: max_disp=0.000 max|vxy|=0.007 max|dyaw|=0.000 z=[-0.0001,+0.2993] max_cf=0.00
+  z_off=+0.300 yaw=+1.571: max_disp=0.000 max|vxy|=0.005 max|dyaw|=0.000 z=[-0.0001,+0.2993] max_cf=0.00
+  z_off=+0.300 yaw=+3.142: max_disp=0.000 max|vxy|=0.007 max|dyaw|=6.283 z=[-0.0001,+0.2993] max_cf=0.00
+  z_off=+0.300 yaw=-1.571: max_disp=0.000 max|vxy|=0.005 max|dyaw|=0.000 z=[-0.0001,+0.2993] max_cf=0.00
+
+===== PROBE done in 4s =====

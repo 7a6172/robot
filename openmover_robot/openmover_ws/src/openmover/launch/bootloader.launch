@@ -1,0 +1,57 @@
+<!-- 2023-10-11 0.0.0.1A -->
+
+<!-- 文件描述：加载机器人服务 -->
+<launch>
+    <!-- 系统模式，0 - 仿真模式； 1 - 真机模式 -->
+    <arg name="system_mode" value="0" />
+
+    <!-- 仿真区域参数，0 - 地点0；1- 地点1；2 - 地点2 -->
+    <arg name="sim_area" default="1" />
+
+    <!-- 是否启用 Rviz 可视化 -->
+    <arg name="enable_visualization" value="true" />
+
+    <arg name="launch_file_create_map" value="$(find openmover)/launch/apps/mapping.launch" />
+    <arg name="launch_file_nav_mode" value="$(find openmover)/launch/apps/navigation.launch" />
+    <arg name="launch_file_load_map" value="$(find openmover)/launch/modules/mapping/map_server.launch" />
+
+    <arg name="nav_map_save_path" value="$(env HOME)/openmover_robot/maps/" />
+
+    <arg name="visualization_config_file_idle" value="$(env HOME)/openmover_robot/config/rviz/idle.rviz" />
+    <arg name="visualization_config_file_working" value="$(env HOME)/openmover_robot/config/rviz/working.rviz" />
+    <arg name="visualization_config_file_working_nomap" value="$(env HOME)/openmover_robot/config/rviz/working_nomap.rviz" />
+
+    <!-- 启动 Server -->
+    <node name="func_mode_server_handler" pkg="openmover" type="func_mode_server_handler.py" output="screen" respawn="true">
+        <param name="system_mode" value="$(arg system_mode)" />
+
+        <param name="launch_file_create_map" value="$(arg launch_file_create_map)" />
+        <param name="launch_file_nav_mode" value="$(arg launch_file_nav_mode)" />
+        <param name="launch_file_load_map" value="$(arg launch_file_load_map)" />
+        <param name="nav_map_save_path" value="$(arg nav_map_save_path)" />
+
+        <param name="enable_visualization" value="$(arg enable_visualization)" />
+        <param name="visualization_config_file_idle" value="$(arg visualization_config_file_idle)" />
+        <param name="visualization_config_file_working" value="$(arg visualization_config_file_working)" />
+        <param name="visualization_config_file_working_nomap" value="$(arg visualization_config_file_working_nomap)" />
+    </node>
+
+    <!-- 启动 Bridge -->
+    <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch">
+        <arg name="port" value="8080" />
+    </include>
+
+    <!-- 启动可视化 -->
+    <group if="$(arg enable_visualization)">
+        <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg visualization_config_file_idle)">
+            <remap from="initialpose" to="openmover/localization/initialpose" />
+            <remap from="goal" to="openmover/navigation/simple_goal" />
+        </node>
+    </group>
+
+    <!-- 机器人驱动 -->
+    <include file="$(find openmover)/launch/hardwares/bringup.launch">
+        <arg name="system_mode" value="$(arg system_mode)" />
+        <arg name="sim_area" value="$(arg sim_area)" />
+    </include>
+</launch>

@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>openmover</name>
+  <version>2.0.0</version>
+  <description>OpenMover robot core package (ROS 2 Jazzy port of the ROS 1 Noetic package).</description>
+  <maintainer email="zar@my.swjtu.edu.cn">zar</maintainer>
+  <author email="muhua.zhang@my.swjtu.edu.cn">ZHANG Muhua (original ROS 1 implementation)</author>
+  <author email="zar@my.swjtu.edu.cn">zar (ROS 2 Jazzy port)</author>
+  <license>private</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>angles</depend>
+  <depend>sensor_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>tf2_eigen</depend>
+  <depend>tf2_sensor_msgs</depend>
+  <depend>pcl_conversions</depend>
+  <depend>nav2_costmap_2d</depend>
+  <depend>nav2_util</depend>
+  <depend>openmover_msgs</depend>
+  <depend>relocalization_toolbox_msgs</depend>
+  <depend>auto_mapping_toolbox_msgs</depend>
+
+  <build_depend>eigen</build_depend>
+  <build_depend>libpcl-all-dev</build_depend>
+
+  <exec_depend>cartographer_ros</exec_depend>
+  <exec_depend>cartographer_ros_msgs</exec_depend>
+  <exec_depend>nav2_map_server</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
+  <exec_depend>ira_laser_tools</exec_depend>
+  <exec_depend>bluesea2</exec_depend>
+  <exec_depend>rosbridge_server</exec_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>ros_gz_bridge</exec_depend>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>joint_state_publisher</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>python3-pynput</exec_depend>
+  <exec_depend>python3-pygame</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

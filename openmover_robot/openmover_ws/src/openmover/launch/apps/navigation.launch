@@ -1,0 +1,13 @@
+<!-- 2023-6-24 0.0.0.1A -->
+
+<!-- 文件描述：启动机器人路点导航模式 -->
+<launch>
+    <!-- 设置参数 -->
+    <arg name="launch_file_navigation" value="$(find openmover)/launch/apps/navigation/navigation.launch" />
+
+    <!-- 启动服务器 -->
+    <node name="nav_area_server_handler" pkg="openmover" type="nav_area_server_handler.py" output="screen">
+        <param name="launch_file_default" value="$(arg launch_file_navigation)" />
+        <param name="launch_file_navigation" value="$(arg launch_file_navigation)" />
+    </node>
+</launch>

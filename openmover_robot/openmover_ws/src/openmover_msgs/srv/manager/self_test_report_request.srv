@@ -1,0 +1,9 @@
+# 2022-6-30 0.0.0.1A
+
+# 设备名称
+string[] devices
+
+# 设备可用性
+bool[] availables
+---
+string result

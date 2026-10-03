@@ -1,0 +1,5 @@
+# 2023-10-11 0.0.0.1A
+
+openmover_msgs/NavToSimple request
+---
+string result

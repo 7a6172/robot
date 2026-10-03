@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog — OpenMover ROS 2</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand"><span class="logo"></span>OpenMover&nbsp;ROS&nbsp;2</span>
+  <a href="index.html">Index</a>
+  <a href="getting_started.html">Getting Started</a>
+  <a href="build.html">Build</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="packages.html">Packages</a>
+  <a href="usage.html">Usage</a>
+  <a href="hardware.html">Hardware</a>
+  <a href="audit.html">Audit</a>
+  <a href="changelog.html" class="active">Changelog</a>
+</nav>
+
+<div class="wrap">
+  <div class="page-head">
+    <span class="kicker">Migration record</span>
+    <h1>Changelog: ROS&nbsp;1 Noetic &rarr; ROS&nbsp;2 Jazzy</h1>
+    <p class="lede">
+      Every intentional change between the original ROS&nbsp;1 stack and the current
+      ROS&nbsp;2 Jazzy + Gazebo Harmonic stack, subsystem by subsystem: what it was, what it is
+      now, and why. Items restored or corrected by the <a href="audit.html">audit</a> are marked.
+    </p>
+  </div>
+
+  <div class="toc">
+    <h3>Contents</h3>
+    <ol>
+      <li><a href="#platform">Platform</a></li>
+      <li><a href="#interfaces">Interfaces (openmover_msgs)</a></li>
+      <li><a href="#launch">Launch &amp; process model</a></li>
+      <li><a href="#slam">SLAM</a></li>
+      <li><a href="#nav">Navigation stack</a></li>
+      <li><a href="#planner">Global planner</a></li>
+      <li><a href="#lidar">LiDAR drivers &amp; laser tools</a></li>
+      <li><a href="#toolboxes">Algorithm toolboxes</a></li>
+      <li><a href="#config">Config layout &amp; maps</a></li>
+      <li><a href="#sim">Simulation world &amp; actors</a></li>
+      <li><a href="#proxy">Pedestrian collisions &mdash; proxy box removal</a></li>
+      <li><a href="#attribution">Package metadata &amp; attribution</a></li>
+    </ol>
+  </div>
+
+  <h2 id="platform">1. Platform</h2>
+  <table>
+    <tr><th style="width:280px;">Aspect</th><th>ROS 1 (was)</th><th>ROS 2 (now)</th></tr>
+    <tr><td>Distro</td><td>Noetic (Python 3.8)</td><td>Jazzy (Python 3.12)</td></tr>
+    <tr><td>Simulator</td><td>Gazebo Classic 11</td><td>Gazebo Harmonic (gz-sim 8.10)</td></tr>
+    <tr><td>Middleware</td><td>roscpp/rospy, master node</td><td>rclcpp/rclpy, DDS (no master)</td></tr>
+    <tr><td>OS</td><td>Ubuntu 20.04</td><td>Ubuntu 24.04</td></tr>
+  </table>
+
+  <h2 id="interfaces">2. Interfaces (openmover_msgs)</h2>
+  <table>
+    <tr><th style="width:280px;">Aspect</th><th>ROS 1 (was)</th><th>ROS 2 (now)</th></tr>
+    <tr><td>Definitions</td><td>8 msg + 10 srv in ROS&nbsp;1 syntax</td>
+        <td>Same 8 msg + 10 srv, regenerated; verified
+        <span class="badge ok">field-for-field parity</span></td></tr>
+    <tr><td>Latched topics</td><td><code>latching: true</code> publisher flag</td>
+        <td>QoS durability <code>TRANSIENT_LOCAL</code></td></tr>
+    <tr><td>Service types</td><td>ROS&nbsp;1 built-ins where used</td>
+        <td>ROS&nbsp;2 equivalents (see <a href="#planner">global planner</a>)</td></tr>
+  </table>
+
+  <h2 id="launch">3. Launch &amp; process model</h2>
+  <table>
+    <tr><th style="width:280px;">Aspect</th><th>ROS 1 (was)</th><th>ROS 2 (now)</th></tr>
+    <tr><td>Launch system</td><td>roslaunch XML</td>
+        <td><code>launch/*.py</code> Python launch files
+        (<code>workload.launch.py</code> &rarr; <code>bootloader.launch.py</code> &rarr; app modules)</td></tr>
+    <tr><td>Subprocess management</td><td>roslaunch API spawned/monitored children</td>
+        <td>A dedicated subprocess launch manager replicates spawn/monitor/kill behavior</td></tr>
+    <tr><td>Mode servers</td><td>5 mode servers as before</td>
+        <td>Same 5 servers, same arguments &mdash;
+        <span class="badge ok">parity</span></td></tr>
+    <tr><td>map_server</td><td><code>map_server</code> node (no lifecycle)</td>
+        <td><code>nav2_map_server</code> + <code>nav2_lifecycle_manager</code>
+        (<code>lifecycle_manager_mapping</code>, autostart) &mdash;
+        <span class="badge info">audit fix B</span></td></tr>
+    <tr><td>Parameters</td><td>parameter server, global names</td>
+        <td><code>ros__parameters</code> YAML files under <code>config_defaults/</code>,
+        node-local namespaces</td></tr>
+  </table>
+
+  <h2 id="slam">4. SLAM</h2>
+  <table>
+    <tr><th style="width:280px;">Aspect</th><th>ROS 1 (was)</th><th>ROS 2 (now)</th></tr>
+    <tr><td>Backend</td><td>gmapping</td><td>slam_toolbox (async, online)</td></tr>
+    <tr><td><code>temporalUpdate</code></td><td>1.0</td><td>0.2 &mdash; deliberate, better map
+        responsiveness with the merged scan</td></tr>
+    <tr><td>Map bounds (<code>xmin/xmax/ymin/ymax</code> 24&nbsp;m) and
+        <code>particles: 4</code></td><td>present</td><td><em>no counterpart</em> &mdash;
+        slam_toolbox does not take these parameters; dropped by design</td></tr>
+    <tr><td>Scan input</td><td>merged scan topic</td><td>same merged scan topic &mdash;
+        <span class="badge ok">parity</span></td></tr>
+  </table>
+
+  <h2 id="nav">5. Navigation stack</h2>
+  <table>
+    <tr><th style="width:280px;">Aspect</th><th>ROS 1 (was)</th><th>ROS 2 (now)</th></tr>
+    <tr><td>Framework</td><td>move_base</td><td>Nav2 (costmaps run in-process inside the
+        navigation/mapping handlers)</td></tr>
+    <tr><td>Controller</td><td>DWB</td><td>MPPI (requires <code>controller_frequency &ge; 20</code>)</td></tr>
+    <tr><td><code>controller_frequency</code></td><td>5.0</td><td><strong>20.0</strong> (MPPI requirement)</td></tr>
+    <tr><td>Forward speed</td><td><code>max_vel_x: 3.0</code></td><td><code>vx_max: 1.0</code></td></tr>
+    <tr><td>Backward speed</td><td><code>min_vel_x: 0.1</code> (effectively no reverse)</td>
+        <td><code>vx_min: -0.35</code> (reverse enabled)</td></tr>
+    <tr><td>Rotation speed</td><td><code>max_vel_theta: 3.0</code></td><td><code>wz_max: 1.9</code></td></tr>
+    <tr><td>Costmap params</td><td>full <code>global_costmap</code> sections in app YAMLs
+        (consumed only by an orphan handler &mdash; dead config)</td>
+        <td>Ported with nav2 plugin syntax and the exact ROS&nbsp;1 values; now actually
+        consumed &mdash; <span class="badge info">audit fix A</span></td></tr>
+    <tr><td>Warehouse-demo costmaps</td><td>robot_radius 0.25, voxel layers, inflation 1.0 /
+        radius 2.58</td><td>identical &mdash; <span class="badge ok">parity</span></td></tr>
+  </table>
+  <div class="note">
+    <span class="tag">Velocity limits</span>
+    <div><p>The MPPI velocity limits were set to safe commissioning values for the demo. Raise
+    <code>vx_max</code>/<code>wz_max</code> only after validating the robot on hardware.</p></div>
+  </div>
+
+  <h2 id="planner">6. Global planner</h2>
+  <table>
+    <tr><th style="width:280px;">Aspect</th><th>ROS 1 (was)</th><th>ROS 2 (now)</th></tr>
+    <tr><td>Handler</td><td><code>global_planner_handler.cpp</code> existed but was
+        <em>never launched</em> (orphan)</td>
+        <td>Capability merged into <code>navigation_handler</code> and now reachable</td></tr>
+    <tr><td>Service</td><td><code>navfn/MakeNavPlan</code></td>
+        <td><code>nav_msgs/GetPlan</code> at
+        <code>/openmover/navigation/global_planner/make_plan</code></td></tr>
+    <tr><td>Costmap config</td><td>ROS&nbsp;1 <code>global_costmap</code> YAML (dead, see above)</td>
+        <td>Same values, active &mdash; <span class="badge info">audit fix A</span></td></tr>
+  </table>
+
+  <h2 id="lidar">7. LiDAR drivers &amp; laser tools</h2>
+  <table>
+    <tr><th style="width:280px;">Aspect</th><th>ROS 1 (was)</th><th>ROS 2 (now)</th></tr>
+    <tr><td>bluesea2 driver</td><td>ROS&nbsp;1 vendor driver</td>
+        <td><strong>Manual ROS&nbsp;2 port</strong> (deviation from the original plan, which
+        called for the vendor driver &mdash; none exists for Jazzy). All parameters preserved:
+        IPs 192.168.100.101/.102, UDP 502 &rarr; local 6667/6668, 900&nbsp;rpm,
+        &plusmn;1.57&nbsp;rad filter, inverted &mdash; <span class="badge ok">parity</span></td></tr>
+    <tr><td>ira_laser_tools</td><td>merger <em>and</em> virtualizer nodes</td>
+        <td><strong>Merger kept; virtualizer dropped</strong> (deviation &mdash; its output is
+        not consumed in the ROS&nbsp;2 graph)</td></tr>
+  </table>
+
+  <h2 id="toolboxes">8. Algorithm toolboxes</h2>
+  <table>
+    <tr><th style="width:280px;">Aspect</th><th>ROS 1 (was)</th><th>ROS 2 (now)</th></tr>
+    <tr><td>auto_mapping_toolbox</td><td>C++ toolbox with its service API</td>
+        <td>Ported, interface preserved</td></tr>
+    <tr><td>relocalization_toolbox</td><td>Compiled with
+        <code>-O3 -flto -ffast-math -funroll-loops</code> (scoring/sampling hotspot)</td>
+        <td>Flags were dropped during the port, then <strong>restored by the audit</strong> and
+        rebuilt &mdash; <span class="badge info">audit fix E</span></td></tr>
+    <tr><td>OSQP</td><td>system library</td><td>same; built via <code>tools/osqp_build</code>
+        (<code>-j2</code>) &rarr; <code>/usr/local</code></td></tr>
+  </table>
+
+  <h2 id="config">9. Config layout &amp; maps</h2>
+  <table>
+    <tr><th style="width:280px;">Aspect</th><th>ROS 1 (was)</th><th>ROS 2 (now)</th></tr>
+    <tr><td>Defaults</td><td>configs inside the package / repo-root <code>config/</code></td>
+        <td><code>src/openmover/config_defaults/</code> (symlink-installed &rarr; editable live,
+        no rebuild)</td></tr>
+    <tr><td>User overrides</td><td>repo-root <code>openmover_robot/config</code></td>
+        <td><code>~/openmover_robot/config</code> (same layout, selected by
+        <code>OPENMOVER_HOME</code>)</td></tr>
+    <tr><td>Maps directory</td><td>missing in the ROS&nbsp;1 tree (maps could not be found)</td>
+        <td><code>maps_defaults</code> provides the shipped maps &mdash; fixes the ROS&nbsp;1 gap</td></tr>
+    <tr><td>Runtime dirs</td><td>&mdash;</td><td><code>~/openmover_robot/{config,maps,sounds,logs}</code></td></tr>
+  </table>
+
+  <h2 id="sim">10. Simulation world &amp; actors</h2>
+  <table>
+    <tr><th style="width:280px;">Aspect</th><th>ROS 1 (was)</th><th>ROS 2 (now)</th></tr>
+    <tr><td>World format</td><td>Gazebo Classic <code>.world</code> (SDF 1.6)</td>
+        <td>gz Harmonic <code>.sdf</code>, rebuilt around the shipped models (Classic models do
+        not load in Harmonic)</td></tr>
+    <tr><td>Robot model</td><td>URDF/xacro spawned into Classic</td>
+        <td>Same URDF served via robot_state_publisher + diff-drive &amp; LiDAR plugins adapted
+        to gz Harmonic</td></tr>
+    <tr><td>Bridging</td><td>native Classic topics</td>
+        <td><code>ros_gz_bridge</code> (clock, scan, odom, cmd_vel, tf, &hellip;) &mdash; verified
+        by the config test</td></tr>
+    <tr><td>Pedestrian actors</td><td>waypoints x/y + timing, z&nbsp;=&nbsp;0</td>
+        <td>x/y + timing <span class="badge ok">identical</span>; z lifted 0&nbsp;&rarr;&nbsp;1.0
+        to fit the Harmonic actor skin anchor; actors carry <em>no collision body</em>
+        &mdash; <span class="badge info">audit fix G</span> (comment accuracy)</td></tr>
+    <tr><td><code>key_control</code> teleop</td><td>One twist per keypress; DOWN arrow = stop
+        (ROS&nbsp;1 maps it to <code>-0.0</code> — no reverse existed)</td>
+        <td>Two deliberate improvements: (1)&nbsp;DOWN = <strong>reverse</strong> (Nav2's
+        <code>vx_min: -0.35</code> and the DiffDrive plugin both permit backing up);
+        (2)&nbsp;<strong>hold-to-drive</strong> — commands repeat at 20&nbsp;Hz while a key is
+        held and the robot auto-stops on release, instead of a single one-shot pulse. Requires
+        OS key-repeat (on by default in desktop environments)</td></tr>
+  </table>
+
+  <h2 id="proxy">11. Pedestrian collisions &mdash; proxy box removal</h2>
+  <p>
+    Gazebo Harmonic actors do not participate in physics collisions, so a pedestrian walking
+    into the robot produced no contact and Nav2 had no reason to stop. Two solutions were
+    explored in sequence:
+  </p>
+  <table>
+    <tr><th style="width:150px;">Approach</th><th>Status</th><th>Details</th></tr>
+    <tr>
+      <td>Proxy box</td>
+      <td><span class="badge danger">removed</span></td>
+      <td>First attempt: invisible collision boxes attached ahead of each actor so the LiDAR would
+      "see" them. Abandoned &mdash; it is a simulation-only hack that boxes the LiDAR with
+      geometry that does not exist in reality, and would mask the real perception problem.</td>
+    </tr>
+    <tr>
+      <td>Perception-based stop</td>
+      <td><span class="badge ok">in use</span></td>
+      <td>Final approach: the actor's feet are genuinely visible to the LiDAR; detections enter
+      the local costmap like any obstacle, Nav2 stops in front of the pedestrian and resumes when
+      the way is clear. Works exactly like it will on the real robot &mdash; no simulation-only
+      machinery. Verified end-to-end; all proxy code/config deleted.</td>
+    </tr>
+  </table>
+
+  <h2 id="attribution">12. Package metadata &amp; attribution</h2>
+  <p>
+    The stack aggregates work from several people: parts of the ROS&nbsp;1 tree predate its
+    listed maintainer, and the ROS&nbsp;2 port is new work on top of it. Metadata now separates
+    <em>responsibility</em> from <em>authorship</em>: <code>&lt;maintainer&gt;</code> records who
+    currently maintains each ROS&nbsp;2 package (the port author), while repeatable
+    <code>&lt;author&gt;</code> entries preserve the original authors and credit the port
+    explicitly. Per-file Doxygen headers in the toolboxes carry the same note.
+  </p>
+  <table>
+    <tr><th style="width:260px;">Package</th><th>Original author</th><th>License</th></tr>
+    <tr><td><code>openmover</code>, <code>openmover_msgs</code></td>
+        <td>ZHANG Muhua (original ROS&nbsp;1 implementation)</td>
+        <td><code>private</code> &mdash; restored to the ROS&nbsp;1 declaration (was
+        <code>TODO</code>)</td></tr>
+    <tr><td><code>auto_mapping_toolbox</code>, <code>auto_mapping_toolbox_msgs</code></td>
+        <td>ZHANG Muhua (original ROS&nbsp;1 implementation)</td>
+        <td><code>GPL-3.0 License</code> &mdash; msgs declaration restored (was
+        <code>TODO</code>)</td></tr>
+    <tr><td><code>relocalization_toolbox</code>, <code>relocalization_toolbox_msgs</code></td>
+        <td>ZHANG Muhua (original ROS&nbsp;1 implementation)</td>
+        <td><code>GPL-3.0 License</code> &mdash; msgs declaration restored (was
+        <code>TODO</code>)</td></tr>
+    <tr><td><code>warehouse_simulation</code></td>
+        <td>Wang Han (original ROS&nbsp;1 <code>warehouse_simulation_toolkit</code>)</td>
+        <td><code>BSD</code> (unchanged)</td></tr>
+    <tr><td><code>bluesea2</code></td>
+        <td>Bluesea Technology (original ROS&nbsp;1 vendor driver)</td>
+        <td>as declared by the vendor &mdash; the ROS&nbsp;1 driver declared none; carried over
+        as-is</td></tr>
+    <tr><td><code>ira_laser_tools</code></td>
+        <td>Upstream unimib authors (Augusto, Pietro, Fabio)</td>
+        <td><code>BSD</code> (unchanged)</td></tr>
+  </table>
+  <p>
+    The 20 toolbox source files with Doxygen author blocks each gained one line
+    (<code>ROS 2 Jazzy port by zar (zar@my.swjtu.edu.cn)</code>) leaving the original author, affiliation and
+    license untouched. Third-party assets inside the simulation package (URDF exporter
+    boilerplate, mesh credits, <code>model.config</code>) were left as their authors published
+    them.
+  </p>
+
+  <h2>Decision log (summary)</h2>
+  <ul>
+    <li><strong>slam_toolbox over gmapping</strong> &mdash; maintained on Jazzy, better maps,
+    no gmapping counterpart needed.</li>
+    <li><strong>MPPI over DWB</strong> &mdash; Nav2's maintained controller; cost:
+    <code>controller_frequency 20.0</code> and retuned velocity limits.</li>
+    <li><strong>manual bluesea2 port</strong> &mdash; no vendor Jazzy driver exists.</li>
+    <li><strong>virtualizer dropped</strong> &mdash; output unused in the ROS&nbsp;2 graph.</li>
+    <li><strong>world rebuilt</strong> &mdash; Classic models are incompatible with Harmonic;
+    layout, spawn pose and actor paths preserved.</li>
+    <li><strong>perception-based pedestrian stop</strong> &mdash; replaces the proxy-box hack
+    (see <a href="#proxy">above</a>).</li>
+    <li><strong>attribution policy</strong> &mdash; maintainer = current port author;
+    authors = original authors plus an explicit port note; licenses restored to the
+    ROS&nbsp;1 declarations (see <a href="#attribution">above</a>).</li>
+  </ul>
+  <div class="tip">
+    <span class="tag">Audit cross-reference</span>
+    <div><p>Items tagged <em>audit fix</em> here are documented with full before/after detail in
+    the <a href="audit.html">Audit report</a>.</p></div>
+  </div>
+</div>
+
+</body>
+</html>

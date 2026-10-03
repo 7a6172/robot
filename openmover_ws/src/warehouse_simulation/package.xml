@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>warehouse_simulation</name>
+  <version>2.0.0</version>
+  <description>
+    Warehouse simulation for ROS 2 (Gazebo Harmonic): Pioneer3DX robot,
+    slam_toolbox mapping and Nav2 navigation in a warehouse world.
+    Ported from the ROS 1 warehouse_simulation package.
+  </description>
+  <maintainer email="zar@my.swjtu.edu.cn">zar</maintainer>
+  <author email="wh200720041@gmail.com">Wang Han (original ROS 1 warehouse_simulation_toolkit)</author>
+  <author email="zar@my.swjtu.edu.cn">zar (ROS 2 Jazzy port)</author>
+  <license>BSD</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>tf2_ros</depend>
+
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>ros_gz_bridge</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>python3-rclpy</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>python3-yaml</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

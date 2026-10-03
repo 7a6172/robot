@@ -1,0 +1,119 @@
+[INFO]: Parsing configuration from: openmover_lab.openmover_nav_cfg:OpenmoverNavEnvCfg
+[nav] custom map 'heldout': 884 wall boxes, spawn=[7.812, 2.312] goal=[7.812, 11.938]
+[nav] episode horizon extended to 148 s (map path 34.4 m)
+[nav] geo_iters raised to 177 for converged field (map path 34.4 m)
+Loading user config located at: '/home/zar/isaacsim/kit/data/Kit/IsaacLab/3.0/user.config.json'
+2026-09-07T05:16:26Z [0ms] [Warning] [omni.ext.plugin] [ext: isaaclab_visualizers] Extensions config 'extension.toml' doesn't exist '/home/zar/isaaclab/source/isaaclab_visualizers' or '/home/zar/isaaclab/source/isaaclab_visualizers/config'
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1788758186.808511   93604 descriptor_database.cc:633] File already exists in database: grpc/health/v1/health.proto
+W0000 00:00:1788758186.808548   93604 message.cc:301] Protobuf GeneratedMessageFactory: File is already registered: grpc/health/v1/health.proto
+2026-09-07T05:16:27Z [294ms] [Warning] [omni.usd_config.extension] Enable omni.materialx.libs extension to use MaterialX
+[ISAACLAB] AppLauncher initialization complete
+2026-09-07T05:16:28Z [1,636ms] [Warning] [isaaclab_physx.physics.physx_manager] TGS solver with enable_external_forces_every_iteration=False may cause noisy velocities.
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 42
+	Physics step-size     : 0.008333333333333333
+	Rendering step-size   : 0.05
+	Environment step-size : 0.05
+[INFO]: Registered backend 'physx' for factory Articulation.
+[INFO]: Registered backend 'physx' for factory RayCaster.
+[INFO]: Registered backend 'physx' for factory ContactSensor.
+[INFO] Generating terrains randomly took Last: 0.314027 s
+[INFO]: Time taken for scene creation Last: 0.681866 s, Mean: 0.681866 s, Std: 0.000000 s, N: 1
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 10
+	Environment spacing   : 6.0
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : []
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-09-07T05:16:29Z [3,095ms] [Warning] [usdrt.population.plugin] Last global time was not created. Did you call setEnableUsdNoticeHandling?
+2026-09-07T05:16:29Z [3,179ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:29Z [3,179ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:29Z [3,179ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:29Z [3,179ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:29Z [3,179ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_4/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:29Z [3,179ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_5/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:29Z [3,179ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_6/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:29Z [3,179ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_7/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:29Z [3,179ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_8/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:29Z [3,179ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_9/Robot/Geometry/base_link/base_link'
+[INFO]: Simulation parameters for joints in /World/envs/env_.*/Robot:
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                        Simulation Joint Information (Prim path: /World/envs/env_.*/Robot)                                                       |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+| Index | Name                   | Stiffness | Damping | Armature | Static Friction | Dynamic Friction | Viscous Friction |   Position Limits   | Velocity Limits | Effort Limits |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+|   0   | ball_front_left_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   1   | ball_front_right_joint |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   2   | ball_rear_left_joint   |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   3   | ball_rear_right_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   4   | wheel_left_joint       |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
+|   5   | wheel_right_joint      |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+2026-09-07T05:16:30Z [3,306ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,306ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,306ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,306ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,306ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_4/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,306ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_5/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,306ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_6/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,306ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_7/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,306ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_8/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,306ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_9/Robot/Geometry/base_link/base_link'
+[INFO]: Read mesh prim: /World/ground/terrain/mesh with 113248 vertices and 509304 faces.
+2026-09-07T05:16:30Z [3,316ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,316ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,316ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,316ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,316ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_4/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,316ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_5/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,316ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_6/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,316ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_7/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,316ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_8/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,316ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_9/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,343ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,343ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,343ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,343ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,343ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_4/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,343ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_5/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,343ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_6/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,343ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_7/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,343ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_8/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,343ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_9/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,344ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,344ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,344ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,344ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,344ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_4/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,344ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_5/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,344ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_6/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,344ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_7/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,344ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_8/Robot/Geometry/base_link/base_link'
+2026-09-07T05:16:30Z [3,344ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_9/Robot/Geometry/base_link/base_link'
+[INFO]: Time taken for simulation start Last: 1.028210 s, Mean: 1.028210 s, Std: 0.000000 s, N: 1
+[INFO]: Completed setting up the environment...
+[nav] obstacle table built (warm cache): 16 tiles, obstacles/tile 884-884
+[nav] custom map spawn/goal fixed from /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/heldout.json
+[nav] geodesic grid: 16 tiles x 60x60 cells (res 0.25 m, inflate 0.2 m)
+[nav] obs space: Box(-inf, inf, (10, 1208), float32)
+[nav] act space: Box(-inf, inf, (10, 2), float32)
+[nav] num_envs=10 device=cuda:0
+[baseline] A*+DWA ready (grid 60x60 @ 0.25 m, 884 boxes, dwa=48 candidates)
+[nav] done: 2971 steps in 201.76 s (147 env-steps/s)
+[nav] A*+DWA baseline: plans=1500 replans=1490 dwa_reject=0 stuck=0 over 29710 env-steps
+[nav] final obs shape=(10, 1208) norm=34.0138
+[nav] scan front: min=0.032 mean=0.182 max=0.934
+[nav] scan rear : min=0.032 mean=0.145 max=0.442
+[nav] tail (goal_xy, vx, wz) env0: [-0.9988700151443481, -2.7129857540130615, 0.32925650477409363, -0.0899367704987526, 0.4316158592700958, -0.03202817216515541, 6.677717208862305, 0.0]
+[nav] base xy env0: [-24.271387100219727, -25.13360595703125]
+[nav] displacement env0 over run: [-2.083, 2.554] m
+[nav] wheel joint vel env0 (L,R): [13.827903747558594, -7.171441078186035, 2.684603691101074, 2.5758180618286133, 8.859318733215332, 7.52826452255249]
+[nav] contact force env0: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[nav] episode-reset batches observed=10, mean success rate=1.000, mean collision rate=0.900
+[nav] mean time-to-goal (successes only)=103.35 s over 10 successes
+[nav] blocked-goal episodes: 10 of 10 (100.0%), blocked success=1.000
+[nav] results_json: 10/10 first episodes -> /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/campaign/heldout/results/astar_dwa/heldout.json
+[INFO]: SimulationContext cleared

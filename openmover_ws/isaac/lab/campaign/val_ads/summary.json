@@ -1,0 +1,15 @@
+{
+ "astar_dwa_shield": {
+  "n_maps": 1,
+  "success_mean_of_means": 0.75,
+  "collision_mean_of_means": 0.0,
+  "ttg_mean": 81.5500005086263,
+  "per_family": {
+   "corridor": {
+    "n": 1,
+    "success": 0.75,
+    "collision": 0.0
+   }
+  }
+ }
+}

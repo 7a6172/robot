@@ -1,0 +1,138 @@
+[INFO]: Parsing configuration from: openmover_lab.openmover_nav_cfg:OpenmoverNavEnvCfg
+[nav] custom map 'f3_b0_m00': 13 wall boxes, spawn=[1.062, 9.062] goal=[9.062, 1.062]
+[nav] episode horizon extended to 111 s (map path 25.1 m)
+[nav] geo_iters raised to 140 for converged field (map path 25.1 m)
+Loading user config located at: '/home/zar/isaacsim/kit/data/Kit/IsaacLab/3.0/user.config.json'
+2026-09-06T09:05:27Z [0ms] [Warning] [omni.ext.plugin] [ext: isaaclab_visualizers] Extensions config 'extension.toml' doesn't exist '/home/zar/isaaclab/source/isaaclab_visualizers' or '/home/zar/isaaclab/source/isaaclab_visualizers/config'
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1788685527.400114  340202 descriptor_database.cc:633] File already exists in database: grpc/health/v1/health.proto
+W0000 00:00:1788685527.400151  340202 message.cc:301] Protobuf GeneratedMessageFactory: File is already registered: grpc/health/v1/health.proto
+2026-09-06T09:05:27Z [395ms] [Warning] [omni.usd_config.extension] Enable omni.materialx.libs extension to use MaterialX
+[ISAACLAB] AppLauncher initialization complete
+2026-09-06T09:05:29Z [1,813ms] [Warning] [isaaclab_physx.physics.physx_manager] TGS solver with enable_external_forces_every_iteration=False may cause noisy velocities.
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 42
+	Physics step-size     : 0.008333333333333333
+	Rendering step-size   : 0.05
+	Environment step-size : 0.05
+[INFO]: Registered backend 'physx' for factory Articulation.
+[INFO]: Registered backend 'physx' for factory RayCaster.
+[INFO]: Registered backend 'physx' for factory ContactSensor.
+[INFO] Generating terrains randomly took Last: 0.022278 s
+[INFO]: Time taken for scene creation Last: 0.296075 s, Mean: 0.296075 s, Std: 0.000000 s, N: 1
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 4
+	Environment spacing   : 6.0
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : []
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-09-06T09:05:30Z [3,034ms] [Warning] [usdrt.population.plugin] Last global time was not created. Did you call setEnableUsdNoticeHandling?
+2026-09-06T09:05:30Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Simulation parameters for joints in /World/envs/env_.*/Robot:
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                        Simulation Joint Information (Prim path: /World/envs/env_.*/Robot)                                                       |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+| Index | Name                   | Stiffness | Damping | Armature | Static Friction | Dynamic Friction | Viscous Friction |   Position Limits   | Velocity Limits | Effort Limits |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+|   0   | ball_front_left_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   1   | ball_front_right_joint |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   2   | ball_rear_left_joint   |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   3   | ball_rear_right_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   4   | wheel_left_joint       |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
+|   5   | wheel_right_joint      |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+2026-09-06T09:05:30Z [3,167ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,167ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,167ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,167ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Read mesh prim: /World/ground/terrain/mesh with 464 vertices and 1920 faces.
+2026-09-06T09:05:30Z [3,173ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,173ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,173ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,173ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,198ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,198ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,198ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,198ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,198ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,198ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,198ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T09:05:30Z [3,198ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Time taken for simulation start Last: 1.091691 s, Mean: 1.091691 s, Std: 0.000000 s, N: 1
+[INFO]: Completed setting up the environment...
+[nav] obstacle table OK (cold cache, replay cross-checked): 4 tiles (4 fresh, 0 from mesh cache), obstacles/tile 13-13
+[nav] custom map spawn/goal fixed from /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/gen/f3_b0_m00.json
+[nav] geodesic grid: 4 tiles x 40x40 cells (res 0.25 m, inflate 0.2 m)
+[nav] obs space: Box(-inf, inf, (4, 1208), float32)
+[nav] act space: Box(-inf, inf, (4, 2), float32)
+[nav] num_envs=4 device=cuda:0
+[INFO]: Parsing configuration from: openmover_lab.rsl_rl_ppo_cfg:OpenmoverNavPPORunnerCfg
+--------------------------------------------------------------------------------
+Resolved observation sets: 
+	 actor :  ['policy']
+	 critic :  ['policy']
+--------------------------------------------------------------------------------
+Actor Model: MLPModel(
+  (obs_normalizer): Identity()
+  (distribution): GaussianDistribution()
+  (mlp): MLP(
+    (0): Linear(in_features=1208, out_features=128, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=128, out_features=128, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=128, out_features=2, bias=True)
+  )
+)
+Critic Model: MLPModel(
+  (obs_normalizer): Identity()
+  (mlp): MLP(
+    (0): Linear(in_features=1208, out_features=128, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=128, out_features=128, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=128, out_features=1, bias=True)
+  )
+)
+[nav] loaded checkpoint: /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/logs/rsl_rl/openmover_nav/bc_init_v3/model_0.pt
+[nav] Shield-lite enabled (policy_node v7.4 port; v_full=0.504 m/s, w_full=3.108 rad/s, 13 boxes, policy=trained)
+[shield-lite] env 0: pinned at (+1.67,+8.55) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+1.82,+8.54) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+3.88,+8.58) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+2.92,+8.67) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+6.27,+8.72) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+1.62,+8.49) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+7.07,+8.69) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+7.44,+8.72) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+5.98,+8.56) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+5.39,+8.58) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+6.51,+8.74) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+7.47,+8.70) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+1.97,+8.55) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+2.48,+8.55) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+3.93,+8.60) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+5.48,+8.57) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+3.65,+8.55) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+5.81,+8.55) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+1.72,+8.55) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+6.36,+8.55) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+4.49,+8.56) -> escape prefers reverse
+[nav] done: 2232 steps in 98.74 s (90 env-steps/s)
+[nav] Shield-lite: shield=6996 hyst=3186 escape=2928 retreat=646 pin=21 off_map=0 over 8928 env-steps
+[nav] final obs shape=(4, 1208) norm=26.2786
+[nav] scan front: min=0.082 mean=0.265 max=0.898
+[nav] scan rear : min=0.082 mean=0.174 max=0.899
+[nav] tail (goal_xy, vx, wz) env0: [-2.616290330886841, 3.583261251449585, 0.0, 0.0, -0.4156900942325592, 0.03983229398727417, 5.987359523773193, 0.0]
+[nav] base xy env0: [-6.192087650299072, -1.3544849157333374]
+[nav] displacement env0 over run: [2.746, -0.416] m
+[nav] wheel joint vel env0 (L,R): [4.616264820098877, 2.4745798110961914, 5.913105487823486, 12.632979393005371, 5.903202056884766, 6.465357303619385]
+[nav] contact force env0: [0.0, 0.0, 0.0, 0.0]
+[nav] episode-reset batches observed=4, mean success rate=0.750, mean collision rate=0.000
+[nav] mean time-to-goal (successes only)=70.32 s over 3 successes
+[nav] blocked-goal episodes: 4 of 4 (100.0%), blocked success=0.750
+[nav] results_json: 4/4 first episodes -> /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/campaign/results/shield/f3_b0_m00.json
+[INFO]: SimulationContext cleared

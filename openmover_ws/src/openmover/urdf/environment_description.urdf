@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-1-g15f4949  Build Version: 1.6.7594.29634
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot name="environment_description">
+	<link name="base_link">
+		<inertial>
+			<origin xyz="-0.190139064475328 -0.196207332490533 1.72999367888748" rpy="0 0 0" />
+			<mass value="63279.9999999996" />
+			<inertia ixx="2547791.82842392" ixy="2360.76662452365" ixz="3850.3160556256" iyy="863444.185440364" iyz="3973.19848293288" izz="3200099.60320267" />
+		</inertial>
+		<visual>
+			<origin xyz="0 0 0" rpy="0 0 0" />
+			<geometry>
+				<mesh filename="package://openmover/meshes/environment_description/base_link.STL" />
+			</geometry>
+			<material name="">
+				<color rgba="1 1 1 1" />
+			</material>
+		</visual>
+		<collision>
+			<origin xyz="0 0 0" rpy="0 0 0" />
+			<geometry>
+				<mesh filename="package://openmover/meshes/environment_description/base_link.STL" />
+			</geometry>
+		</collision>
+	</link>
+</robot>

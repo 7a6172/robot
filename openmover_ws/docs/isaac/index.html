@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenMover — Isaac Sim Integration</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand"><span class="logo"></span>OpenMover&nbsp;ROS&nbsp;2</span>
+  <a href="../index.html">Main Docs</a>
+  <a href="#overview" class="active">Overview</a>
+  <a href="#why-ros2">Why ROS 2</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#results">Results</a>
+  <a href="#runbooks">Runbooks</a>
+  <a href="#caveats">Caveats</a>
+</nav>
+
+<div class="wrap">
+  <div class="page-head">
+    <span class="kicker">Isaac Sim 6.0 &harr; ROS 2 Jazzy &mdash; Step 1.5 complete</span>
+    <h1>OpenMover &mdash; Isaac Sim Integration</h1>
+    <p class="lede">
+      Isaac Sim now drives the OpenMover robot stacks <strong>over ROS&nbsp;2 topics, with the
+      stacks unmodified</strong>. Isaac plays the role Gazebo used to play &mdash; it takes
+      velocity commands and publishes <code>/clock</code>, odometry and two bluesea2-style
+      2D LiDAR scans &mdash; so both the warehouse demo stack (slam_toolbox + Nav2) and the
+      real product stack run against a raytraced, physics-accurate warehouse workcell.
+      The AI-agent companion to this page lives in
+      <code>docs/isaac/00_START_HERE.md</code> (5 files).
+    </p>
+  </div>
+
+  <div class="note">
+    <span class="tag">Status</span>
+    <div>
+      <p>Steps 1.0&ndash;1.5 <strong>complete, all gates passed</strong>: headless smoke
+      test, drivable robot import, RTX LiDAR mirroring the bluesea2 chain, bridge core,
+      warehouse scene, and stack integration for <em>both</em> stacks. Teleop works
+      end-to-end in Isaac against the real product stack; Nav2 navigation was verified
+      against the warehouse stack.</p>
+    </div>
+  </div>
+
+  <h2 id="overview">What was built</h2>
+  <div class="cards">
+    <div class="card">
+      <span class="icon">&#129302;</span>
+      <h3>Robot in Isaac</h3>
+      <p>Pioneer&nbsp;3DX imported from URDF to USD, driven by a velocity servo on the two
+      drive wheels. Ground-truth odometry exposed to ROS.</p>
+    </div>
+    <div class="card">
+      <span class="icon">&#128225;</span>
+      <h3>LiDAR mirror</h3>
+      <p>Two RTX raytraced 2D LiDARs matching the real bluesea2 chain: 600 samples,
+      &plusmn;90&deg;, 0.22&ndash;10&nbsp;m, 15&nbsp;Hz, front/rear mounts.</p>
+    </div>
+    <div class="card">
+      <span class="icon">&#127981;</span>
+      <h3>Warehouse scene</h3>
+      <p>Workcell collision boxes baked from the Gazebo SDF plus the converted visual mesh
+      for raytracing. Robot spawns at the Gazebo spawn pose.</p>
+    </div>
+    <div class="card">
+      <span class="icon">&#128279;</span>
+      <h3>Two ROS 2 bridges</h3>
+      <p>One per stack, both running <em>inside Isaac&rsquo;s Python process</em> (rclpy,
+      no external bridge binary), real-time paced.</p>
+    </div>
+  </div>
+
+  <h2 id="why-ros2">Why ROS 2 matters here</h2>
+  <p>
+    The decision to bring Isaac up over ROS&nbsp;2 (rather than a proprietary or ROS&nbsp;1
+    interface) is load-bearing for this project:
+  </p>
+  <table>
+    <tr><th>Reason</th><th>What it gives us</th></tr>
+    <tr>
+      <td><strong>Isaac Sim is ROS&nbsp;2-native</strong></td>
+      <td>Isaac&nbsp;Sim&nbsp;6.0 ships without the legacy ROS&nbsp;1 bridge. Its bundled
+      Python runs <code>rclpy</code> directly, so the bridge is a plain script inside the
+      simulator &mdash; no extra process, no code generation, no version glue.</td>
+    </tr>
+    <tr>
+      <td><strong>Sim&ndash;real parity</strong></td>
+      <td>The product stack was migrated to ROS&nbsp;2 Jazzy. Isaac plugs into the exact
+      topics the real hardware uses (<code>openmover/control/cmd_vel_sim</code> in,
+      <code>openmover/hardware/odom_sim</code> + scans out), with
+      <code>simulation_handler</code> standing in for <code>motor_handler</code> untouched.
+      What is validated in Isaac is the real code path.</td>
+    </tr>
+    <tr>
+      <td><strong>DDS discovery</strong></td>
+      <td>Publishers and subscribers find each other with zero configuration. The simulator
+      and any number of tooling nodes (teleop, rviz, recorders, test scripts) join the same
+      graph just by being on the LAN.</td>
+    </tr>
+    <tr>
+      <td><strong>Networked / tethered deployment</strong></td>
+      <td>Because everything is DDS topics, Isaac can run on the workstation while the stack
+      runs elsewhere &mdash; on the robot, on a tethered laptop, or split across machines
+      &mdash; without changing a line. This is also how the future learning pipeline will
+      connect: method nodes speak standard <code>/scan</code> in, <code>/cmd_vel</code> out.</td>
+    </tr>
+    <tr>
+      <td><strong>For other systems</strong></td>
+      <td>Any ROS&nbsp;2 robot stack gets the same deal: the simulator seam is a short,
+      well-known topic contract (the gz_bridge.yaml), so swapping Gazebo for Isaac is a
+      bridge script plus one launch gate &mdash; not a re-architecture.</td>
+    </tr>
+  </table>
+
+  <h2 id="architecture">Architecture &amp; data flow</h2>
+
+  <h3>Stack A &mdash; the product stack (openmover)</h3>
+  <p class="muted">Isaac mirrors <code>config_defaults/gz_bridge.yaml</code> exactly. No TF
+  comes from Isaac: <code>localization_handler</code> owns <code>odom&rarr;base_link</code>,
+  exactly as with the real Gazebo chain (<code>publishOdomTF=false</code>).</p>
+  <table>
+    <tr><th>Dir</th><th>Topic</th><th>Type</th><th>Consumed by</th></tr>
+    <tr><td>in</td><td><code>/openmover/control/cmd_vel_sim</code></td>
+        <td>geometry_msgs/Twist</td><td>&mdash; (from <code>simulation_handler</code>)</td></tr>
+    <tr><td>out</td><td><code>/clock</code></td><td>rosgraph_msgs/Clock</td>
+        <td>whole stack (<code>use_sim_time:=true</code>)</td></tr>
+    <tr><td>out</td><td><code>/openmover/hardware/odom_sim</code></td>
+        <td>nav_msgs/Odometry</td><td><code>simulation_handler</code> &rarr;
+        <code>openmover/hardware/odom|twist</code> &rarr; <code>localization_handler</code></td></tr>
+    <tr><td>out</td><td><code>/openmover/hardware/lidar_{forward,rear}/scan</code></td>
+        <td>sensor_msgs/LaserScan</td><td><code>laserscan_multi_merger</code> &rarr;
+        <code>openmover/hardware/lidar/scan</code></td></tr>
+  </table>
+  <p>
+    The only ROS-side change (approved): a <code>launch_gazebo</code> argument (default
+    <code>1</code>) on <code>bringup.launch.py</code>/<code>bootloader.launch.py</code>.
+    With <code>launch_gazebo:=0</code> the Gazebo simulator, bridge and spawn are skipped
+    and Isaac takes their place &mdash; every other sim node runs exactly as before.
+    <code>system_mode</code> semantics are untouched, so no handler code needed edits.
+  </p>
+
+  <h3>Stack B &mdash; warehouse_simulation (slam_toolbox + Nav2)</h3>
+  <table>
+    <tr><th>Dir</th><th>Topic</th><th>Type</th></tr>
+    <tr><td>in</td><td><code>/cmd_vel</code></td><td>geometry_msgs/Twist</td></tr>
+    <tr><td>out</td><td><code>/clock</code>, <code>/odom</code>, <code>/tf</code>,
+        <code>/tf_static</code></td><td>Clock / Odometry / TFMessage</td></tr>
+    <tr><td>out</td><td><code>/openmover/hardware/lidar_{forward,rear}/scan</code></td>
+        <td>sensor_msgs/LaserScan (real-robot names, so the merger runs unmodified)</td></tr>
+  </table>
+
+  <h3>The sim loop</h3>
+  <p>
+    60&nbsp;Hz physics, 15&nbsp;Hz scan tick. Rendering (the dominant cost) is gated to the
+    scan tick; the loop is paced to real time; pending ROS callbacks are pumped each
+    iteration with <code>rclpy.spin_once(node, timeout_sec=0)</code> (rclpy has no
+    <code>spin_some</code>). Instrumentation (heartbeat, loop-exit report, traceback dump)
+    is kept in both bridges on purpose &mdash; it is what made the hard bugs diagnosable.
+  </p>
+
+  <h2 id="results">Gate evidence</h2>
+  <table>
+    <tr><th>Gate</th><th>Result</th><th>Evidence</th></tr>
+    <tr>
+      <td>Stack B teleop + mapping</td>
+      <td><span class="badge ok">PASSED</span></td>
+      <td>Merged <code>/scan</code> (903 ranges) &rarr; slam_toolbox <code>/map</code> with
+      occupancy; scripted drive matched Isaac ground truth.</td>
+    </tr>
+    <tr>
+      <td>Stack B Nav2</td>
+      <td><span class="badge ok">PASSED</span></td>
+      <td>Goal (1.0,&nbsp;0.0) <code>SUCCEEDED</code>, error_code&nbsp;0, 0 recoveries;
+      robot arrived at x&nbsp;&asymp;&nbsp;+0.90 (tolerance 0.2&nbsp;m).</td>
+    </tr>
+    <tr>
+      <td>Stack A teleop (product path)</td>
+      <td><span class="badge ok">PASSED</span></td>
+      <td><code>cmd_vel_manual</code> &rarr; &hellip; &rarr; Isaac: forward +0.47&nbsp;m
+      (0.2&nbsp;m/s &times; 3&nbsp;s), pivot &asymp;40&deg; (0.5&nbsp;rad/s &times; 2&nbsp;s);
+      ROS pose == Isaac ground truth to ~1&nbsp;cm; merged scan 12.4&nbsp;Hz;
+      <code>odom&rarr;base_link</code> TF live.</td>
+    </tr>
+  </table>
+
+  <h2 id="runbooks">Runbooks (quick reference)</h2>
+  <p class="muted">All from <code>/home/zar/Documents/phd/robot</code>. Check
+  <code>MemAvailable &ge; 8&nbsp;GiB</code> first; one simulator at a time.
+  Full details: <code>docs/isaac/04_runbooks.md</code>.</p>
+<pre><code><span class="cmt"># Stack A — product stack against Isaac</span>
+<span class="cmd">~/isaacsim/python.sh</span> <span class="path">openmover_ws/isaac/scripts/17_bridge_openmover.py</span>   <span class="cmt"># terminal 1 (source /opt/ros/jazzy/setup.bash first)</span>
+<span class="cmd">ros2 launch</span> openmover bootloader.launch.py system_mode:=0 sim_area:=0 launch_gazebo:=0  <span class="cmt"># terminal 2</span>
+
+<span class="cmt"># Stack B — warehouse demo against Isaac</span>
+<span class="cmd">ros2 launch</span> <span class="path">openmover_ws/isaac/scripts/16_stack_b.launch.py</span> nav:=true   <span class="cmt"># terminal 1</span>
+<span class="cmd">~/isaacsim/python.sh</span> <span class="path">openmover_ws/isaac/scripts/16_bridge_ros.py</span>         <span class="cmt"># terminal 2</span></code></pre>
+
+  <h2 id="caveats">Known caveats &amp; follow-ups</h2>
+  <div class="warn">
+    <span class="tag">RAM</span>
+    <div>
+      <p>16&nbsp;GiB machine with a freeze history: every Isaac script preflights RAM
+      (abort &lt;&nbsp;8&nbsp;GiB, warn &lt;&nbsp;12.5&nbsp;GiB), and the bridge RSS grows
+      during long runs &mdash; restart it between sessions.</p>
+    </div>
+  </div>
+  <ul>
+    <li>Isaac drives the Pioneer&nbsp;3DX asset kinematics (0.32&nbsp;m / 0.09&nbsp;m) while the
+        openmover Gazebo DiffDrive uses 0.324&nbsp;/&nbsp;0.05035 &mdash; accepted for bring-up
+        (Isaac is internally consistent); importing the openmover URDF is a follow-up.</li>
+    <li>RTX LiDAR ranges read ~0.1&nbsp;m short of geometric truth (asset offset);
+        characterised, not yet compensated.</li>
+    <li><code>obstacle_handler</code> can hit a TF race at boot (FATAL, no respawn);
+        restart it ~10&nbsp;s after bring-up &mdash; see runbooks.</li>
+    <li>Isaac is 6.0.1-<strong>rc.7</strong>; stable 6.0.1 is the drop-in fallback.</li>
+    <li>Next: Stack A navigation (product controller + cartographer), openmover URDF import,
+        and sim-to-real experiments &mdash; tracked in <code>docs/isaac/05_lessons_learned.md</code>.</li>
+  </ul>
+
+  <p class="small muted">
+    Agent-facing knowledge base: <code>openmover_ws/docs/isaac/</code>
+    (00_START_HERE &hellip; 05_lessons_learned). ROS 2 stack documentation:
+    <a href="../index.html">main docs index</a>. Research context:
+    <code>docs/research/04_isaac_sim_strategy.md</code>.
+  </p>
+</div>
+
+</body>
+</html>

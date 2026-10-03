@@ -1,0 +1,176 @@
+[INFO]: Parsing configuration from: openmover_lab.openmover_nav_cfg:OpenmoverNavEnvCfg
+The '--headless' CLI argument is deprecated. Omit '--viz' for default headless. If config visualizers are enabled and you want to force headless, use '--viz none'.
+Loading user config located at: '/home/zar/isaacsim/kit/data/Kit/IsaacLab/3.0/user.config.json'
+2026-09-06T06:57:20Z [0ms] [Warning] [omni.ext.plugin] [ext: isaaclab_visualizers] Extensions config 'extension.toml' doesn't exist '/home/zar/isaaclab/source/isaaclab_visualizers' or '/home/zar/isaaclab/source/isaaclab_visualizers/config'
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1788677840.664052 3275423 descriptor_database.cc:633] File already exists in database: grpc/health/v1/health.proto
+W0000 00:00:1788677840.664091 3275423 message.cc:301] Protobuf GeneratedMessageFactory: File is already registered: grpc/health/v1/health.proto
+2026-09-06T06:57:20Z [312ms] [Warning] [omni.usd_config.extension] Enable omni.materialx.libs extension to use MaterialX
+[ISAACLAB] AppLauncher initialization complete
+2026-09-06T06:57:22Z [1,760ms] [Warning] [isaaclab_physx.physics.physx_manager] TGS solver with enable_external_forces_every_iteration=False may cause noisy velocities.
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 42
+	Physics step-size     : 0.008333333333333333
+	Rendering step-size   : 0.05
+	Environment step-size : 0.05
+[INFO]: Registered backend 'physx' for factory Articulation.
+[INFO]: Registered backend 'physx' for factory RayCaster.
+[INFO]: Registered backend 'physx' for factory ContactSensor.
+[INFO] Generating terrains randomly took Last: 0.006760 s
+[INFO]: Time taken for scene creation Last: 0.312831 s, Mean: 0.312831 s, Std: 0.000000 s, N: 1
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 4
+	Environment spacing   : 6.0
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : []
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-09-06T06:57:23Z [2,889ms] [Warning] [usdrt.population.plugin] Last global time was not created. Did you call setEnableUsdNoticeHandling?
+2026-09-06T06:57:23Z [2,915ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [2,915ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [2,915ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [2,915ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Simulation parameters for joints in /World/envs/env_.*/Robot:
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                        Simulation Joint Information (Prim path: /World/envs/env_.*/Robot)                                                       |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+| Index | Name                   | Stiffness | Damping | Armature | Static Friction | Dynamic Friction | Viscous Friction |   Position Limits   | Velocity Limits | Effort Limits |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+|   0   | ball_front_left_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   1   | ball_front_right_joint |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   2   | ball_rear_left_joint   |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   3   | ball_rear_right_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   4   | wheel_left_joint       |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
+|   5   | wheel_right_joint      |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+2026-09-06T06:57:23Z [3,028ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,028ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,028ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,028ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Read mesh prim: /World/ground/terrain/mesh with 368 vertices and 1488 faces.
+2026-09-06T06:57:23Z [3,034ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,034ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,034ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,034ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,059ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:57:23Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Time taken for simulation start Last: 0.991127 s, Mean: 0.991127 s, Std: 0.000000 s, N: 1
+[INFO]: Completed setting up the environment...
+[nav] obstacle table built (warm cache): 4 tiles, obstacles/tile 10-10
+[nav] custom map spawn/goal fixed from /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/gen/f1_b0_m01.json
+[nav] geodesic grid: 4 tiles x 40x40 cells (res 0.25 m, inflate 0.2 m)
+[INFO]: Parsing configuration from: openmover_lab.rsl_rl_ppo_cfg:OpenmoverNavPPORunnerCfg
+--------------------------------------------------------------------------------
+Resolved observation sets: 
+	 actor :  ['policy']
+	 critic :  ['policy']
+--------------------------------------------------------------------------------
+Actor Model: MLPModel(
+  (obs_normalizer): Identity()
+  (distribution): GaussianDistribution()
+  (mlp): MLP(
+    (0): Linear(in_features=1208, out_features=128, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=128, out_features=128, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=128, out_features=2, bias=True)
+  )
+)
+Critic Model: MLPModel(
+  (obs_normalizer): Identity()
+  (mlp): MLP(
+    (0): Linear(in_features=1208, out_features=128, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=128, out_features=128, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=128, out_features=1, bias=True)
+  )
+)
+[probe] loaded checkpoint: /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/logs/rsl_rl/openmover_nav/bc_init_v3/model_0.pt
+[probe] shield ready (v_full=0.5035, w_full=3.1082)
+  [probe] tick=0 t=0.0s shield={'shield': 0, 'hyst': 0, 'escape': 0, 'retreat': 0, 'pin': 0, 'oob': 0, 'steps': 4} wall=0s
+[shield-lite] env 3: pinned at (+7.34,+1.93) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+7.07,+2.04) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+7.13,+2.05) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+6.91,+2.07) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+6.64,+1.97) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+7.01,+1.97) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+6.30,+1.94) -> escape prefers reverse
+  [probe] tick=400 t=20.0s shield={'shield': 603, 'hyst': 463, 'escape': 16, 'retreat': 6, 'pin': 7, 'oob': 0, 'steps': 1604} wall=14s
+[shield-lite] env 3: pinned at (+5.40,+1.95) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+5.59,+1.95) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+4.15,+1.95) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+5.03,+1.97) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+3.41,+1.97) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+6.35,+2.08) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+4.81,+2.05) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+3.20,+2.04) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+3.59,+1.96) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+5.03,+2.04) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+5.92,+2.07) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+3.11,+2.07) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+2.42,+2.11) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+3.08,+2.00) -> escape prefers reverse
+  [probe] tick=800 t=40.0s shield={'shield': 2149, 'hyst': 1260, 'escape': 248, 'retreat': 192, 'pin': 21, 'oob': 0, 'steps': 3204} wall=32s
+[shield-lite] env 3: pinned at (+2.64,+2.10) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+2.57,+2.13) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+5.27,+2.06) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+4.62,+1.95) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+3.49,+1.96) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+2.47,+2.20) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+3.23,+2.06) -> escape prefers reverse
+  [probe] tick=1200 t=60.0s shield={'shield': 3337, 'hyst': 1419, 'escape': 1085, 'retreat': 953, 'pin': 28, 'oob': 0, 'steps': 4804} wall=54s
+[shield-lite] env 0: pinned at (+2.70,+2.07) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+2.34,+2.15) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+3.64,+5.60) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+4.53,+5.76) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+5.02,+5.76) -> escape prefers reverse
+  [probe] tick=1600 t=80.0s shield={'shield': 4366, 'hyst': 1558, 'escape': 1885, 'retreat': 1753, 'pin': 33, 'oob': 0, 'steps': 6404} wall=74s
+[shield-lite] env 1: pinned at (+5.54,+5.76) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+5.88,+5.78) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+5.96,+5.71) -> escape prefers reverse
+
+===== COLLISION env=2 tick=1772 t=88.60 s contact=5.6 N (threshold 5 N) =====
+  t= 87.45 [retreat3] in=(v+0.198,w-0.906) pub=(v-0.100,w+0.300) xy=(+2.461,+2.243) yaw=+2.258 clr=+0.0712 raw=+0.0499  <== below escape floor (uncertified)
+  t= 87.50 [retreat3] in=(v+0.175,w-0.834) pub=(v+0.100,w-0.300) xy=(+2.462,+2.243) yaw=+2.253 clr=+0.0713 raw=+0.0478  <== below escape floor (uncertified)
+  t= 87.55 [retreat3] in=(v+0.197,w-0.822) pub=(v-0.100,w+0.300) xy=(+2.460,+2.244) yaw=+2.254 clr=+0.0712 raw=+0.0498  <== below escape floor (uncertified)
+  t= 87.60 [retreat3] in=(v+0.167,w-0.796) pub=(v+0.100,w-0.300) xy=(+2.461,+2.243) yaw=+2.251 clr=+0.0713 raw=+0.0476  <== below escape floor (uncertified)
+  t= 87.65 [retreat3] in=(v+0.202,w-0.863) pub=(v-0.100,w+0.300) xy=(+2.460,+2.245) yaw=+2.248 clr=+0.0711 raw=+0.0494  <== below escape floor (uncertified)
+  t= 87.70 [retreat3] in=(v+0.178,w-0.875) pub=(v-0.100,w+0.300) xy=(+2.460,+2.244) yaw=+2.244 clr=+0.0713 raw=+0.0484  <== below escape floor (uncertified)
+  t= 87.75 [retreat3] in=(v+0.165,w-0.764) pub=(v+0.100,w-0.300) xy=(+2.463,+2.241) yaw=+2.254 clr=+0.0713 raw=+0.0464  <== below escape floor (uncertified)
+  t= 87.80 [retreat3] in=(v+0.192,w-0.813) pub=(v+0.100,w-0.300) xy=(+2.463,+2.241) yaw=+2.260 clr=+0.0712 raw=+0.0481  <== below escape floor (uncertified)
+  t= 87.85 [retreat3] in=(v+0.196,w-0.885) pub=(v-0.100,w+0.300) xy=(+2.462,+2.242) yaw=+2.264 clr=+0.0711 raw=+0.0502  <== below escape floor (uncertified)
+  t= 87.90 [retreat3] in=(v+0.176,w-0.892) pub=(v+0.100,w-0.300) xy=(+2.462,+2.242) yaw=+2.259 clr=+0.0711 raw=+0.0485  <== below escape floor (uncertified)
+  t= 87.95 [retreat3] in=(v+0.199,w-0.906) pub=(v-0.100,w+0.300) xy=(+2.461,+2.243) yaw=+2.261 clr=+0.0709 raw=+0.0502  <== below escape floor (uncertified)
+  t= 88.00 [retreat3] in=(v+0.167,w-0.823) pub=(v+0.100,w-0.300) xy=(+2.462,+2.243) yaw=+2.256 clr=+0.0710 raw=+0.0483  <== below escape floor (uncertified)
+  t= 88.05 [retreat3] in=(v+0.199,w-0.870) pub=(v-0.100,w+0.300) xy=(+2.460,+2.244) yaw=+2.255 clr=+0.0710 raw=+0.0500  <== below escape floor (uncertified)
+  t= 88.10 [retreat3] in=(v+0.168,w-0.769) pub=(v+0.100,w-0.300) xy=(+2.461,+2.244) yaw=+2.249 clr=+0.0709 raw=+0.0476  <== below escape floor (uncertified)
+  t= 88.15 [retreat3] in=(v+0.199,w-0.834) pub=(v-0.100,w+0.300) xy=(+2.460,+2.245) yaw=+2.251 clr=+0.0709 raw=+0.0497  <== below escape floor (uncertified)
+  t= 88.20 [retreat3] in=(v+0.178,w-0.874) pub=(v-0.100,w+0.300) xy=(+2.461,+2.244) yaw=+2.247 clr=+0.0708 raw=+0.0486  <== below escape floor (uncertified)
+  t= 88.25 [retreat3] in=(v+0.146,w-0.784) pub=(v+0.100,w-0.300) xy=(+2.463,+2.241) yaw=+2.258 clr=+0.0709 raw=+0.0472  <== below escape floor (uncertified)
+  t= 88.30 [retreat3] in=(v+0.190,w-0.807) pub=(v+0.100,w-0.300) xy=(+2.463,+2.241) yaw=+2.260 clr=+0.0711 raw=+0.0481  <== below escape floor (uncertified)
+  t= 88.35 [retreat3] in=(v+0.198,w-0.900) pub=(v-0.100,w+0.300) xy=(+2.462,+2.243) yaw=+2.262 clr=+0.0710 raw=+0.0500  <== below escape floor (uncertified)
+  t= 88.40 [retreat3] in=(v+0.175,w-0.894) pub=(v+0.100,w-0.300) xy=(+2.462,+2.242) yaw=+2.256 clr=+0.0711 raw=+0.0480  <== below escape floor (uncertified)
+  t= 88.45 [retreat3] in=(v+0.198,w-0.892) pub=(v-0.100,w+0.300) xy=(+2.461,+2.243) yaw=+2.258 clr=+0.0709 raw=+0.0499  <== below escape floor (uncertified)
+  t= 88.50 [retreat3] in=(v+0.169,w-0.818) pub=(v+0.100,w-0.300) xy=(+2.462,+2.243) yaw=+2.253 clr=+0.0710 raw=+0.0475  <== below escape floor (uncertified)
+  t= 88.55 [retreat3] in=(v+0.198,w-0.856) pub=(v-0.100,w+0.300) xy=(+2.461,+2.244) yaw=+2.254 clr=+0.0709 raw=+0.0494  <== below escape floor (uncertified)
+  t= 88.60 [retreat3] in=(v+0.175,w-0.825) pub=(v+0.100,w-0.300) xy=(+2.461,+2.243) yaw=+2.249 clr=+0.0710 raw=+0.0468  <== below escape floor (uncertified)
+  tier totals env2: {'pass': 262, 'hyst': 442, 'comfort': 128, 'escape': 6, 'retreat3': 935}
+VERDICT: tier-3 UNCERTIFIED retreat active in the last 10 ticks (worst raw clr +0.0468) -> scrape is the known tier-3 limitation
+[shield-lite] env 1: pinned at (+6.48,+5.80) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+3.64,+5.65) -> escape prefers reverse
+
+[probe] done 1982 steps in 92.9 s
+[probe] shield totals: {'shield': 5522, 'hyst': 1834, 'escape': 2605, 'retreat': 2473, 'pin': 38, 'oob': 0, 'steps': 7928}
+[probe] env0 tier totals: {'pass': 900, 'hyst': 434, 'comfort': 435, 'escape': 39, 'retreat3': 174} penalized=False reached=False
+[probe] env1 tier totals: {'pass': 891, 'hyst': 704, 'comfort': 330, 'escape': 11, 'retreat3': 46} penalized=False reached=False
+[probe] env2 tier totals: {'pass': 283, 'hyst': 442, 'comfort': 128, 'escape': 6, 'retreat3': 1123} penalized=False reached=False
+[probe] env3 tier totals: {'pass': 332, 'hyst': 254, 'comfort': 190, 'escape': 76, 'retreat3': 1130} penalized=False reached=False
+===== PROBE done in 97s =====

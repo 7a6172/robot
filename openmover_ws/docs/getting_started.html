@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting Started — OpenMover ROS 2</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand"><span class="logo"></span>OpenMover&nbsp;ROS&nbsp;2</span>
+  <a href="index.html">Index</a>
+  <a href="getting_started.html" class="active">Getting Started</a>
+  <a href="build.html">Build</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="packages.html">Packages</a>
+  <a href="usage.html">Usage</a>
+  <a href="hardware.html">Hardware</a>
+  <a href="audit.html">Audit</a>
+  <a href="changelog.html">Changelog</a>
+</nav>
+
+<div class="wrap">
+  <div class="page-head">
+    <span class="kicker">Install &amp; Build</span>
+    <h1>Getting Started</h1>
+    <p class="lede">Everything needed to go from a clean machine to a running simulation:
+    requirements, ROS&nbsp;2 + Gazebo installation, dependencies, OSQP, building the
+    workspace, and the first run.</p>
+  </div>
+
+  <div class="toc">
+    <h3>On this page</h3>
+    <ol>
+      <li><a href="#req">Requirements</a></li>
+      <li><a href="#os">1. Operating system</a></li>
+      <li><a href="#ros">2. Install ROS 2 Jazzy</a></li>
+      <li><a href="#gz">3. Install Gazebo Harmonic</a></li>
+      <li><a href="#deps">4. Install dependencies</a></li>
+      <li><a href="#osqp">5. Build &amp; install OSQP</a></li>
+      <li><a href="#get">6. Get the workspace</a></li>
+      <li><a href="#build">7. Build the workspace</a></li>
+      <li><a href="#run">8. First run</a></li>
+      <li><a href="#scripts">9. Helper scripts</a></li>
+      <li><a href="#trouble">Troubleshooting</a></li>
+    </ol>
+  </div>
+
+  <h2 id="req">Requirements</h2>
+  <table>
+    <tr><th style="width:230px;">Requirement</th><th>Minimum / recommended</th></tr>
+    <tr><td>Operating system</td><td>Ubuntu <strong>24.04 LTS</strong> (Noble). This is the only
+        distribution supported by ROS&nbsp;2 Jazzy binaries.</td></tr>
+    <tr><td>CPU</td><td>x86_64 multi-core (4 cores or more recommended).</td></tr>
+    <tr><td>RAM</td><td><strong>16&nbsp;GB</strong> recommended. Less is possible but requires lower
+        build parallelism; the simulation + rviz + Gazebo together approach ~10&nbsp;GB at
+        runtime. See the <a href="build.html">Build guide</a> for per-memory settings.</td></tr>
+    <tr><td>GPU</td><td>Any OpenGL 3.3+ GPU for the Gazebo GUI; a discrete GPU keeps rendering
+        smooth. Headless/server mode needs no display.</td></tr>
+    <tr><td>Disk</td><td>~10&nbsp;GB for ROS&nbsp;2 + Gazebo, plus ~2–3&nbsp;GB for the workspace
+        build artifacts.</td></tr>
+    <tr><td>ROS distribution</td><td>ROS&nbsp;2 <strong>Jazzy Jalisco</strong> (desktop or base + extras).</td></tr>
+    <tr><td>Simulator</td><td>Gazebo <strong>Harmonic</strong> (<code>gz sim 8.x</code>), shipped as
+        <code>ros-jazzy-ros-gz</code>.</td></tr>
+    <tr><td>Python</td><td>Python 3.12 (system default on 24.04).</td></tr>
+  </table>
+
+  <div class="warn">
+    <span class="tag">Memory</span>
+    <div>
+      <p>A <em>full-parallel</em> <code>colcon build</code> can exhaust memory and hard-freeze a
+      16&nbsp;GB machine. The build commands in this guide therefore use
+      <strong>2 workers</strong> &mdash; keep that limit unless you have 32&nbsp;GB or more
+      (<a href="build.html">Build guide</a>).</p>
+    </div>
+  </div>
+
+  <div class="tip">
+    <span class="tag">Shortcut</span>
+    <div>
+      <p>Instead of the manual steps below you can run the interactive setup wizard:</p>
+      <p><code>bash tools/setup.sh</code></p>
+      <p>It detects your system, tells you whether it is sufficient, picks a safe build
+      parallelism for your RAM, and offers to install dependencies, build the workspace and
+      run the tests. <code>bash tools/setup.sh --check</code> performs the detection only.</p>
+    </div>
+  </div>
+
+  <h2 id="os">1. Operating system</h2>
+  <p>Install Ubuntu 24.04 LTS and update it:</p>
+<pre><code><span class="cmd">sudo apt update &amp;&amp; sudo apt upgrade -y</span>
+<span class="cmd">sudo apt install -y curl gnupg lsb-release software-properties-common git build-essential</span></code></pre>
+
+  <h2 id="ros">2. Install ROS 2 Jazzy</h2>
+  <p>Follow the official debian-based install. Summary:</p>
+<pre><code><span class="cmt"># 1. locale</span>
+<span class="cmd">sudo apt install -y locales</span>
+<span class="cmd">sudo locale-gen en_US en_US.UTF-8 &amp;&amp; sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8</span>
+
+<span class="cmt"># 2. enable the ROS 2 apt repository</span>
+<span class="cmd">sudo apt install -y software-properties-common</span>
+<span class="cmd">sudo add-apt-repository universe</span>
+<span class="cmd">sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+     -o /usr/share/keyrings/ros-archive-keyring.gpg</span>
+<span class="cmd">echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+     http://packages.ros.org/ros2/ubuntu $(. /etc/os-release &amp;&amp; echo $UBUNTU_CODENAME) main" | \
+     sudo tee /etc/apt/sources.list.d/ros2.list &gt; /dev/null</span>
+
+<span class="cmt"># 3. install ROS 2 Jazzy desktop + the tools this project needs</span>
+<span class="cmd">sudo apt update &amp;&amp; sudo apt upgrade -y</span>
+<span class="cmd">sudo apt install -y ros-jazzy-desktop \
+     ros-dev-tools python3-colcon-common-extensions</span>
+
+<span class="cmt"># 4. environment (add to ~/.bashrc to make permanent)</span>
+<span class="cmd">source /opt/ros/jazzy/setup.bash</span></code></pre>
+
+  <h2 id="gz">3. Install Gazebo Harmonic</h2>
+  <p>Gazebo Harmonic is provided as ROS packages, so it comes with the Jazzy repos:</p>
+<pre><code><span class="cmd">sudo apt install -y ros-jazzy-ros-gz</span>
+<span class="cmt"># verify</span>
+<span class="cmd">gz sim --versions</span>   <span class="cmt"># should print 8.x (Harmonic)</span></code></pre>
+
+  <h2 id="deps">4. Install dependencies</h2>
+  <p>These ROS/system packages are required by the workspace. Install them up front, or
+  let <code>rosdep</code> resolve them in the next step:</p>
+<pre><code><span class="cmd">sudo apt install -y \
+    ros-jazzy-cartographer-ros ros-jazzy-cartographer-ros-msgs \
+    ros-jazzy-nav2-costmap-2d ros-jazzy-nav2-map-server \
+    ros-jazzy-nav2-lifecycle-manager ros-jazzy-nav2-msgs \
+    ros-jazzy-nav2-bringup ros-jazzy-navigation2 \
+    ros-jazzy-slam-toolbox \
+    ros-jazzy-laser-geometry ros-jazzy-pcl-ros ros-jazzy-pointcloud-to-laserscan \
+    ros-jazzy-robot-state-publisher ros-jazzy-xacro \
+    ros-jazzy-joint-state-publisher ros-jazzy-teleop-twist-keyboard \
+    ros-jazzy-rosbridge-server ros-jazzy-joy ros-jazzy-tf-transformations \
+    ros-jazzy-ros-gz-sim ros-jazzy-ros-gz-bridge \
+    ros-jazzy-rviz2 \
+    libpcl-dev libeigen3-dev libopencv-dev libyaml-cpp-dev libboost-dev \
+    python3-pynput python3-pygame</span></code></pre>
+
+  <p>Then run <code>rosdep</code> over the workspace to catch anything missed:</p>
+<pre><code><span class="cmd">sudo rosdep init || true</span>
+<span class="cmd">rosdep update</span>
+<span class="cmd">cd ~/openmover_ws      # path to this workspace</span>
+<span class="cmd">rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy</span></code></pre>
+
+  <div class="note">
+    <span class="tag">Note</span>
+    <div><p><code>libosqp-dev</code> is <strong>not</strong> available in the Ubuntu 24.04 apt
+    repositories, so OSQP is built from source in the next step.</p></div>
+  </div>
+
+  <h2 id="osqp">5. Build &amp; install OSQP</h2>
+  <p>OSQP is the QP solver used by the path smoothers. It is vendored in the ROS&nbsp;1 repo
+  and must be compiled into <code>/usr/local</code> (the same as the original
+  <code>install.sh</code> did):</p>
+<pre><code><span class="cmd">sudo apt install -y cmake ninja-build</span>
+<span class="cmt"># OSQP source lives under tools/ in this workspace</span>
+<span class="cmd">cd ~/openmover_ws/tools/osqp_build   # or the vendored openmover_robot/osqp</span>
+<span class="cmd">cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release</span>
+<span class="cmd">cmake --build build -j2</span>
+<span class="cmd">sudo cmake --install build</span>
+<span class="cmt"># verify</span>
+<span class="cmd">ls /usr/local/lib/libosqp.* /usr/local/include/osqp</span></code></pre>
+
+  <h2 id="get">6. Get the workspace</h2>
+  <p>Copy or clone this workspace so the layout below exists. Only <code>src/</code> is needed
+  to build; <code>build/</code>, <code>install/</code>, and <code>log/</code> are regenerated.</p>
+<pre><code>openmover_ws/
+├── src/
+│   ├── openmover_msgs/
+│   ├── openmover/
+│   ├── auto_mapping_toolbox/   <span class="cmt"># contains auto_mapping_toolbox_msgs too</span>
+│   ├── relocalization_toolbox/ <span class="cmt"># contains relocalization_toolbox_msgs too</span>
+│   ├── bluesea2/
+│   ├── ira_laser_tools/
+│   └── warehouse_simulation/
+└── tools/</code></pre>
+
+  <h2 id="build">7. Build the workspace</h2>
+  <p>Source ROS first, then build with the <strong>2-way parallelism limit</strong>. The
+  <code>--symlink-install</code> flag means Python/launch/yaml/URDF edits take effect without a
+  rebuild; C++ changes still need a rebuild.</p>
+<pre><code><span class="cmd">source /opt/ros/jazzy/setup.bash</span>
+<span class="cmd">cd ~/openmover_ws</span>
+<span class="cmd">MAKEFLAGS="-j2" CMAKE_BUILD_PARALLEL_LEVEL=2 \
+     colcon build --symlink-install --parallel-workers 2</span></code></pre>
+
+  <div class="tip">
+    <span class="tag">Tip</span>
+    <div>
+      <p>Build only what changed to save time, e.g. after editing the relocalization toolbox:</p>
+      <p><code>MAKEFLAGS="-j2" CMAKE_BUILD_PARALLEL_LEVEL=2 colcon build --symlink-install --parallel-workers 2 --packages-select relocalization_toolbox</code></p>
+    </div>
+  </div>
+
+  <p>Source the workspace overlay before running anything:</p>
+<pre><code><span class="cmd">source ~/openmover_ws/install/setup.bash</span></code></pre>
+
+  <p>Run the tests to confirm the build is healthy (fast, no simulation started):</p>
+<pre><code><span class="cmd">colcon test --packages-select warehouse_simulation --parallel-workers 2</span>
+<span class="cmd">colcon test-result --verbose</span></code></pre>
+
+  <h2 id="run">8. First run — warehouse simulation</h2>
+  <p>The quickest way to see everything working is the warehouse demo:</p>
+<pre><code><span class="cmt"># terminal 1 — simulation + Nav2 + slam_toolbox + rviz2</span>
+<span class="cmd">source /opt/ros/jazzy/setup.bash &amp;&amp; source ~/openmover_ws/install/setup.bash</span>
+<span class="cmd">ros2 launch warehouse_simulation warehouse_simulation.launch.py</span>
+
+<span class="cmt"># terminal 2 — keyboard teleop</span>
+<span class="cmd">source ~/openmover_ws/install/setup.bash</span>
+<span class="cmd">ros2 run warehouse_simulation key_control</span></code></pre>
+  <p>Drive the Pioneer3DX around; slam_toolbox builds the map and Nav2 plans. To send a
+  navigation goal, use the <span class="kbd">2D Goal Pose</span> tool in rviz2. Full walkthrough:
+  <a href="usage.html">Usage</a>.</p>
+
+  <h2 id="scripts">9. Helper scripts</h2>
+  <p>Three convenience scripts live in <a href="audit.html#scripts">the tools directory</a>:</p>
+  <ul>
+    <li><code>tools/setup.sh</code> — interactive setup wizard: detects the system, judges
+        whether it is sufficient, picks a RAM-safe build parallelism, and can install
+        dependencies, build, and test in one guided session (<code>--check</code> for detection
+        only).</li>
+    <li><code>tools/check_system.sh</code> — read-only health check: verifies OS, ROS, Gazebo,
+        dependencies, OSQP, GPU, and free memory, and prints a PASS/WARN/FAIL summary.</li>
+    <li><code>tools/install_deps.sh</code> — installs the apt + rosdep dependencies listed above
+        (plus OSQP if missing).</li>
+  </ul>
+
+  <h2 id="trouble">Troubleshooting</h2>
+  <table>
+    <tr><th style="width:300px;">Symptom</th><th>Cause / fix</th></tr>
+    <tr><td><code>colcon build</code> is killed or the machine freezes</td>
+        <td>Out of memory. Rebuild with <code>--parallel-workers 1</code> and close other
+        applications. Never run a full-parallel build on 16&nbsp;GB.</td></tr>
+    <tr><td><code>gz sim</code> shows a stale/old world after relaunch</td>
+        <td>A previous server survived and the new client attached to it. Kill leftovers:
+        <code>pkill -f "gz sim"; pkill -f ruby</code>, confirm with <code>ps aux | grep gz</code>,
+        then relaunch.</td></tr>
+    <tr><td><code>libosqp</code> not found while linking</td>
+        <td>OSQP was not installed. Repeat <a href="#osqp">step 5</a> and confirm the files exist
+        in <code>/usr/local/lib</code>.</td></tr>
+    <tr><td>Robot doesn't move / no map in rviz</td>
+        <td>Check you sourced <code>install/setup.bash</code> and that <code>use_sim_time</code> is
+        consistent. See <a href="usage.html">Usage</a>.</td></tr>
+    <tr><td><code>colcon test</code> fails on config YAML</td>
+        <td>The bridge/nav2 configs were edited; see <a href="audit.html">Audit</a> for the
+        validated parameter sets.</td></tr>
+  </table>
+
+</div>
+
+<footer>OpenMover ROS 2 Jazzy migration &middot; Getting Started &middot; self-contained (no external assets)</footer>
+</body>
+</html>

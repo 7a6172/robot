@@ -1,0 +1,33 @@
+<!-- 2023-6-24 0.0.0.1A -->
+
+<!-- 文件描述：启动机器人Cartographer系统 -->
+<launch>
+    <!-- 设置参数 -->
+    <arg name="localization_mode" value="false" />
+    <arg name="launch_file_cartographer" value="$(find openmover)/launch/modules/mapping/carto_mapping.launch" />
+    <arg name="nav_map_save_path" value="$(env HOME)/openmover_robot/maps/" />
+
+    <!-- 启动 Cartographer 核心 -->
+    <node name="cartographer_node" pkg="cartographer_ros" type="cartographer_node" args="
+            -configuration_directory $(env HOME)/openmover_robot/config/apps/mapping
+            -configuration_basename mapping.lua">
+        <remap from="scan" to="openmover/hardware/lidar/scan" />
+        <remap from="odom" to="openmover/localization/odom" />
+        <remap from="write_state" to="openmover/mapping/write_state/request" />
+    </node>
+
+    <!-- 启动 Cartographer 地图发布 -->
+    <node name="cartographer_occupancy_grid_node" pkg="cartographer_ros" type="cartographer_occupancy_grid_node" args="
+            -localization_mode 0
+            -resolution 0.05">
+        <remap from="map" to="openmover/mapping/map" />
+        <remap from="map_metadata" to="openmover/mapping/map_metadata" />
+    </node>
+    
+    <!-- 启动 Cartographer Server -->
+    <node name="cartographer_mapping_server_handler" pkg="openmover" type="cartographer_server_handler.py" output="screen">
+        <param name="localization_mode" value="$(arg localization_mode)" />
+        <param name="launch_file_cartographer" value="$(arg launch_file_cartographer)" />
+        <param name="nav_map_save_path" value="$(arg nav_map_save_path)" />
+    </node>
+</launch>

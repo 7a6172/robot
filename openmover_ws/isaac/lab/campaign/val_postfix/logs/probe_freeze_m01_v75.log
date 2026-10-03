@@ -1,0 +1,193 @@
+[INFO]: Parsing configuration from: openmover_lab.openmover_nav_cfg:OpenmoverNavEnvCfg
+The '--headless' CLI argument is deprecated. Omit '--viz' for default headless. If config visualizers are enabled and you want to force headless, use '--viz none'.
+Loading user config located at: '/home/zar/isaacsim/kit/data/Kit/IsaacLab/3.0/user.config.json'
+2026-09-06T06:32:50Z [0ms] [Warning] [omni.ext.plugin] [ext: isaaclab_visualizers] Extensions config 'extension.toml' doesn't exist '/home/zar/isaaclab/source/isaaclab_visualizers' or '/home/zar/isaaclab/source/isaaclab_visualizers/config'
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1788676370.460467 3144273 descriptor_database.cc:633] File already exists in database: grpc/health/v1/health.proto
+W0000 00:00:1788676370.460499 3144273 message.cc:301] Protobuf GeneratedMessageFactory: File is already registered: grpc/health/v1/health.proto
+2026-09-06T06:32:50Z [307ms] [Warning] [omni.usd_config.extension] Enable omni.materialx.libs extension to use MaterialX
+[ISAACLAB] AppLauncher initialization complete
+2026-09-06T06:32:52Z [1,760ms] [Warning] [isaaclab_physx.physics.physx_manager] TGS solver with enable_external_forces_every_iteration=False may cause noisy velocities.
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 42
+	Physics step-size     : 0.008333333333333333
+	Rendering step-size   : 0.05
+	Environment step-size : 0.05
+[INFO]: Registered backend 'physx' for factory Articulation.
+[INFO]: Registered backend 'physx' for factory RayCaster.
+[INFO]: Registered backend 'physx' for factory ContactSensor.
+[INFO] Generating terrains randomly took Last: 0.005256 s
+[INFO]: Time taken for scene creation Last: 0.281036 s, Mean: 0.281036 s, Std: 0.000000 s, N: 1
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 4
+	Environment spacing   : 6.0
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : []
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-09-06T06:32:53Z [2,961ms] [Warning] [usdrt.population.plugin] Last global time was not created. Did you call setEnableUsdNoticeHandling?
+2026-09-06T06:32:53Z [2,989ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [2,989ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [2,989ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [2,989ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Simulation parameters for joints in /World/envs/env_.*/Robot:
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                        Simulation Joint Information (Prim path: /World/envs/env_.*/Robot)                                                       |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+| Index | Name                   | Stiffness | Damping | Armature | Static Friction | Dynamic Friction | Viscous Friction |   Position Limits   | Velocity Limits | Effort Limits |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+|   0   | ball_front_left_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   1   | ball_front_right_joint |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   2   | ball_rear_left_joint   |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   3   | ball_rear_right_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   4   | wheel_left_joint       |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
+|   5   | wheel_right_joint      |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+2026-09-06T06:32:53Z [3,103ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,103ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,103ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,103ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Read mesh prim: /World/ground/terrain/mesh with 368 vertices and 1488 faces.
+2026-09-06T06:32:53Z [3,109ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,109ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,109ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,109ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,136ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,136ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,136ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,136ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,137ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,137ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,137ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:32:53Z [3,137ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Time taken for simulation start Last: 1.099146 s, Mean: 1.099146 s, Std: 0.000000 s, N: 1
+[INFO]: Completed setting up the environment...
+[nav] obstacle table built (warm cache): 4 tiles, obstacles/tile 10-10
+[nav] custom map spawn/goal fixed from /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/gen/f1_b0_m01.json
+[nav] geodesic grid: 4 tiles x 40x40 cells (res 0.25 m, inflate 0.2 m)
+
+===== PROBE freeze (3s) =====
+map=f1_b0_m01 envs=4 seed=42 horizon=98s geo_iters=128
+wheel_ids=[4, 5] joint_names=['ball_front_left_joint', 'ball_front_right_joint', 'ball_rear_left_joint', 'ball_rear_right_joint', 'wheel_left_joint', 'wheel_right_joint']
+default_root_pose[0] z=+0.0050
+has joint_vel_target buffer=True
+[baseline] A*+DWA ready (grid 40x40 @ 0.25 m, 10 boxes, dwa=48 candidates)
+[freeze] third arm ready (v_full=0.5035 m/s, w_full=3.1082 rad/s)
+  t=  0.00  map=( 8.9362, 1.0646) z=+0.0000 yaw=+1.9852 |vxy|=0.1793 wz=+0.174 jv=[5.836, 10.002] tgt=[6.014, 9.874] moved=0.00314 plan=(v+0.400,w+0.600) pub=(v+0.400,w+0.600) pin=0 pticks=0 d={'shield': 0, 'hyst': 0, 'escape': 0, 'retreat': 0}
+  t=  1.00  map=( 8.7740, 1.3147) z=-0.0007 yaw=+2.2897 |vxy|=0.3421 wz=+0.160 jv=[9.051, 6.694] tgt=[8.909, 6.979] moved=0.01711 plan=(v+0.400,w-0.300) pub=(v+0.400,w-0.300) pin=0 pticks=0 d={'shield': 0, 'hyst': 0, 'escape': 0, 'retreat': 0}
+  t=  2.00  map=( 8.6056, 1.5218) z=-0.0003 yaw=+2.2910 |vxy|=0.3321 wz=+0.304 jv=[6.979, 8.909] tgt=[6.979, 8.909] moved=0.01983 plan=(v+0.400,w+0.300) pub=(v+0.400,w+0.300) pin=0 pticks=0 d={'shield': 0, 'hyst': 0, 'escape': 0, 'retreat': 0}
+  t=  3.00  map=( 8.4389, 1.7066) z=-0.0004 yaw=+2.4119 |vxy|=0.3755 wz=+0.240 jv=[7.022, 8.904] tgt=[6.979, 8.909] moved=0.01873 plan=(v+0.400,w+0.300) pub=(v+0.400,w+0.300) pin=0 pticks=0 d={'shield': 1, 'hyst': 0, 'escape': 0, 'retreat': 0}
+  t=  4.00  map=( 8.2700, 1.8613) z=-0.0008 yaw=+2.4961 |vxy|=0.0879 wz=-0.597 jv=[0.881, 7.4] tgt=[4.993, 6.923] moved=0.00936 plan=(v+0.400,w+0.300) pub=(v+0.300,w+0.300) pin=0 pticks=3 d={'shield': 2, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t=  5.00  map=( 8.0529, 1.9972) z=-0.0004 yaw=+2.7892 |vxy|=0.1597 wz=-0.316 jv=[3.873, 9.932] tgt=[6.014, 9.874] moved=0.00878 plan=(v+0.400,w+0.300) pub=(v+0.400,w+0.600) pin=0 pticks=3 d={'shield': 3, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t=  5.60  map=( 7.9159, 2.0422) z=-0.0003 yaw=+2.9363 |vxy|=0.0053 wz=+0.236 jv=[-0.895, 0.651] tgt=[-0.965, 0.965] moved=0.00014 plan=(v+0.400,w+0.000) pub=(v+0.000,w+0.300) pin=0 pticks=2 d={'shield': 2, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t=  5.65  map=( 7.9160, 2.0423) z=-0.0002 yaw=+2.9473 |vxy|=0.0090 wz=+0.234 jv=[-0.926, 0.934] tgt=[-0.965, 0.965] moved=0.00015 plan=(v+0.400,w+0.000) pub=(v+0.000,w+0.300) pin=0 pticks=3 d={'shield': 2, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t=  5.70  map=( 7.9164, 2.0423) z=-0.0001 yaw=+2.9572 |vxy|=0.0083 wz=+0.201 jv=[-0.952, 0.937] tgt=[-0.965, 0.965] moved=0.00037 plan=(v+0.400,w+0.000) pub=(v+0.000,w+0.300) pin=0 pticks=4 d={'shield': 2, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t=  5.75  map=( 7.9167, 2.0420) z=-0.0001 yaw=+2.9687 |vxy|=0.0099 wz=+0.267 jv=[-0.942, 0.908] tgt=[-0.965, 0.965] moved=0.00047 plan=(v+0.400,w+0.000) pub=(v+0.000,w+0.300) pin=0 pticks=5 d={'shield': 2, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t=  5.80  map=( 7.9168, 2.0418) z=-0.0002 yaw=+2.9827 |vxy|=0.0037 wz=+0.300 jv=[-0.986, 0.91] tgt=[-0.965, 0.965] moved=0.00022 plan=(v+0.400,w+0.000) pub=(v+0.000,w+0.300) pin=0 pticks=6 d={'shield': 3, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t=  5.85  map=( 7.9168, 2.0416) z=-0.0004 yaw=+2.9976 |vxy|=0.0061 wz=+0.298 jv=[-1.006, 0.935] tgt=[-0.965, 0.965] moved=0.00020 plan=(v+0.400,w+0.000) pub=(v+0.000,w+0.300) pin=0 pticks=7 d={'shield': 2, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t=  5.90  map=( 7.9169, 2.0414) z=-0.0007 yaw=+3.0111 |vxy|=0.0080 wz=+0.190 jv=[-0.966, 0.972] tgt=[-0.965, 0.965] moved=0.00020 plan=(v+0.400,w+0.000) pub=(v+0.000,w+0.300) pin=0 pticks=8 d={'shield': 3, 'hyst': 3, 'escape': 0, 'retreat': 0}
+  t=  5.95  map=( 7.9170, 2.0414) z=-0.0008 yaw=+3.0213 |vxy|=0.0073 wz=+0.269 jv=[-0.859, 0.968] tgt=[-0.965, 0.965] moved=0.00012 plan=(v+0.400,w+0.000) pub=(v+0.000,w+0.300) pin=0 pticks=9 d={'shield': 3, 'hyst': 3, 'escape': 0, 'retreat': 0}
+[shield-lite] env 0: pinned at (+7.92,+2.04) -> escape prefers reverse
+  t=  6.00  map=( 7.9174, 2.0414) z=-0.0007 yaw=+3.0288 |vxy|=0.0043 wz=+0.217 jv=[-1.433, 0.097] tgt=[-0.965, 0.965] moved=0.00043 plan=(v+0.400,w+0.000) pub=(v+0.000,w+0.300) pin=1 pticks=10 d={'shield': 4, 'hyst': 4, 'escape': 0, 'retreat': 0}
+  t=  7.00  map=( 7.7333, 2.0631) z=-0.0001 yaw=+3.0667 |vxy|=0.1825 wz=+0.060 jv=[-3.983, -3.828] tgt=[-3.972, -3.972] moved=0.00727 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=0 pticks=6 d={'shield': 4, 'hyst': 4, 'escape': 0, 'retreat': 0}
+  t=  7.30  map=( 7.7683, 2.0582) z=-0.0004 yaw=+3.0731 |vxy|=0.0135 wz=+0.053 jv=[-3.927, -3.938] tgt=[-3.972, -3.972] moved=0.00180 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=0 pticks=5 d={'shield': 4, 'hyst': 4, 'escape': 0, 'retreat': 0}
+  t=  7.35  map=( 7.7690, 2.0581) z=-0.0004 yaw=+3.0688 |vxy|=0.0026 wz=-0.018 jv=[-3.964, -4.389] tgt=[-3.972, -3.972] moved=0.00073 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=0 pticks=6 d={'shield': 3, 'hyst': 3, 'escape': 0, 'retreat': 0}
+  t=  7.40  map=( 7.7699, 2.0580) z=-0.0003 yaw=+3.0730 |vxy|=0.0551 wz=+0.259 jv=[-3.994, -3.971] tgt=[-3.972, -3.972] moved=0.00091 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=0 pticks=7 d={'shield': 3, 'hyst': 3, 'escape': 0, 'retreat': 0}
+  t=  7.45  map=( 7.7717, 2.0578) z=-0.0003 yaw=+3.0804 |vxy|=0.0091 wz=-0.014 jv=[-3.972, -3.999] tgt=[-3.972, -3.972] moved=0.00182 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=0 pticks=8 d={'shield': 4, 'hyst': 4, 'escape': 0, 'retreat': 0}
+  t=  7.50  map=( 7.7717, 2.0578) z=-0.0003 yaw=+3.0804 |vxy|=0.0036 wz=+0.010 jv=[-3.973, -3.969] tgt=[-3.972, -3.972] moved=0.00002 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=0 pticks=9 d={'shield': 4, 'hyst': 4, 'escape': 0, 'retreat': 0}
+[shield-lite] env 0: pinned at (+7.77,+2.06) -> escape prefers reverse
+  t=  7.60  map=( 7.7742, 2.0583) z=-0.0006 yaw=+3.0638 |vxy|=0.0582 wz=+0.283 jv=[6.979, 8.915] tgt=[6.979, 8.909] moved=0.00073 plan=(v+0.500,w+0.000) pub=(v+0.400,w+0.300) pin=1 pticks=10 d={'shield': 3, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t=  8.00  map=( 7.6980, 2.0680) z=-0.0001 yaw=+3.0928 |vxy|=0.0907 wz=+0.009 jv=[1.919, 1.966] tgt=[1.986, 1.986] moved=0.00482 plan=(v+0.400,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 3, 'escape': 0, 'retreat': 0}
+  t=  8.40  map=( 7.7287, 2.0642) z=+0.0007 yaw=+3.0675 |vxy|=0.1147 wz=-0.255 jv=[6.967, 10.664] tgt=[6.979, 8.909] moved=0.00171 plan=(v+0.400,w+0.000) pub=(v+0.400,w+0.300) pin=1 pticks=10 d={'shield': 3, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t=  9.00  map=( 7.5117, 2.0698) z=-0.0000 yaw=-3.0985 |vxy|=0.4493 wz=+0.045 jv=[10.194, 10.204] tgt=[9.93, 9.93] moved=0.02013 plan=(v+0.400,w-0.300) pub=(v+0.500,w+0.000) pin=0 pticks=1 d={'shield': 4, 'hyst': 4, 'escape': 0, 'retreat': 0}
+  t= 10.00  map=( 7.1374, 2.0678) z=-0.0001 yaw=-3.1038 |vxy|=0.4631 wz=-0.036 jv=[11.074, 9.737] tgt=[9.93, 9.93] moved=0.02351 plan=(v+0.400,w-0.300) pub=(v+0.500,w+0.000) pin=0 pticks=2 d={'shield': 1, 'hyst': 1, 'escape': 0, 'retreat': 0}
+  t= 11.00  map=( 6.7369, 2.0639) z=-0.0003 yaw=+3.1080 |vxy|=0.2226 wz=-0.427 jv=[7.944, 7.944] tgt=[7.944, 7.944] moved=0.01160 plan=(v+0.400,w+0.000) pub=(v+0.400,w+0.000) pin=0 pticks=0 d={'shield': 2, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t= 11.70  map=( 6.6650, 2.0721) z=-0.0002 yaw=+3.1373 |vxy|=0.0230 wz=+0.010 jv=[7.948, 7.949] tgt=[7.944, 7.944] moved=0.00074 plan=(v+0.400,w+0.000) pub=(v+0.400,w+0.000) pin=0 pticks=0 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 11.75  map=( 6.6630, 2.0720) z=+0.0001 yaw=+3.1355 |vxy|=0.1213 wz=-0.124 jv=[7.924, 7.911] tgt=[7.944, 7.944] moved=0.00199 plan=(v+0.400,w-0.300) pub=(v+0.400,w+0.000) pin=0 pticks=1 d={'shield': 3, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 12.00  map=( 6.6558, 2.0725) z=-0.0006 yaw=+3.0744 |vxy|=0.0579 wz=+0.016 jv=[-3.967, -3.967] tgt=[-3.972, -3.972] moved=0.00703 plan=(v+0.400,w+0.000) pub=(v-0.200,w+0.000) pin=0 pticks=3 d={'shield': 4, 'hyst': 1, 'escape': 2, 'retreat': 2}
+[shield-lite] env 1: pinned at (+5.89,+2.07) -> escape prefers reverse
+  t= 13.00  map=( 6.7939, 2.0565) z=-0.0007 yaw=+3.0795 |vxy|=0.0280 wz=-0.102 jv=[-3.975, -6.949] tgt=[-3.972, -3.972] moved=0.00055 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=0 pticks=1 d={'shield': 4, 'hyst': 2, 'escape': 1, 'retreat': 0}
+  t= 13.45  map=( 6.8413, 2.0501) z=-0.0003 yaw=+3.0980 |vxy|=0.0046 wz=-0.003 jv=[9.929, 9.928] tgt=[9.93, 9.93] moved=0.00034 plan=(v+0.500,w+0.000) pub=(v+0.500,w+0.000) pin=0 pticks=0 d={'shield': 2, 'hyst': 0, 'escape': 0, 'retreat': 0}
+  t= 13.65  map=( 6.8233, 2.0532) z=-0.0007 yaw=+3.0974 |vxy|=0.0403 wz=-0.036 jv=[7.817, 7.814] tgt=[7.944, 7.944] moved=0.00137 plan=(v+0.500,w+0.000) pub=(v+0.400,w+0.000) pin=0 pticks=4 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 14.00  map=( 6.7136, 2.0511) z=-0.0000 yaw=-3.0874 |vxy|=0.3829 wz=-0.375 jv=[9.667, 9.613] tgt=[9.93, 9.93] moved=0.01857 plan=(v+0.400,w-0.300) pub=(v+0.500,w+0.000) pin=0 pticks=1 d={'shield': 4, 'hyst': 3, 'escape': 0, 'retreat': 0}
+  t= 15.00  map=( 6.4616, 2.0456) z=-0.0002 yaw=-3.0044 |vxy|=0.2073 wz=+0.330 jv=[7.944, 7.825] tgt=[7.944, 7.944] moved=0.01209 plan=(v+0.400,w-0.300) pub=(v+0.400,w+0.000) pin=0 pticks=2 d={'shield': 3, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t= 15.30  map=( 6.4221, 2.0432) z=-0.0002 yaw=-3.0180 |vxy|=0.0495 wz=-0.359 jv=[7.612, 5.116] tgt=[6.923, 4.993] moved=0.00126 plan=(v+0.400,w-0.600) pub=(v+0.300,w-0.300) pin=0 pticks=4 d={'shield': 4, 'hyst': 3, 'escape': 0, 'retreat': 0}
+  t= 16.00  map=( 6.2465, 2.0314) z=-0.0005 yaw=-3.0292 |vxy|=0.3199 wz=+0.241 jv=[6.236, 10.871] tgt=[7.944, 7.944] moved=0.01431 plan=(v+0.400,w-0.300) pub=(v+0.400,w+0.000) pin=0 pticks=2 d={'shield': 4, 'hyst': 2, 'escape': 1, 'retreat': 1}
+  t= 17.00  map=( 5.9657, 2.0303) z=-0.0003 yaw=-3.1355 |vxy|=0.2467 wz=-0.769 jv=[7.576, 7.959] tgt=[7.944, 7.944] moved=0.01389 plan=(v+0.400,w-0.300) pub=(v+0.400,w+0.000) pin=0 pticks=2 d={'shield': 4, 'hyst': 3, 'escape': 0, 'retreat': 0}
+  t= 18.00  map=( 5.6855, 2.0582) z=-0.0001 yaw=+3.1100 |vxy|=0.2965 wz=+0.006 jv=[5.945, 5.983] tgt=[5.958, 5.958] moved=0.01512 plan=(v+0.300,w+0.000) pub=(v+0.300,w+0.000) pin=0 pticks=0 d={'shield': 3, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t= 18.65  map=( 5.5554, 2.0745) z=-0.0005 yaw=+3.1062 |vxy|=0.0037 wz=+0.003 jv=[1.988, 1.986] tgt=[1.986, 1.986] moved=0.00044 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=0 pticks=5 d={'shield': 3, 'hyst': 1, 'escape': 0, 'retreat': 0}
+  t= 18.70  map=( 5.5554, 2.0745) z=-0.0005 yaw=+3.1062 |vxy|=0.0012 wz=+0.001 jv=[-1.986, -1.986] tgt=[-1.986, -1.986] moved=0.00001 plan=(v+0.500,w+0.000) pub=(v-0.100,w+0.000) pin=0 pticks=6 d={'shield': 3, 'hyst': 1, 'escape': 1, 'retreat': 0}
+  t= 18.75  map=( 5.5554, 2.0745) z=-0.0005 yaw=+3.1062 |vxy|=0.0017 wz=+0.003 jv=[-1.986, -1.986] tgt=[-1.986, -1.986] moved=0.00000 plan=(v+0.500,w+0.000) pub=(v-0.100,w+0.000) pin=0 pticks=7 d={'shield': 3, 'hyst': 2, 'escape': 1, 'retreat': 1}
+  t= 18.80  map=( 5.5554, 2.0745) z=-0.0005 yaw=+3.1064 |vxy|=0.0141 wz=-0.005 jv=[-1.987, -1.984] tgt=[-1.986, -1.986] moved=0.00003 plan=(v+0.500,w+0.000) pub=(v-0.100,w+0.000) pin=0 pticks=8 d={'shield': 4, 'hyst': 3, 'escape': 1, 'retreat': 1}
+[shield-lite] env 0: pinned at (+5.56,+2.07) -> escape prefers reverse
+  t= 18.95  map=( 5.5610, 2.0744) z=-0.0001 yaw=+3.1014 |vxy|=0.0688 wz=-0.201 jv=[-0.907, 2.957] tgt=[1.986, 1.986] moved=0.00138 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 1, 'retreat': 1}
+  t= 19.00  map=( 5.5644, 2.0742) z=-0.0002 yaw=+3.1067 |vxy|=0.1179 wz=+0.388 jv=[-4.441, -8.897] tgt=[-3.972, -3.972] moved=0.00342 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 2, 'retreat': 2}
+  t= 19.05  map=( 5.5634, 2.0738) z=-0.0000 yaw=+3.1110 |vxy|=0.0870 wz=-0.002 jv=[1.841, 1.846] tgt=[1.986, 1.986] moved=0.00108 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 0, 'retreat': 0}
+  t= 19.20  map=( 5.5537, 2.0746) z=-0.0006 yaw=+3.1110 |vxy|=0.0036 wz=-0.017 jv=[1.986, 1.986] tgt=[1.986, 1.986] moved=0.00056 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 0, 'retreat': 0}
+  t= 19.25  map=( 5.5537, 2.0747) z=-0.0006 yaw=+3.1110 |vxy|=0.0038 wz=-0.015 jv=[1.986, 1.986] tgt=[1.986, 1.986] moved=0.00003 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 0, 'retreat': 0}
+  t= 19.30  map=( 5.5537, 2.0746) z=-0.0006 yaw=+3.1110 |vxy|=0.0026 wz=-0.019 jv=[1.986, 1.985] tgt=[1.986, 1.986] moved=0.00001 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 0, 'retreat': 0}
+  t= 19.35  map=( 5.5535, 2.0747) z=-0.0006 yaw=+3.1107 |vxy|=0.0123 wz=+0.093 jv=[12.741, 3.285] tgt=[1.986, 1.986] moved=0.00028 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 2, 'hyst': 0, 'escape': 0, 'retreat': 0}
+  t= 19.65  map=( 5.5444, 2.0749) z=-0.0004 yaw=+3.1080 |vxy|=0.0779 wz=-0.059 jv=[1.98, 3.379] tgt=[1.986, 1.986] moved=0.00093 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t= 19.75  map=( 5.5473, 2.0747) z=-0.0000 yaw=+3.1167 |vxy|=0.0818 wz=-0.039 jv=[1.826, 2.42] tgt=[1.986, 1.986] moved=0.00055 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 19.85  map=( 5.5384, 2.0762) z=-0.0008 yaw=+3.1102 |vxy|=0.0060 wz=-0.005 jv=[1.949, 1.947] tgt=[1.986, 1.986] moved=0.00188 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 1, 'retreat': 0}
+  t= 19.90  map=( 5.5400, 2.0760) z=-0.0004 yaw=+3.1170 |vxy|=0.0936 wz=+0.299 jv=[-4.099, -0.698] tgt=[-3.972, -3.972] moved=0.00163 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 2, 'retreat': 1}
+  t= 19.95  map=( 5.5399, 2.0757) z=-0.0008 yaw=+3.1136 |vxy|=0.0261 wz=+0.138 jv=[2.06, 2.017] tgt=[1.986, 1.986] moved=0.00040 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 1, 'retreat': 1}
+  t= 20.00  map=( 5.5399, 2.0756) z=-0.0008 yaw=+3.1136 |vxy|=0.0027 wz=-0.001 jv=[1.982, 1.981] tgt=[1.986, 1.986] moved=0.00000 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 1, 'retreat': 1}
+  t= 20.25  map=( 5.5314, 2.0760) z=-0.0004 yaw=+3.1189 |vxy|=0.0647 wz=+0.134 jv=[2.166, 1.983] tgt=[1.986, 1.986] moved=0.00027 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 1, 'retreat': 1}
+  t= 20.35  map=( 5.5267, 2.0767) z=-0.0006 yaw=+3.1200 |vxy|=0.0036 wz=-0.008 jv=[1.988, 1.988] tgt=[1.986, 1.986] moved=0.00071 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t= 20.40  map=( 5.5267, 2.0768) z=-0.0006 yaw=+3.1200 |vxy|=0.0017 wz=+0.003 jv=[1.986, 1.988] tgt=[1.986, 1.986] moved=0.00001 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t= 20.45  map=( 5.5249, 2.0768) z=-0.0005 yaw=+3.1212 |vxy|=0.0885 wz=+0.044 jv=[1.871, 1.946] tgt=[1.986, 1.986] moved=0.00185 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 0, 'retreat': 0}
+  t= 20.65  map=( 5.5191, 2.0770) z=-0.0004 yaw=+3.1172 |vxy|=0.0789 wz=-0.065 jv=[1.912, 1.923] tgt=[1.986, 1.986] moved=0.00057 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 1, 'escape': 0, 'retreat': 0}
+  t= 20.80  map=( 5.5238, 2.0770) z=-0.0003 yaw=+3.1104 |vxy|=0.0585 wz=-0.167 jv=[1.955, 1.942] tgt=[1.986, 1.986] moved=0.00089 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 0, 'retreat': 0}
+  t= 20.85  map=( 5.5246, 2.0768) z=-0.0005 yaw=+3.1069 |vxy|=0.0100 wz=+0.033 jv=[-3.979, -3.979] tgt=[-3.972, -3.972] moved=0.00079 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 2, 'retreat': 2}
+  t= 20.90  map=( 5.5249, 2.0769) z=-0.0005 yaw=+3.1086 |vxy|=0.0432 wz=+0.240 jv=[-3.971, -3.98] tgt=[-3.972, -3.972] moved=0.00038 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 2, 'retreat': 2}
+  t= 21.00  map=( 5.5313, 2.0763) z=-0.0004 yaw=+3.1067 |vxy|=0.0054 wz=+0.013 jv=[-3.972, -3.973] tgt=[-3.972, -3.972] moved=0.00126 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 2, 'escape': 1, 'retreat': 1}
+  t= 21.15  map=( 5.5403, 2.0755) z=-0.0002 yaw=+3.0939 |vxy|=0.0009 wz=+0.002 jv=[-3.972, -3.972] tgt=[-3.972, -3.972] moved=0.00118 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 21.20  map=( 5.5403, 2.0755) z=-0.0002 yaw=+3.0939 |vxy|=0.0010 wz=+0.002 jv=[-3.972, -3.972] tgt=[-3.972, -3.972] moved=0.00000 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 21.25  map=( 5.5416, 2.0754) z=-0.0001 yaw=+3.0959 |vxy|=0.0995 wz=+0.154 jv=[-3.91, -3.974] tgt=[-3.972, -3.972] moved=0.00126 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 1, 'retreat': 1}
+[shield-lite] env 1: pinned at (+5.61,+2.08) -> escape prefers reverse
+  t= 22.00  map=( 5.5751, 2.0706) z=-0.0004 yaw=+3.1088 |vxy|=0.1399 wz=+0.018 jv=[1.986, 1.986] tgt=[1.986, 1.986] moved=0.01072 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 2, 'hyst': 0, 'escape': 0, 'retreat': 0}
+  t= 22.10  map=( 5.5707, 2.0723) z=-0.0007 yaw=+3.0963 |vxy|=0.0176 wz=+0.075 jv=[-3.904, -13.77] tgt=[-3.972, -3.972] moved=0.00021 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 2, 'retreat': 2}
+  t= 22.25  map=( 5.5774, 2.0717) z=-0.0003 yaw=+3.0951 |vxy|=0.0618 wz=+0.226 jv=[-3.964, -3.722] tgt=[-3.972, -3.972] moved=0.00125 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 1, 'retreat': 1}
+  t= 22.35  map=( 5.5867, 2.0711) z=-0.0003 yaw=+3.0946 |vxy|=0.0554 wz=-0.156 jv=[1.943, 1.935] tgt=[1.986, 1.986] moved=0.00122 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 22.65  map=( 5.6209, 2.0678) z=-0.0007 yaw=+3.0866 |vxy|=0.0801 wz=-0.072 jv=[1.953, 1.808] tgt=[1.986, 1.986] moved=0.00047 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 2, 'hyst': 0, 'escape': 0, 'retreat': 0}
+  t= 22.80  map=( 5.6133, 2.0681) z=-0.0003 yaw=+3.0934 |vxy|=0.0680 wz=+0.270 jv=[-3.989, -4.072] tgt=[-3.972, -3.972] moved=0.00160 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 2, 'retreat': 1}
+  t= 22.85  map=( 5.6124, 2.0680) z=-0.0002 yaw=+3.0892 |vxy|=0.0745 wz=-0.101 jv=[1.793, 1.572] tgt=[1.986, 1.986] moved=0.00093 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 23.00  map=( 5.5987, 2.0688) z=-0.0008 yaw=+3.0946 |vxy|=0.0822 wz=+0.077 jv=[2.006, 1.709] tgt=[1.986, 1.986] moved=0.00402 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 1, 'retreat': 1}
+  t= 23.45  map=( 5.5844, 2.0694) z=-0.0002 yaw=+3.0931 |vxy|=0.0612 wz=-0.160 jv=[1.723, 2.974] tgt=[1.986, 1.986] moved=0.00093 plan=(v+0.500,w+0.000) pub=(v+0.100,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 23.65  map=( 5.5722, 2.0699) z=-0.0006 yaw=+3.0787 |vxy|=0.1208 wz=-0.350 jv=[-9.184, -4.877] tgt=[-3.972, -3.972] moved=0.00166 plan=(v+0.500,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 2, 'retreat': 1}
+  t= 24.00  map=( 5.6307, 2.0652) z=-0.0007 yaw=+3.0889 |vxy|=0.1148 wz=+0.575 jv=[-3.906, -3.972] tgt=[-3.972, -3.972] moved=0.00691 plan=(v+0.400,w+0.000) pub=(v-0.200,w+0.000) pin=1 pticks=10 d={'shield': 3, 'hyst': 1, 'escape': 2, 'retreat': 2}
+  t= 25.00  map=( 5.4486, 2.0685) z=-0.0004 yaw=-3.0637 |vxy|=0.2507 wz=-0.227 jv=[8.456, 10.028] tgt=[9.93, 9.93] moved=0.00946 plan=(v+0.400,w-0.300) pub=(v+0.500,w+0.000) pin=1 pticks=10 d={'shield': 4, 'hyst': 2, 'escape': 1, 'retreat': 1}
+  t= 26.00  map=( 5.1867, 2.0465) z=-0.0002 yaw=-3.0250 |vxy|=0.2925 wz=-0.177 jv=[6.737, 5.04] tgt=[6.923, 4.993] moved=0.01458 plan=(v+0.300,w-0.300) pub=(v+0.300,w-0.300) pin=0 pticks=0 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 27.00  map=( 4.9264, 2.0433) z=+0.0001 yaw=-3.0851 |vxy|=0.2762 wz=-0.047 jv=[7.683, 7.925] tgt=[7.944, 7.944] moved=0.01212 plan=(v+0.400,w-0.300) pub=(v+0.400,w+0.000) pin=0 pticks=2 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 28.00  map=( 4.6325, 2.0520) z=-0.0003 yaw=-3.0744 |vxy|=0.3467 wz=+0.418 jv=[9.93, 9.894] tgt=[9.93, 9.93] moved=0.01926 plan=(v+0.400,w-0.300) pub=(v+0.500,w+0.000) pin=0 pticks=1 d={'shield': 3, 'hyst': 2, 'escape': 1, 'retreat': 1}
+  t= 29.00  map=( 4.2742, 2.0342) z=-0.0006 yaw=-3.0883 |vxy|=0.3828 wz=+0.020 jv=[7.953, 8.057] tgt=[7.944, 7.944] moved=0.01720 plan=(v+0.400,w-0.300) pub=(v+0.400,w+0.000) pin=0 pticks=3 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 30.00  map=( 3.9837, 2.0239) z=-0.0003 yaw=-3.0543 |vxy|=0.2558 wz=+0.324 jv=[5.968, 9.877] tgt=[7.944, 7.944] moved=0.01112 plan=(v+0.400,w-0.300) pub=(v+0.400,w+0.000) pin=0 pticks=1 d={'shield': 2, 'hyst': 0, 'escape': 1, 'retreat': 1}
+[shield-lite] env 1: pinned at (+4.88,+2.10) -> escape prefers reverse
+  t= 31.00  map=( 3.7166, 2.0121) z=-0.0003 yaw=-3.0525 |vxy|=0.2370 wz=-0.718 jv=[8.986, 6.917] tgt=[8.909, 6.979] moved=0.01350 plan=(v+0.400,w-0.600) pub=(v+0.400,w-0.300) pin=0 pticks=2 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 32.00  map=( 3.4427, 2.0068) z=-0.0004 yaw=-3.1096 |vxy|=0.2858 wz=-0.254 jv=[7.943, 7.944] tgt=[7.944, 7.944] moved=0.01751 plan=(v+0.400,w-0.300) pub=(v+0.400,w+0.000) pin=0 pticks=1 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 33.00  map=( 3.1731, 2.0110) z=-0.0000 yaw=-3.1054 |vxy|=0.3597 wz=+0.043 jv=[7.637, 7.937] tgt=[7.944, 7.944] moved=0.01433 plan=(v+0.400,w-0.300) pub=(v+0.400,w+0.000) pin=0 pticks=4 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 34.00  map=( 2.8605, 2.0244) z=-0.0001 yaw=+3.0643 |vxy|=0.2777 wz=-0.187 jv=[8.888, 6.859] tgt=[8.909, 6.979] moved=0.01227 plan=(v+0.400,w-0.300) pub=(v+0.400,w-0.300) pin=0 pticks=0 d={'shield': 1, 'hyst': 0, 'escape': 1, 'retreat': 1}
+[shield-lite] env 1: pinned at (+4.48,+2.11) -> escape prefers reverse
+  t= 35.00  map=( 2.6144, 2.0770) z=-0.0003 yaw=+2.9222 |vxy|=0.1290 wz=+0.283 jv=[5.976, 5.958] tgt=[5.958, 5.958] moved=0.00688 plan=(v+0.300,w-0.900) pub=(v+0.300,w+0.000) pin=0 pticks=2 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 35.80  map=( 2.4904, 2.1200) z=-0.0004 yaw=+2.7566 |vxy|=0.0318 wz=-0.207 jv=[4.129, 0.841] tgt=[6.868, 1.076] moved=0.00118 plan=(v+0.200,w-0.900) pub=(v+0.200,w-0.900) pin=0 pticks=1 d={'shield': 2, 'hyst': 0, 'escape': 2, 'retreat': 1}
+  t= 36.00  map=( 2.4676, 2.1313) z=-0.0002 yaw=+2.6709 |vxy|=0.2303 wz=-0.345 jv=[8.694, 3.087] tgt=[8.853, 3.062] moved=0.00956 plan=(v+0.200,w-0.900) pub=(v+0.300,w-0.900) pin=0 pticks=5 d={'shield': 2, 'hyst': 0, 'escape': 1, 'retreat': 1}
+  t= 36.30  map=( 2.4386, 2.1534) z=-0.0006 yaw=+2.5425 |vxy|=0.0384 wz=-0.206 jv=[4.8, 1.135] tgt=[6.868, 1.076] moved=0.00141 plan=(v+0.200,w-0.900) pub=(v+0.200,w-0.900) pin=0 pticks=0 d={'shield': 1, 'hyst': 0, 'escape': 1, 'retreat': 1}
+  t= 36.35  map=( 2.4371, 2.1546) z=-0.0009 yaw=+2.5299 |vxy|=0.0500 wz=-0.364 jv=[7.138, 1.082] tgt=[6.868, 1.076] moved=0.00195 plan=(v+0.200,w-0.900) pub=(v+0.200,w-0.900) pin=0 pticks=0 d={'shield': 1, 'hyst': 0, 'escape': 1, 'retreat': 1}
+  t= 36.40  map=( 2.4365, 2.1552) z=-0.0009 yaw=+2.5262 |vxy|=0.0115 wz=-0.013 jv=[3.452, 1.12] tgt=[6.868, 1.076] moved=0.00082 plan=(v+0.200,w-0.900) pub=(v+0.200,w-0.900) pin=0 pticks=0 d={'shield': 1, 'hyst': 0, 'escape': 1, 'retreat': 1}
+  t= 37.00  map=( 2.3687, 2.2209) z=-0.0004 yaw=+2.2664 |vxy|=0.1590 wz=-0.007 jv=[8.854, 3.075] tgt=[8.853, 3.062] moved=0.00961 plan=(v+0.300,w-0.900) pub=(v+0.300,w-0.900) pin=0 pticks=0 d={'shield': 1, 'hyst': 0, 'escape': 1, 'retreat': 1}
+  t= 38.00  map=( 2.2885, 2.3917) z=-0.0004 yaw=+1.8737 |vxy|=0.2351 wz=-0.127 jv=[7.845, 4.049] tgt=[7.888, 4.028] moved=0.00877 plan=(v+0.300,w-0.900) pub=(v+0.300,w-0.600) pin=0 pticks=2 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 38.85  map=( 2.2781, 2.5481) z=-0.0005 yaw=+1.5337 |vxy|=0.0853 wz=-0.392 jv=[3.567, 4.068] tgt=[7.888, 4.028] moved=0.00187 plan=(v+0.300,w-0.900) pub=(v+0.300,w-0.600) pin=0 pticks=2 d={'shield': 2, 'hyst': 1, 'escape': 1, 'retreat': 1}
+  t= 39.00  map=( 2.2799, 2.5792) z=-0.0004 yaw=+1.5048 |vxy|=0.2447 wz=-0.281 jv=[7.615, 4.001] tgt=[7.888, 4.028] moved=0.01104 plan=(v+0.300,w-0.600) pub=(v+0.300,w-0.600) pin=0 pticks=0 d={'shield': 1, 'hyst': 0, 'escape': 1, 'retreat': 1}
+  t= 40.00  map=( 2.3653, 2.8528) z=-0.0005 yaw=+1.1432 |vxy|=0.2884 wz=-0.256 jv=[9.875, 6.015] tgt=[9.874, 6.014] moved=0.01277 plan=(v+0.400,w-0.600) pub=(v+0.400,w-0.600) pin=0 pticks=0 d={'shield': 1, 'hyst': 0, 'escape': 1, 'retreat': 1}
+[shield-lite] env 1: pinned at (+3.88,+2.13) -> escape prefers reverse
+  t= 41.00  map=( 2.5218, 3.0896) z=+0.0034 yaw=+0.9334 |vxy|=0.3589 wz=+1.157 jv=[9.918, 9.918] tgt=[9.93, 9.93] moved=0.01837 plan=(v+0.500,w+0.000) pub=(v+0.500,w+0.000) pin=0 pticks=0 d={'shield': 1, 'hyst': 0, 'escape': 1, 'retreat': 1}
+  t= 42.00  map=( 2.7236, 3.3179) z=+0.0000 yaw=+0.7325 |vxy|=0.3795 wz=-0.090 jv=[7.903, 7.945] tgt=[7.944, 7.944] moved=0.01890 plan=(v+0.400,w+0.000) pub=(v+0.400,w+0.000) pin=0 pticks=0 d={'shield': 1, 'hyst': 0, 'escape': 1, 'retreat': 1}
+  t= 43.00  map=( 2.9364, 3.5273) z=-0.0003 yaw=+0.8894 |vxy|=0.4510 wz=+0.128 jv=[9.75, 6.691] tgt=[9.93, 9.93] moved=0.02139 plan=(v+0.500,w+0.000) pub=(v+0.500,w+0.000) pin=0 pticks=0 d={'shield': 1, 'hyst': 0, 'escape': 1, 'retreat': 1}
+  t= 44.00  map=( 3.1283, 3.7836) z=-0.0005 yaw=+1.0004 |vxy|=0.3508 wz=+0.538 jv=[9.946, 9.977] tgt=[9.93, 9.93] moved=0.01492 plan=(v+0.500,w+0.000) pub=(v+0.500,w+0.000) pin=0 pticks=0 d={'shield': 1, 'hyst': 0, 'escape': 1, 'retreat': 1}
+NO_FREEZE within 900 ticks (45 s)
+[freeze] baseline={'plan': 180, 'replan': 176, 'dwa_reject': 0, 'stuck': 0, 'steps': 3600}
+[freeze] shield={'shield': 2051, 'hyst': 1133, 'escape': 590, 'retreat': 553, 'pin': 8, 'oob': 0, 'steps': 3600}
+
+===== PROBE done in 61s =====

@@ -1,0 +1,228 @@
+# 自动建图部分
+auto_mapping:
+  max_x_vel: 1.0
+  max_yaw_vel: 1.57
+
+  map_free_threshold: 30
+  map_occupied_threshold: 60
+
+  polyline_path_max_length: 1.2
+  exploration_min_dist_to_obs: 0.36
+
+  global_min_expand_dist: 0.1
+  global_max_expand_dist: 1.5
+  global_frontier_points_min_dist: 0.3
+  global_sensing_radius: 20.0
+  global_sampling_timeout_secs: 2
+  global_rrt_memory_limit: 1024
+
+  local_min_expand_dist: 0.1
+  local_max_expand_dist: 1.5
+  local_rrt_coverage_check_density: 0.15
+  local_frontier_points_min_dist: 0.3
+  local_sensing_radius: 20.0
+  local_sampling_timeout_secs: 10
+
+  planner_min_dist_to_obs: 0.356
+
+  share_common_distance_table: true
+  enable_collision_precheck: false
+
+  info_gain: 0.5
+  dist_gain: 1.0
+  dir_gain: 5.0
+  free_gain: 0.8
+
+# 导航控制器部分
+navigation:
+  control_freq: 100
+
+  max_x_vel: 1.0
+  min_x_vel: 0.03
+  max_x_acc: 1.0
+  max_yaw_vel: 1.57
+  min_yaw_vel: 0.13
+  max_yaw_acc: 0.6
+
+  velocity_dec_line_offset_time: 0.05
+  velocity_dec_angle_offset_time: 0.05
+
+  strighting_tolerance: 0.05
+  turning_tolerance: 0.05
+
+  strighting_stop_distance: 0.5
+  turning_stop_distance: 0.02
+  ignore_obstacle_dist: 0.001
+
+  obstacle_acc_ratio: 2.0
+
+  use_global_planner: true
+  map_occupied_threshold: 55
+  max_global_plan_try_count: 2
+
+  always_replan: false
+
+  planner_min_dist_to_obs: 0.356
+
+  collision_vel_dec_ratio: 1.2
+  collision_plan_try_count: 1
+  collision_trajectory_sampling_ratio: 3
+  collision_path_sampling_ratio: 3
+  collision_path_dist_error_tolerance: 0.2
+  collision_path_angle_error_tolerance: 0.08
+  collision_obstacle_detection_area_padding_ratio: 1.1
+  collision_narrow_section_padding: 20
+
+  allow_reverse_drive: false
+  use_advanced_evaluation: true
+  use_kinematic_limits: true
+  use_find_mode_follower: false
+
+  find_mode_x_vel: 0.2
+  find_mode_yaw_vel: 0.3
+  find_mode_radius: 0.4
+  find_mode_min_dist_timeout: 1.0
+
+  enable_near_angle_correct: false
+
+  angle_diff_to_forward: 0.15
+  angle_diff_to_rotate: 1.2
+
+  xy_tolerance: 0.05
+  yaw_tolerance: 0.05
+
+  chassis_radius: 0.162
+
+  sim_time: 1.4
+  find_mode_sim_time: 0.5
+  sim_vx_space_size: 20
+  sim_vyaw_space_size: 40
+  trajectory_sim_step: 30
+  follow_point_weight: 1.0
+  follow_path_weight: 10.0
+
+  sensor_msg_timeout: 2.0
+
+# 全局路径规划器部分
+global_planner:
+  allow_unknown: true
+  default_tolerance: 0.0
+  visualize_potential: true
+  use_quadratic: true
+  use_grid_path: false
+  old_navfn_behavior: false
+  lethal_cost: 253
+  neutral_cost: 66
+  cost_factor: 0.55
+
+global_planner_static:
+  allow_unknown: true
+  default_tolerance: 0.0
+  visualize_potential: true
+  use_quadratic: true
+  use_grid_path: false
+  old_navfn_behavior: false
+  lethal_cost: 200
+  neutral_cost: 66
+  cost_factor: 0.55
+
+# 代价地图部分
+costmap:
+  global_frame: "map"
+  robot_base_frame: "base_link"
+  update_frequency: 1.0
+  publish_frequency: 3.0
+  rolling_window: false
+  transform_tolerance: 5.0
+  always_send_full_costmap: false
+
+  plugins:
+    - { name: static_layer, type: "costmap_2d::StaticLayer" }
+    - { name: obstacle_layer, type: "costmap_2d::ObstacleLayer" }
+
+  static_layer:
+    enabled: true
+    track_unknown_space: false
+    unknown_cost_value: -1
+    map_topic: "openmover/mapping/map"
+
+  obstacle_layer:
+    enabled: true
+    combination_method: 1
+    track_unknown_space: false
+    unknown_cost_value: -1
+    obstacle_range: 4.5
+    raytrace_range: 5
+    observation_sources: laser_scan_sensor
+    laser_scan_sensor:
+      {
+        sensor_frame: lidar_link,
+        data_type: LaserScan,
+        topic: openmover/hardware/lidar/scan,
+        marking: true,
+        clearing: true,
+      }
+
+global_costmap:
+  global_frame: "map"
+  robot_base_frame: "base_link"
+  update_frequency: 3.0
+  publish_frequency: 3.0
+  rolling_window: false
+  transform_tolerance: 5.0
+  always_send_full_costmap: false
+
+  plugins:
+    - { name: static_layer, type: "costmap_2d::StaticLayer" }
+    - { name: obstacle_layer, type: "costmap_2d::ObstacleLayer" }
+
+  static_layer:
+    enabled: true
+    track_unknown_space: false
+    unknown_cost_value: -1
+    map_topic: "openmover/mapping/map"
+
+  obstacle_layer:
+    enabled: true
+    combination_method: 1
+    track_unknown_space: false
+    unknown_cost_value: -1
+    obstacle_range: 4.5
+    raytrace_range: 5
+    observation_sources: laser_scan_sensor
+    laser_scan_sensor:
+      {
+        sensor_frame: lidar_link,
+        data_type: LaserScan,
+        topic: openmover/hardware/lidar/scan,
+        marking: true,
+        clearing: true,
+      }
+
+global_costmap_static:
+  global_frame: "map"
+  robot_base_frame: "base_link"
+  update_frequency: 3.0
+  publish_frequency: 3.0
+  rolling_window: false
+  transform_tolerance: 5.0
+  always_send_full_costmap: false
+
+  plugins:
+    - { name: static_layer, type: "costmap_2d::StaticLayer" }
+
+  static_layer:
+    enabled: true
+    map_topic: "openmover/mapping/map"
+
+localization_confidence:
+  update_frequency: 2.0
+  sigma_hit: 0.2
+  z_hit: 1.0
+  z_rand: 0.0
+  max_tolerance_dist: 3.0
+  map_occupied_threshold: 50
+
+# 系统重置
+reset_server:
+  work_mode: 1

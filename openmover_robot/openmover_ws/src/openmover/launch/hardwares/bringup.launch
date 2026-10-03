@@ -1,0 +1,269 @@
+<!-- 2023-6-24 0.0.0.1A -->
+
+<!-- 文件描述：加载机器人基础硬件系统 -->
+<launch>
+    <!-- 以下为公用节点 -->
+    <!-- 设置为仿真模式/真机模式参数 -->
+    <arg name="system_mode" default="1" />
+    <!-- 设置为仿真区域参数 -->
+    <arg name="sim_area" default="0" />
+
+    <!-- 启动机器人状态和关节状态发布节点 -->
+    <param name="robot_description" textfile="$(find openmover)/urdf/robot_description.urdf" />
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"></node>
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher"></node>
+    <node pkg="tf" type="static_transform_publisher" name="base_to_lidar" args="0 0 0 0 0 0 1 base_link lidar_link 100" />
+
+    <!-- 启动扬声器驱动 -->
+    <node name="speaker_handler" pkg="openmover" type="speaker_handler.py" respawn="true">
+        <param name="sound_filepath" value="$(env HOME)/openmover_robot/sounds/" />
+    </node>
+
+    <!-- 启动雷达数据融合 -->
+    <node pkg="ira_laser_tools" name="laserscan_multi_merger" type="laserscan_multi_merger" output="screen">
+        <param name="destination_frame" value="lidar_link"/>
+        <param name="cloud_destination_topic" value="openmover/hardware/lidar/pointcloud"/>
+        <param name="scan_destination_topic" value="openmover/hardware/lidar/scan"/>
+        <param name="laserscan_topics" value ="/openmover/hardware/lidar_forward/scan /openmover/hardware/lidar_rear/scan" />
+        <param name="angle_min" value="-3.1415926"/>
+        <param name="angle_max" value="3.1415926"/>
+        <param name="angle_increment" value="0.006962"/>
+        <param name="scan_time" value="0.0"/>
+        <param name="range_min" value="0.33"/>
+        <param name="range_max" value="20.0"/>
+	</node>
+
+    <!-- 以下为仿真环境使用 -->
+    <group if="$(eval arg('system_mode') == 0)">
+        <!-- 设置参数 -->
+        <arg name="paused" default="false" />
+        <arg name="use_sim_time" default="true" />
+        <arg name="gui" default="true" />
+        <arg name="headless" default="false" />
+        <arg name="debug" default="false" />
+
+        <!-- 启动 Gazebo -->
+        <arg name="world_name" value="$(find openmover)/worlds/simulation.world" />
+        <include file="$(find gazebo_ros)/launch/empty_world.launch">
+            <arg name="world_name" value="$(arg world_name)" />
+            <arg name="debug" value="$(arg debug)" />
+            <arg name="gui" value="$(arg gui)" />
+            <arg name="paused" value="$(arg paused)" />
+            <arg name="use_sim_time" value="$(arg use_sim_time)" />
+            <arg name="headless" value="$(arg headless)" />
+        </include>
+
+        <!-- <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find warehouse_simulation)/models"/>
+        <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find warehouse_simulation)/models"/>
+
+        <include file="$(find gazebo_ros)/launch/empty_world.launch">
+            <arg name="world_name" value="$(find warehouse_simulation)/worlds/warehouse.world"/>
+            <arg name="paused" value="false"/>
+            <arg name="gui" value="true"/> 
+        </include> -->
+
+        <!-- 机器人初始位姿 -->
+        <!-- 位置1 -->
+        <group if="$(eval arg('sim_area') == 0)">
+            <arg name="x0" value="0" />
+            <arg name="y0" value="0" />
+            <arg name="z0" value="0.1" />
+            <arg name="roll0" default="0" />
+            <arg name="pitch0" default="0" />
+            <arg name="yaw0" default="0" />
+
+            <!-- 在 gazebo 中显示机器人模型 -->
+            <node name="spawn_robot" pkg="gazebo_ros" type="spawn_model"
+                args="-urdf -param robot_description -model robot_description
+              -x $(arg x0) -y $(arg y0) -z $(arg z0)
+              -R $(arg roll0) -P $(arg pitch0) -Y $(arg yaw0)" />
+
+            <!-- 启动定位管理系统 -->
+            <include file="$(find openmover)/launch/modules/localization/localization.launch">
+                <arg name="init_diff_x" value="$(arg x0)" />
+                <arg name="init_diff_y" value="$(arg y0)" />
+                <arg name="init_diff_z" value="$(arg z0)" />
+                <arg name="init_diff_yaw" value="$(arg yaw0)" />
+                <arg name="system_mode" value="$(arg system_mode)" />
+            </include>
+        </group>
+
+        <!-- 位置2 -->
+        <group if="$(eval arg('sim_area') == 1)">
+            <arg name="x1" value="0" />
+            <arg name="y1" value="0" />
+            <arg name="z1" value="0.1" />
+            <arg name="roll1" default="0" />
+            <arg name="pitch1" default="0" />
+            <arg name="yaw1" default="3.1415926" />
+
+            <!-- 在 gazebo 中显示机器人模型 -->
+            <node name="spawn_robot" pkg="gazebo_ros" type="spawn_model"
+                args="-urdf -param robot_description -model robot_description
+              -x $(arg x1) -y $(arg y1) -z $(arg z1)
+              -R $(arg roll1) -P $(arg pitch1) -Y $(arg yaw1)" />
+
+            <!-- 启动定位管理系统 -->
+            <include file="$(find openmover)/launch/modules/localization/localization.launch">
+                <arg name="init_diff_x" value="$(arg x1)" />
+                <arg name="init_diff_y" value="$(arg y1)" />
+                <arg name="init_diff_z" value="$(arg z1)" />
+                <arg name="init_diff_yaw" value="$(arg yaw1)" />
+                <arg name="system_mode" value="$(arg system_mode)" />
+            </include>
+        </group>
+
+        <!-- 位置3 -->
+        <group if="$(eval arg('sim_area') == 2)">
+            <arg name="x2" value="0" />
+            <arg name="y2" value="0" />
+            <arg name="z2" value="0.1" />
+            <arg name="roll2" default="0" />
+            <arg name="pitch2" default="0" />
+            <arg name="yaw2" default="0" />
+
+            <!-- 在 gazebo 中显示机器人模型 -->
+            <node name="spawn_robot" pkg="gazebo_ros" type="spawn_model"
+                args="-urdf -param robot_description -model robot_description
+              -x $(arg x2) -y $(arg y2) -z $(arg z2)
+              -R $(arg roll2) -P $(arg pitch2) -Y $(arg yaw2)" />
+
+            <!-- 启动定位管理系统 -->
+            <include file="$(find openmover)/launch/modules/localization/localization.launch">
+                <arg name="init_diff_x" value="$(arg x2)" />
+                <arg name="init_diff_y" value="$(arg y2)" />
+                <arg name="init_diff_z" value="$(arg z2)" />
+                <arg name="init_diff_yaw" value="$(arg yaw2)" />
+                <arg name="system_mode" value="$(arg system_mode)" />
+            </include>
+        </group>
+
+        <!-- 启动仿真控制器 -->
+        <node name="simulation_handler" pkg="openmover" type="simulation_handler" output="screen" respawn="true"></node>
+
+        <!-- 外部控制 -->
+        <node name="teleop_handler" pkg="openmover" type="teleop_handler.py" output="screen" respawn="true">
+            <rosparam file="$(env HOME)/openmover_robot/config/hardwares/hardwares.yaml" command="load" />
+            <rosparam file="$(env HOME)/openmover_robot/config/modules/modules.yaml" command="load" />
+        </node>
+    </group>
+
+    <!-- 以下为真机环境使用 -->
+    <group if="$(eval arg('system_mode') == 1)">
+        <!-- 设置参数 -->
+        <arg name="use_sim_time" default="false" />
+
+        <!-- 启动雷达驱动节点 -->
+        <node name="bluesea2_node_forward" pkg="bluesea2" type="bluesea2_node" output="screen" respawn="true">
+            <param name="topic" value="openmover/hardware/lidar_forward/scan" />
+            <param name="frame_id" value="lidar_forward_link" />
+            <param name="logPath" value="/tmp/log" />
+            <param name="raw_bytes" value="3" />
+            <param name="min_dist" value="0.1" />
+            <param name="max_dist" value="50.0" />
+            <param name="zero_shift" value="0" />
+            <param name="from_zero" value="false" />
+            <param name="output_scan" value="true" />
+            <param name="output_cloud" value="false" />
+            <param name="output_360" value="true" />
+            <param name="with_checksum" value="true" />
+            <param name="inverted" value="true" />
+            <param name="reversed" value="false" />
+            <param name="hard_resample" value="false" />
+            <param name="soft_resample" value="false" />
+            <param name="with_angle_filter" value="true" />
+            <param name="min_angle" value="-1.57" />
+            <param name="max_angle" value="1.57" />
+            <param name="error_circle" value="3" />
+            <param name="error_scale" value="0.9" />
+            <param name="type" value="udp" />
+            <param name="lidar_port" value="502" />
+            <param name="local_port" value="6667" />
+            <param name="lidar_ip" value="192.168.100.101" />
+            <param name="group_listener" value="false" />
+            <param name="group_ip" value="224.0.0.11" />
+            <param name="uuid" value="-1" />
+            <param name="rpm" value="900" />
+            <param name="resample_res" value="-1" />
+            <param name="with_smooth" value="true"/>
+            <param name="with_deshadow" value="true" />
+            <param name="alarm_msg" value="-1" />
+            <param name="direction" value="-1" />
+        </node>
+        <node name="bluesea2_node_rear" pkg="bluesea2" type="bluesea2_node" output="screen" respawn="true">
+            <param name="topic" value="openmover/hardware/lidar_rear/scan" />
+            <param name="frame_id" value="lidar_rear_link" />
+            <param name="logPath" value="/tmp/log" />
+            <param name="raw_bytes" value="3" />
+            <param name="min_dist" value="0.1" />
+            <param name="max_dist" value="50.0" />
+            <param name="zero_shift" value="0" />
+            <param name="from_zero" value="false" />
+            <param name="output_scan" value="true" />
+            <param name="output_cloud" value="false" />
+            <param name="output_360" value="true" />
+            <param name="with_checksum" value="true" />
+            <param name="inverted" value="true" />
+            <param name="reversed" value="false" />
+            <param name="hard_resample" value="false" />
+            <param name="soft_resample" value="false" />
+            <param name="with_angle_filter" value="true" />
+            <param name="min_angle" value="-1.57" />
+            <param name="max_angle" value="1.57" />
+            <param name="error_circle" value="3" />
+            <param name="error_scale" value="0.9" />
+            <param name="type" value="udp" />
+            <param name="lidar_port" value="502" />
+            <param name="local_port" value="6668" />
+            <param name="lidar_ip" value="192.168.100.102" />
+            <param name="group_listener" value="false" />
+            <param name="group_ip" value="224.0.0.11" />
+            <param name="uuid" value="-1" />
+            <param name="rpm" value="900" />
+            <param name="resample_res" value="-1" />
+            <param name="with_smooth" value="true"/>
+            <param name="with_deshadow" value="true" />
+            <param name="alarm_msg" value="-1" />
+            <param name="direction" value="-1" />
+        </node>
+
+        <!-- 启动定位管理系统 -->
+        <include file="$(find openmover)/launch/modules/localization/localization.launch">
+            <arg name="system_mode" value="$(arg system_mode)" />
+        </include>
+
+        <!-- 启动机器人驱动节点 -->
+        <node pkg="openmover" type="motor_handler" name="motor_handler" output="screen" respawn="true">
+            <rosparam file="$(env HOME)/openmover_robot/config/hardwares/hardwares.yaml" command="load" />
+            <rosparam file="$(env HOME)/openmover_robot/config/modules/modules.yaml" command="load" />
+        </node>
+        <node pkg="openmover" type="io_board_handler" name="io_board_handler" output="screen" respawn="true">
+            <rosparam file="$(env HOME)/openmover_robot/config/hardwares/hardwares.yaml" command="load" />
+            <rosparam file="$(env HOME)/openmover_robot/config/modules/modules.yaml" command="load" />
+        </node>
+
+        <!-- 外部控制 -->
+        <!-- <node respawn="true" pkg="joy" type="joy_node" name="joy_handler">
+            <remap from="joy" to="openmover/control/joy" />
+            <param name="dev" type="string" value="/dev/input/js0" />
+            <param name="deadzone" value="0.12" />
+        </node>
+        <node name="teleop_handler" pkg="openmover" type="teleop_handler" output="screen"
+            respawn="true">
+            <rosparam file="$(env HOME)/openmover_robot/config/modules/modules.yaml" command="load" />
+        </node> -->
+        
+        <!-- 外部控制 -->
+        <node name="teleop_handler" pkg="openmover" type="teleop_handler.py" output="screen" respawn="true">
+            <rosparam file="$(env HOME)/openmover_robot/config/hardwares/hardwares.yaml" command="load" />
+            <rosparam file="$(env HOME)/openmover_robot/config/modules/modules.yaml" command="load" />
+        </node>
+    </group>
+
+    <!-- 启动障碍检测 -->
+    <node name="obstacle_handler" pkg="openmover" type="obstacle_handler" output="screen">
+        <rosparam file="$(env HOME)/openmover_robot/config/hardwares/hardwares.yaml" command="load" />
+        <rosparam file="$(env HOME)/openmover_robot/config/modules/modules.yaml" command="load" />
+        <remap from="openmover/hardware/lidar/scan/obstacle" to="openmover/hardware/lidar/scan" />
+    </node>
+</launch>

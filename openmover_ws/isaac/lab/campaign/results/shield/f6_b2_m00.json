@@ -1,0 +1,94 @@
+{
+ "map": "f6_b2_m00",
+ "policy": "trained",
+ "shield": true,
+ "seed": 42,
+ "num_envs": 10,
+ "num_steps": 2732,
+ "horizon_s": 135.6,
+ "n_first_episodes": 10,
+ "mean_success": 1.0,
+ "mean_collision": 0.0,
+ "mean_ttg_success": 65.7900016784668,
+ "per_env": [
+  {
+   "env": 0,
+   "reached": true,
+   "penalized": false,
+   "ttg": 56.400001525878906,
+   "yaw0": -2.9868650436401367
+  },
+  {
+   "env": 1,
+   "reached": true,
+   "penalized": false,
+   "ttg": 53.150001525878906,
+   "yaw0": 2.2085108757019043
+  },
+  {
+   "env": 2,
+   "reached": true,
+   "penalized": false,
+   "ttg": 58.650001525878906,
+   "yaw0": 0.9322938323020935
+  },
+  {
+   "env": 3,
+   "reached": true,
+   "penalized": false,
+   "ttg": 56.25,
+   "yaw0": -2.3451144695281982
+  },
+  {
+   "env": 4,
+   "reached": true,
+   "penalized": false,
+   "ttg": 78.0,
+   "yaw0": 0.8671494126319885
+  },
+  {
+   "env": 5,
+   "reached": true,
+   "penalized": false,
+   "ttg": 62.45000076293945,
+   "yaw0": -2.87681245803833
+  },
+  {
+   "env": 6,
+   "reached": true,
+   "penalized": false,
+   "ttg": 72.45000457763672,
+   "yaw0": -2.5592081546783447
+  },
+  {
+   "env": 7,
+   "reached": true,
+   "penalized": false,
+   "ttg": 60.54999923706055,
+   "yaw0": -0.4011094868183136
+  },
+  {
+   "env": 8,
+   "reached": true,
+   "penalized": false,
+   "ttg": 67.05000305175781,
+   "yaw0": 1.4353032112121582
+  },
+  {
+   "env": 9,
+   "reached": true,
+   "penalized": false,
+   "ttg": 92.95000457763672,
+   "yaw0": -2.1098320484161377
+  }
+ ],
+ "shield_stats": {
+  "shield": 15663,
+  "hyst": 12165,
+  "escape": 1203,
+  "retreat": 1087,
+  "pin": 57,
+  "oob": 0,
+  "steps": 27320
+ }
+}

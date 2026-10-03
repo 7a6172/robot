@@ -1,0 +1,30 @@
+{
+ "map": "f1_b0_m01",
+ "policy": "astar_dwa",
+ "shield": true,
+ "seed": 43,
+ "num_envs": 4,
+ "num_steps": 300,
+ "horizon_s": 98.08,
+ "n_first_episodes": 0,
+ "mean_success": null,
+ "mean_collision": null,
+ "mean_ttg_success": null,
+ "per_env": [],
+ "baseline_stats": {
+  "plan": 57,
+  "replan": 53,
+  "dwa_reject": 0,
+  "stuck": 0,
+  "steps": 1200
+ },
+ "shield_stats": {
+  "shield": 949,
+  "hyst": 326,
+  "escape": 600,
+  "retreat": 600,
+  "pin": 0,
+  "oob": 594,
+  "steps": 1200
+ }
+}

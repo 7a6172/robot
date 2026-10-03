@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build Guide — OpenMover ROS 2</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand"><span class="logo"></span>OpenMover&nbsp;ROS&nbsp;2</span>
+  <a href="index.html">Index</a>
+  <a href="getting_started.html">Getting Started</a>
+  <a href="build.html" class="active">Build</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="packages.html">Packages</a>
+  <a href="usage.html">Usage</a>
+  <a href="hardware.html">Hardware</a>
+  <a href="audit.html">Audit</a>
+  <a href="changelog.html">Changelog</a>
+</nav>
+
+<div class="wrap">
+  <div class="page-head">
+    <span class="kicker">Step by step</span>
+    <h1>Build Guide</h1>
+    <p class="lede">
+      How to build, rebuild and test the workspace on <em>any</em> machine. The only
+      machine-specific decision is the build parallelism, which depends on your RAM &mdash;
+      pick your tier below, or let <code>tools/setup.sh</code> pick it for you.
+    </p>
+  </div>
+
+  <div class="toc">
+    <h3>Contents</h3>
+    <ol>
+      <li><a href="#tier">1. Choose your parallelism tier</a></li>
+      <li><a href="#build">2. Build the workspace</a></li>
+      <li><a href="#symlink">3. What symlink-install means</a></li>
+      <li><a href="#rebuild">4. Rebuilding</a></li>
+      <li><a href="#test">5. Testing</a></li>
+      <li><a href="#trouble">Troubleshooting</a></li>
+    </ol>
+  </div>
+
+  <h2 id="tier">1. Choose your parallelism tier</h2>
+  <p>
+    The C++ packages here (costmaps, planners, relocalization) are memory-hungry translation
+    units. Compiler parallelism must be sized to RAM or the kernel's OOM handling will freeze
+    the machine:
+  </p>
+  <table>
+    <tr><th style="width:150px;">RAM</th><th style="width:330px;">Build flags</th><th>Notes</th></tr>
+    <tr>
+      <td>&ge; 32 GB</td>
+      <td><code>--parallel-workers $(nproc)</code><br>no <code>MAKEFLAGS</code> cap needed</td>
+      <td>Full parallel build is safe.</td>
+    </tr>
+    <tr>
+      <td>16&ndash;31 GB</td>
+      <td><code>MAKEFLAGS="-j2" CMAKE_BUILD_PARALLEL_LEVEL=2</code><br>
+          <code>--parallel-workers 2</code></td>
+      <td>The proven setting &mdash; full parallelism has hard-frozen 16&nbsp;GB hosts during
+      development.</td>
+    </tr>
+    <tr>
+      <td>8&ndash;15 GB</td>
+      <td><code>MAKEFLAGS="-j1" CMAKE_BUILD_PARALLEL_LEVEL=1</code><br>
+          <code>--parallel-workers 1</code></td>
+      <td>Build works; run Gazebo only with <code>headless:=true</code> and close everything
+      else.</td>
+    </tr>
+    <tr>
+      <td>&lt; 8 GB</td>
+      <td>&mdash;</td>
+      <td>Not recommended: the simulation itself needs ~10&nbsp;GB together with RViz.</td>
+    </tr>
+  </table>
+  <div class="tip">
+    <span class="tag">Automatic</span>
+    <div><p><code>bash tools/setup.sh</code> reads <code>/proc/meminfo</code>, proposes the
+    matching tier, and lets you override it before building.</p></div>
+  </div>
+
+  <h2 id="build">2. Build the workspace</h2>
+  <p>From the workspace root (the directory containing <code>src/</code>):</p>
+<pre><code><span class="cmt"># source ROS first</span>
+<span class="cmd">source /opt/ros/jazzy/setup.bash</span>
+
+<span class="cmt"># example for a 16 GB host — substitute your tier's flags</span>
+<span class="cmd">MAKEFLAGS="-j2" CMAKE_BUILD_PARALLEL_LEVEL=2 \
+    colcon build --symlink-install --parallel-workers 2</span>
+
+<span class="cmt"># activate the workspace in this shell (also add to ~/.bashrc)</span>
+<span class="cmd">source install/setup.bash</span></code></pre>
+  <p>Build a single package (and its dependencies) instead of everything:</p>
+<pre><code><span class="cmd">colcon build --symlink-install --packages-up-to warehouse_simulation</span></code></pre>
+
+  <h2 id="symlink">3. What symlink-install means</h2>
+  <p>
+    <code>--symlink-install</code> installs interpreted files (YAML configs, launch files,
+    URDF, Python scripts) as symlinks instead of copies. Editing them in <code>src/</code>
+    takes effect immediately &mdash; no rebuild needed. This is how runtime configs under
+    <code>src/openmover/config_defaults/</code> stay live-editable.
+  </p>
+
+  <h2 id="rebuild">4. Rebuilding</h2>
+  <table>
+    <tr><th style="width:330px;">You changed&hellip;</th><th>Action</th></tr>
+    <tr><td>YAML / launch / URDF / Python scripts</td><td>Nothing &mdash; symlinked (see above)</td></tr>
+    <tr><td>C/C++ sources or headers</td><td><code>colcon build --packages-select &lt;pkg&gt;</code></td></tr>
+    <tr><td><code>CMakeLists.txt</code> flags or <code>package.xml</code></td>
+        <td><code>colcon build --packages-select &lt;pkg&gt; --cmake-clean-cache</code></td></tr>
+    <tr><td>Everything (fresh start)</td>
+        <td><code>rm -rf build install log</code> then the full build command. Only
+        <code>src/</code> and <code>tools/</code> are needed to rebuild.</td></tr>
+  </table>
+
+  <h2 id="test">5. Testing</h2>
+  <p>The workspace ships tests for the simulation package (bridge config, world file, launch
+  sanity):</p>
+<pre><code><span class="cmd">colcon test --packages-select warehouse_simulation</span>
+<span class="cmd">colcon test-result --verbose</span></code></pre>
+  <p>A full simulation smoke test is described in <a href="usage.html">Usage</a>.</p>
+
+  <h2 id="trouble">Troubleshooting</h2>
+  <table>
+    <tr><th style="width:330px;">Symptom</th><th>Cause / fix</th></tr>
+    <tr><td>Machine freezes during build</td>
+        <td>Too much parallelism for your RAM. Reboot, drop one tier
+        (<a href="#tier">table above</a>), rebuild.</td></tr>
+    <tr><td><code>colcon: command not found</code></td>
+        <td><code>sudo apt install python3-colcon-common-extensions</code>, and make sure
+        <code>/opt/ros/jazzy/setup.bash</code> is sourced.</td></tr>
+    <tr><td>CMake cannot find <code>osqp</code></td>
+        <td>OSQP is not in Ubuntu 24.04 apt. Build it from <code>tools/osqp_build</code>
+        (<a href="getting_started.html#osqp">Getting Started, step 5</a>) or run
+        <code>sudo bash tools/install_deps.sh</code>.</td></tr>
+    <tr><td>Package stops finding a renamed/added dependency</td>
+        <td>Delete that package's <code>build/&lt;pkg&gt;</code> folder and rebuild with
+        <code>--cmake-clean-cache</code>.</td></tr>
+    <tr><td>Gazebo fails to start after a crash</td>
+        <td>Stale session: <code>pkill -f "gz sim"; pkill -f ruby</code>, then retry
+        (see <a href="usage.html">Usage</a>).</td></tr>
+  </table>
+</div>
+
+</body>
+</html>

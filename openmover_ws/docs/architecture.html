@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture — OpenMover ROS 2</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand"><span class="logo"></span>OpenMover&nbsp;ROS&nbsp;2</span>
+  <a href="index.html">Index</a>
+  <a href="getting_started.html">Getting Started</a>
+  <a href="build.html">Build</a>
+  <a href="architecture.html" class="active">Architecture</a>
+  <a href="packages.html">Packages</a>
+  <a href="usage.html">Usage</a>
+  <a href="hardware.html">Hardware</a>
+  <a href="audit.html">Audit</a>
+  <a href="changelog.html">Changelog</a>
+</nav>
+
+<div class="wrap">
+  <div class="page-head">
+    <span class="kicker">System Design</span>
+    <h1>Architecture</h1>
+    <p class="lede">How the migrated system is organized: the two stacks, the runtime
+    orchestration (HAL + mode servers + launch manager), the node/topic/TF layout, and the
+    design patterns used to replace ROS&nbsp;1-isms.</p>
+  </div>
+
+  <h2>The two stacks</h2>
+  <p>The workspace contains two independent, runnable stacks that share message and toolbox
+  packages. Both preserve the ROS&nbsp;1 topic, service, TF-frame, and parameter names so
+  behavior stays directly comparable with the original.</p>
+
+  <div class="cols">
+    <div>
+      <h3>1. Robot core — <code>openmover</code></h3>
+      <ul>
+        <li>HAL / workload orchestration (Python)</li>
+        <li>5 mode servers that start/stop launch subtrees at runtime</li>
+        <li>Hardware drivers (motor, IO board, simulation)</li>
+        <li>Cartographer SLAM &amp; localization</li>
+        <li>Custom navigation stack (costmap-as-library)</li>
+        <li>Auto-mapping (frontier exploration) + relocalization toolboxes</li>
+      </ul>
+    </div>
+    <div>
+      <h3>2. Warehouse demo — <code>warehouse_simulation</code></h3>
+      <ul>
+        <li>Gazebo Harmonic world (workcell + bins + 2 walking actors)</li>
+        <li>Pioneer3DX model with gz diff-drive + gpu_lidar</li>
+        <li>ros_gz_bridge for clock / scan / odom / cmd_vel / tf</li>
+        <li>slam_toolbox async mapping (replaces gmapping)</li>
+        <li>Nav2 full stack (replaces move_base)</li>
+        <li>trajectory_server + cmd_vel watchdog + key teleop</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Robot core: runtime orchestration</h2>
+  <p>The entry point is <code>workload.launch.py</code>, which includes
+  <code>bootloader.launch.py</code> and starts the business-orchestration node
+  <code>workload.py</code>. The bootloader starts the mode servers, visualization, the
+  hardware bring-up, and rosbridge.</p>
+
+<pre><code>workload.launch.py
+├── bootloader.launch.py
+│    ├── func_mode_server_handler.py      (mode switching, rviz config hot-swap)
+│    ├── rviz2                            (idle.rviz; remaps initialpose/goal)
+│    ├── hardwares/bringup.launch.py      (robot_state_publisher, static TF,
+│    │                                     laser merger, obstacle_handler, drivers)
+│    └── rosbridge_websocket (port 8080)
+└── workload.py                           (HAL: cli/hal/protocol, drives the flow)
+</code></pre>
+
+  <h3>Mode servers &amp; the launch manager</h3>
+  <p>Five Python servers dynamically start/stop launch subtrees at runtime. In ROS&nbsp;1 they
+  used the <code>roslaunch</code> Python API; in ROS&nbsp;2 that API does not exist, so a
+  subprocess-based launch manager was introduced
+  (<code>openmover/scripts/launch_manager.py</code>). It wraps
+  <code>subprocess.Popen(["ros2","launch",...])</code> with start / stop (process-group kill +
+  grace period) / restart / liveness. The servers keep their exact ROS&nbsp;1 service
+  interfaces and parameter names.</p>
+  <table>
+    <tr><th>Server</th><th>Responsibility</th></tr>
+    <tr><td><code>func_mode_server_handler</code></td><td>Switch between mapping / navigation / load-map apps; manage rviz config &amp; saving maps</td></tr>
+    <tr><td><code>nav_area_server_handler</code></td><td>Select navigation area</td></tr>
+    <tr><td><code>localization_mode_server_handler</code></td><td>Switch localization mode</td></tr>
+    <tr><td><code>cartographer_server_handler</code></td><td>Start/stop cartographer mapping/localization</td></tr>
+    <tr><td><code>reset_server_handler</code></td><td>System reset / work-mode</td></tr>
+  </table>
+
+  <h3>HAL layer</h3>
+  <p><code>workload.py</code> together with <code>hal/</code> (<code>cli.py</code>,
+  <code>hal.py</code>, <code>protocol.py</code>, <code>config.py</code>, <code>symbols.py</code>,
+  <code>logger.py</code>, <code>utils.py</code>) orchestrates the whole robot through services.
+  Key services preserved from ROS&nbsp;1:</p>
+<pre><code>openmover/server/set_func_mode
+openmover/server/set_localization_mode
+openmover/server/set_nav_area
+openmover/navigation/request            openmover/navigation/simple_request
+openmover/mapping/auto_mapping/request
+openmover/relocalization/request        openmover/localization/initialpose/request
+openmover/driver/playsound/request      openmover/control/cmd_vel_mode/request
+openmover/manager/flow/action           openmover/manager/flow/state
+</code></pre>
+
+  <h2>Robot core: functional chains</h2>
+  <h3>Localization</h3>
+  <p><code>motor_handler</code> / <code>simulation_handler</code> publish odometry to
+  <code>localization_handler</code>, which fuses pose and broadcasts the
+  <code>odom&rarr;base_link</code> TF. Cartographer supplies the corrected pose via
+  <code>tracked_pose</code> (remapped to <code>pose_aft_mapped</code>) and the
+  <code>map&rarr;odom</code> TF. <code>localization_confidence_handler</code> scores scan-vs-map;
+  <code>relocalization_2d_handler</code> provides global relocalization.</p>
+
+  <h3>Mapping</h3>
+  <p>Cartographer (mapping.lua) builds the map; <code>auto_mapping_handler</code> explores
+  frontiers using its own costmap + Dijkstra/OSQP planner; <code>navigation_handler</code>
+  executes the generated paths. Saving uses cartographer <code>WriteState</code>
+  (<code>.pbstream</code>) plus <code>nav2_map_server map_saver_cli</code> (pgm/yaml).</p>
+
+  <h3>Navigation</h3>
+  <p><code>navigation_handler</code> is the largest node (~50 parameters). It uses
+  <code>nav2_costmap_2d::Costmap2DROS</code> as a library (two instances:
+  <code>global_costmap</code> and <code>global_costmap_static</code>), a custom local planner
+  (mover / path_follower / path_checker / collision_checker), and exposes
+  <code>nav_msgs/srv/GetPlan</code> at
+  <code>openmover/navigation/global_planner/make_plan</code> (the former orphan
+  <code>global_planner_handler</code> merged in).</p>
+
+  <h2>Warehouse demo: node graph</h2>
+<pre><code>warehouse_simulation.launch.py
+├── gz sim (warehouse.sdf)              <span class="cmt"># Gazebo Harmonic server + GUI</span>
+├── robot_state_publisher               <span class="cmt"># pioneer3dx.urdf.xacro</span>
+├── ros_gz_bridge                       <span class="cmt"># config/gz_bridge.yaml</span>
+├── ros_gz_sim spawn (gz_spawn_model)   <span class="cmt"># topic /robot_description, entity pioneer3dx</span>
+├── slam_toolbox (online_async)         <span class="cmt"># config/slam_toolbox.yaml</span>
+├── nav2_bringup navigation_launch.py   <span class="cmt"># config/nav2_params.yaml, autostart</span>
+├── trajectory_server.py                <span class="cmt"># map&rarr;base path history @10 Hz</span>
+├── cmd_vel_watchdog.py                 <span class="cmt"># zero-velocity after 0.4 s idle</span>
+└── rviz2                               <span class="cmt"># rviz/navigation.rviz</span>
+
+<span class="cmt"># run separately to drive:</span>
+ros2 run warehouse_simulation key_control
+</code></pre>
+
+  <h3>Pedestrian avoidance (perception-based)</h3>
+  <div class="tip">
+    <span class="tag">Design</span>
+    <div>
+      <p>The two walking actors in <code>warehouse.sdf</code> have <strong>no physics collision
+      proxy</strong>. Gazebo Harmonic actors are visual-only. Instead the robot perceives them:
+      the LiDAR returns hits on the actor mesh &rarr; they appear in the local costmap as
+      obstacles &rarr; Nav2 stops / waits and resumes after the actor clears the path. This matches
+      how the real robot avoids a moving person. An earlier “proxy box” approach was
+      <a href="changelog.html#proxy">removed</a> as a simulation-only hack.</p>
+    </div>
+  </div>
+
+  <h2>Key topics</h2>
+  <table>
+    <tr><th>Topic</th><th>Type</th><th>Producer</th><th>Notes</th></tr>
+    <tr><td><code>/clock</code></td><td>rosgraph_msgs/Clock</td><td>gz bridge</td><td>sim time</td></tr>
+    <tr><td><code>/scan</code></td><td>sensor_msgs/LaserScan</td><td>gz bridge</td><td>demo lidar</td></tr>
+    <tr><td><code>/odom</code></td><td>nav_msgs/Odometry</td><td>gz diff-drive</td><td>demo odometry</td></tr>
+    <tr><td><code>/cmd_vel</code></td><td>geometry_msgs/Twist</td><td>key_control / Nav2</td><td>to gz</td></tr>
+    <tr><td><code>/map</code></td><td>nav_msgs/OccupancyGrid</td><td>slam_toolbox</td><td>demo map</td></tr>
+    <tr><td><code>openmover/hardware/lidar_forward/scan</code></td><td>LaserScan</td><td>bluesea2 / merger input</td><td>robot core</td></tr>
+    <tr><td><code>openmover/hardware/lidar_rear/scan</code></td><td>LaserScan</td><td>bluesea2 / merger input</td><td>robot core</td></tr>
+    <tr><td><code>openmover/hardware/lidar/scan</code></td><td>LaserScan</td><td>ira_laser_tools merger</td><td>merged 360&deg;</td></tr>
+    <tr><td><code>openmover/mapping/map</code></td><td>OccupancyGrid</td><td>cartographer / map_server</td><td>robot core map</td></tr>
+    <tr><td><code>openmover/localization/pose</code></td><td>PoseStamped</td><td>localization_handler</td><td>fused pose</td></tr>
+    <tr><td><code>openmover/control/cmd_vel</code></td><td>Twist</td><td>navigation/teleop</td><td>robot motion</td></tr>
+    <tr><td><code>openmover/navigation/state</code></td><td>NavToState</td><td>navigation_handler</td><td>transient_local</td></tr>
+  </table>
+
+  <h2>TF tree</h2>
+<pre><code>map &rarr; odom &rarr; base_link &rarr; lidar_link
+                     &#9492;&rarr; lidar_forward_link
+                     &#9492;&rarr; lidar_rear_link
+                     &#9492;&rarr; wheel_left_link / wheel_right_link / ball_*_link
+</code></pre>
+  <p>Static transform <code>base_link&rarr;lidar_link</code> is published by
+  <code>static_transform_publisher</code> in bring-up. Cartographer provides
+  <code>map&rarr;odom</code>; localization provides <code>odom&rarr;base_link</code>.</p>
+
+  <h2>Cross-cutting migration patterns</h2>
+  <table>
+    <tr><th style="width:260px;">ROS 1</th><th>ROS 2 replacement</th></tr>
+    <tr><td><code>roscpp</code>/<code>rospy</code></td><td><code>rclcpp</code>/<code>rclpy</code></td></tr>
+    <tr><td><code>tf</code> (tf1)</td><td><code>tf2_*</code></td></tr>
+    <tr><td>latched publishers</td><td><code>DurabilityPolicy.TRANSIENT_LOCAL</code>, depth 1</td></tr>
+    <tr><td>sensor streams</td><td><code>rclcpp::SensorDataQoS</code></td></tr>
+    <tr><td><code>ros::topic::waitForMessage</code></td><td><code>topic_utils.hpp</code> helper (one-shot sub + spin)</td></tr>
+    <tr><td><code>dynamic_reconfigure</code></td><td>declared parameters + set-callback</td></tr>
+    <tr><td><code>sensor_msgs/PointCloud</code></td><td><code>PointCloud2</code></td></tr>
+    <tr><td><code>navfn/MakeNavPlan</code></td><td><code>nav_msgs/srv/GetPlan</code></td></tr>
+    <tr><td><code>roslaunch</code> Python API</td><td>subprocess launch manager</td></tr>
+    <tr><td>catkin</td><td>ament/colcon + explicit <code>install()</code> rules</td></tr>
+    <tr><td>Classic Gazebo plugins</td><td>gz-sim8 systems + <code>ros_gz_bridge</code></td></tr>
+    <tr><td><code>map_server</code>/<code>map_saver</code></td><td><code>nav2_map_server</code> (<code>map_server</code> lifecycle node + <code>map_saver_cli</code>)</td></tr>
+  </table>
+
+</div>
+
+<footer>OpenMover ROS 2 Jazzy migration &middot; Architecture &middot; self-contained (no external assets)</footer>
+</body>
+</html>

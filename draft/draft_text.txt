@@ -1,0 +1,372 @@
+     Neuro-Mathematical Transfer Engine (NMTE):
+   A Mathematical Framework for Cross-Embodiment
+     Sim-to-Real Adaptation in Industrial Robotics
+                                       Given Name Surname                 Given Name Surname
+                                   dept. name of organization (of     dept. name of organization (of
+                                            Affiliation)                       Affiliation)
+                                     name of organization (of           name of organization (of
+                                            Affiliation)                       Affiliation)
+                                           City, Country                      City, Country
+                                     email address or ORCID             email address or ORCID
+
+
+    Abstract—The deployment of robotic arms and quadrupedal           Engine (NMTE)," a unified mathematical framework utilizing
+robots in dynamic industrial environments—such as high-               functional analysis and optimal transport to automate cross-
+throughput warehouses and unpredictable railway tracks—hinges         embodiment sim-to-real adaptation safely and efficiently.
+on the efficacy of sim-to-real transfer learning. Despite
+advancements in Deep Reinforcement Learning (DRL) and                    II. RESEARCH GAPS IN SIM-TO-REAL TRANSFER
+domain randomization, transferring policies across disparate
+                                                                         Our review of recent literature identifies five interconnected
+physical realities and kinematic embodiments remains a critical
+bottleneck. This paper extends the analysis of contemporary
+                                                                      gaps preventing scalable industrial deployment:
+research gaps to propose the mathematical architecture of a "         A. Gap 1: Zero-Shot Sim-to-Real Transfer in High-Precision,
+Neuro-Mathematical Transfer Engine (NMTE)." By integrating               Contact-Rich Manipulation
+Koopman Operator Theory for invariant dynamics modeling,
+Gromov-Wasserstein Optimal Transport for cross-embodiment                In modern warehouses, robotic arms are frequently tasked
+latent alignment, and Disturbance Observer-based Control              with complex object stacking, bin picking, and shelf placement.
+Barrier Functions (CBFs) for certifiable safety, we formulate a       Transferring these contact-rich manipulation skills from
+comprehensive research problem. The proposed transfer engine          simulation to reality without extensive real-world fine-tuning
+provides a theoretically grounded framework to bridge the             remains elusive.
+persistent reality gap while adhering to edge-compute constraints.
+                                                                          He et al. [1] recently demonstrated that applying Transfer
+   Keywords—Transfer Learning, Sim-to-Real, Optimal Transport,        Learning (TL) to evolutionary algorithms (specifically
+Koopman Operator, Control Barrier Functions, Cross-Embodiment.        iCEM+TL) can improve success rates in low-level motion
+                                                                      planning by up to 23%. However, the same study [1] reveals that
+                       I. INTRODUCTION                                their zero-shot transfer framework struggles significantly in
+    The integration of intelligent robotic systems in unstructured    complex geometric scenarios requiring sliding and tight shelf
+domains requires rapid, generalized decision-making. While            placement, highlighting a persistent gap in modeling hard-
+training Deep Reinforcement Learning (DRL) policies in                contact dynamics.
+physics simulators effectively circumvents the cost of real-world         Similarly, Saad et al. [2] proposed integrating Large
+data collection, transferring these policies to physical hardware     Language Models (LLMs) with RL to bridge high-level
+introduces a severe degradation in performance, known as the          reasoning and low-level control. Although their framework
+"reality gap" [7], [11]. In warehouse logistics and railway           achieved a 33.5% decrease in task completion time for a Franka
+inspection, robots face dynamic loads, unpredictable friction,        Emika Panda arm [2], the authors explicitly note in [2] that direct
+and highly variable terrain constraints that invalidate standard      sim-to-real transfer of the RL-driven low-level control remains
+simulated approximations [8], [15].                                   a severe bottleneck due to unpredictable friction.
+     Traditional sim-to-real techniques largely rely on Domain            Furthermore, Ding [3] highlights that applying pure DRL to
+Randomization (DR) and task-specific fine-tuning [7], [9].            a 6-DoF robotic arm suffers from convergence instability and
+However, as noted by Jaquier et al. [11], empirical heuristics        sparse rewards in high-dimensional spaces. While [3] utilizes
+scale poorly across heterogeneous robot fleets. The necessity to      stepwise reward shaping combined with Inverse Kinematics
+manually retune policies for every new embodiment (e.g., from         (IK) to mitigate this, the methodology still requires deterministic
+a 6-DoF robotic arm to a quadrupedal manipulator) represents a        environmental assumptions. To enhance physical realism,
+major barrier to multi-robot orchestration [1], [12]. To resolve      Elseiagy et al. [8] showed that automated dataset generation
+these limitations, this paper first synthesizes prevailing research   utilizing Transformers can improve dynamic parameter
+gaps from state-of-the-art literature (2023–2026). Subsequently,      estimation. Yet, as acknowledged in [8], computing these
+it proposes the development of a " Neuro-Mathematical Transfer        dynamic parameters in real-time during contact-rich tasks
+imposes heavy latency. Thus, a fundamental gap remains in                 Zhang [11] illustrates the use of transfer learning with an
+achieving reliable zero-shot transfer for high-precision, contact-    enhanced YOLOv8 algorithm to improve keypoint detection on
+rich manipulation without latency-inducing dynamic parameter          lightweight robotic arms, achieving a 3.8% mAP increase.
+recalculations [1], [3], [8].                                         While [11] successfully extracts generalized features from a
+                                                                      human pose dataset to a robotic arm, applying this visual-spatial
+B. Gap 2: Dynamic Task-Invariant Feature Extraction for               intuition to a quadruped's perception module has not been
+    Locomotion on Degraded Terrains                                   explored. Saad et al. [2] mention that multi-robot scalability is
+    Quadruped robots deployed for railway inspection and              the next frontier for LLM-enhanced RL; however, a parameter-
+construction site monitoring face continuously shifting terrains      efficient mathematical bridge that aligns the latent spaces of a
+(e.g., loose ballast, mud, rubble). Most domain adaptation            quadruped's locomotion policy [15] with an arm's manipulation
+techniques rely heavily on static domain randomization.               policy [11] is currently missing from the literature [2], [7].
+    Shakerimov et al. [6] demonstrate that while domain               D. Gap 4: Certifiable Safety Guarantees in Continuous Sim-
+randomization helps, the direct transition to the real world             to-Real Domain Adaptation
+causes a "distributional shift" problem, leading to erroneous Q-         Safety is paramount when deploying robots in environments
+value estimations. To combat this, [6] suggests hybrid fine-          shared with humans, such as active railways and collaborative
+tuning on the target domain; however, this negates the benefits       warehouses. Transfer learning often acts as a "black box,"
+of pure simulation training.                                          making it difficult to guarantee safety post-adaptation.
+   Attempting to circumvent this, Liang et al. [4] introduce the          A 2025 comprehensive review in Robotics [9] explicitly
+DreamTIP framework, which extracts "Task-Invariant                    identifies that ensuring neural policies can recover from
+Properties" (such as contact stability and terrain clearance) using   perturbations without compromising safety is a "pressing
+a Dreamer world model. Although DreamTIP successfully                 research direction," especially because current learning-based
+masks dynamic variations [4], the reliance on Large Language          locomotion lacks verifiable safety guarantees. The review [9]
+Models to identify these properties [4] introduces a high             stresses that reachability analysis and SMT solvers scale poorly
+dependency on visual pre-processing, which fails under visually       to high-dimensional quadruped policies.
+degraded conditions.
+                                                                          Cruz Ulloa et al. [10] deployed quadruped robots in
+    Exploring non-visual modalities, de Kam et al. [5] utilize        unpredictable Search and Rescue (SAR) and post-disaster
+tactile suction-cup feet on a soft quadruped, demonstrating a         scenarios, focusing on maximizing efficiency. Yet, [10]
+91% forward speed increase on inclines using closed-loop tactile      highlights that finding optimal operational solutions often comes
+feedback. Yet, the authors in [5] note that transferring tactile
+                                                                      at the cost of bounding the robot's unpredictable exploratory
+force estimates from simulation is exceptionally noisy. Su et al.     actions.
+[13] approach the problem mathematically, demonstrating that
+leveraging morphological symmetries in RL can dramatically                To inject stability, Bellegarda and Ijspeert [14] developed
+stabilize legged locomotion. Nevertheless, unstructured terrains      CPG-RL, successfully merging biologically inspired Central
+inherently break these symmetrical assumptions [13].                  Pattern Generators (CPGs) with RL. While CPG-RL provides
+Consequently, there is a critical gap in developing multi-modal       excellent inductive biases for rhythmic stability [14], it does not
+(tactile-proprioceptive) task-invariant feature extractors that do    inherently prevent unsafe joint torques during sudden sim-to-
+not rely on perfect symmetrical priors [13] or noise-free             real domain shifts. Ding [3] attempted to solve safety in arms
+simulation data [5], [6].                                             through stepwise reward shaping, implicitly teaching the agent
+                                                                      safe boundaries. However, reward shaping [3] does not offer
+C. Gap 3: Parameter-Efficient Cross-Embodiment                        mathematical safety certification. Therefore, establishing
+    Representation Learning                                           "certifiable" Source-Free Domain Adaptation (SFDA) that
+    A modern logistics hub utilizes a heterogeneous fleet of          mathematically guarantees constraint satisfaction during real-
+robots, ranging from fixed manipulators to quadrupedal                time domain shifts remains an open problem [9], [10], [14].
+inspectors. Currently, policies are trained in silos.
+                                                                      E. Gap 5: Energy-Aware and Compute-Constrained Transfer
+    Jaquier et al. [7] point out that the robotics community             Learning on Edge Devices
+urgently needs "cross-embodiment" datasets to train models that          Industrial robots, particularly autonomous quadrupeds and
+can master various embodiments. Unfortunately, [7] notes that         mobile manipulators, operate under strict battery and edge-
+aligning features between drastically different kinematic chains      compute constraints. Modern transfer learning methods are
+(e.g., an arm vs. a quadruped) is an unresolved mathematical          heavily over-parameterized.
+challenge.
+                                                                          A 2026 review by Patrashko and Gurau [12] reveals that only
+    Addressing system-level architectures, the authors of             23% of machine learning-powered robotic inspection systems
+NavRL++ [15] achieved zero-shot sim-to-real transfer across           achieve full industrial deployment. The study [12] attributes this
+both aerial and legged robots for navigation tasks. However, as       largely to the massive labeled data and computational power
+noted in [15], while navigation features transfer reasonably well,    required to process complex unstructured patterns on the edge.
+this system-level framework fails to transfer fine-grained
+manipulation or interaction features.                                     Zhang [11] sought to resolve edge limitations by drastically
+                                                                      reducing floating-point operations in YOLOv8, proving that
+                                                                      transfer learning can make models more suitable for
+environments with limited computational capacity. Despite this            In our Transfer Engine, K is learned entirely in simulation to
+success in vision [11], applying similar computational pruning        represent the pure "task dynamics" (e.g., maintaining a stable
+to continuous control policies remains difficult.                     gait or tracking a manipulation trajectory) [18]. During real-
+                                                                      world deployment, K remains frozen. We only fine-tune the
+    Furthermore, while He et al. [1] focus on "sample-efficient"
+                                                                      comparatively lightweight observation encoder 𝑔𝜃 (𝑥) using
+planning, sample efficiency in simulation does not equate to
+                                                                      real-world sensory inputs [27], [28]. By restricting the sim-to-
+"energy-efficient" execution on physical hardware [1]. For
+                                                                      real fine-tuning to the lifting function 𝑔𝜃 , the Transfer Engine
+instance, de Kam et al. [5] utilized pneumatic actuators on a soft
+                                                                      absorbs real-world contact variations (e.g., sliding friction, loose
+quadruped, but mapping neural commands to hardware without
+                                                                      ballast) without requiring recalculation of the core policy [18],
+optimizing for pneumatic energy loss resulted in rapid battery
+                                                                      [27].
+drain [5]. Similarly, Elseiagy et al. [8] relied on computationally
+heavy Transformer models for dynamic parameter learning,              B. Optimal Transport for Cross-Embodiment Latent
+which [8] admits is difficult to run continuously on a mobile             Alignment (Gap 3)
+robot's onboard CPU. The literature critically lacks frameworks
+                                                                          To enable zero-shot skill transfer between heterogeneous
+that jointly optimize for sim-to-real task success and real-time
+                                                                      robots (e.g., a manipulator arm identifying tasks for a quadruped
+physical energy consumption within edge-compute constraints
+                                                                      [1], [25]), the Transfer Engine maps incompatible state-action
+[5], [11], [12].                                                      spaces into a shared morphological-agnostic manifold.
+III. ARCHITECTURE OF THE NEURO-MATHEMATICAL TRANSFER                      We model the source embodiment (simulation/arm) and
+                      ENGINE (NMTE)                                   target embodiment (reality/quadruped) as metric measure spaces
+    A critical limitation of standard Deep Reinforcement              (𝑋, 𝑑𝑋 , 𝜇𝑆 ) and (𝑌, 𝑑𝑌 , 𝜇 𝑇 ) respectively. Standard domain
+Learning (DRL) in sim-to-real transfer is its "black-box" nature,     adaptation fails because the state vectors possess different
+which relies purely on data-driven approximations and lacks           dimensions [15]. Thus, the engine utilizes the Gromov-
+out-of-distribution   guarantees.     Conversely,      traditional    Wasserstein (GW) Optimal Transport distance, which aligns the
+mathematical control theory fails in unstructured environments        topological structure of the metric spaces rather than absolute
+because it cannot process high-dimensional sensory data (e.g.,        coordinates [1], [15]. The GW distance minimizes the cost over
+LiDAR, vision).                                                       all possible couplings 𝜋 ∈ 𝛱(𝜇𝑆 , 𝜇 𝑇 ):
+    To address the aforementioned gaps, the proposed Neuro-                𝒲𝐺𝑊 (𝜇𝑆 , 𝜇 𝑇 ) = inf ∫    ∫ |𝑑𝒳 (𝑥, 𝑥′)
+Mathematical Transfer Engine (NMTE) bridges this divide by                                     𝜋  𝒳×𝒴 𝒳×𝒴
+utilizing "Math-Guided Neural Networks." In this architecture,                                              2
+                                                                                               − 𝑑𝒴 (𝑦, 𝑦′)| 𝑑𝜋(𝑥, 𝑦) 𝑑𝜋(𝑥′, 𝑦′)
+Deep Neural Networks are strictly utilized as high-dimensional
+feature extractors and state-encoders, processing unstructured            By minimizing WGW during pre-training, the Transfer
+warehouse perception. However, rather than allowing the neural        Engine establishes a bijective mapping 𝛤: 𝑋 → 𝑌 between the
+network to predict outputs blindly, the network’s latent              latent skill primitives [15], [23]. A policy synthesized for an arm
+representations and final actions are constrained by rigorous         extracting a package can thus be mathematically projected onto
+mathematical priors (Optimal Transport, Koopman Dynamics,             a quadruped utilizing a mobile manipulator, sharing universal
+and Control Barrier Functions). This hybrid paradigm ensures          manipulation behaviors without redundant re-training [1], [25].
+that the flexibility and scalability of Deep Learning are
+preserved, while the actual physical execution remains                C. Disturbance-Observer Control Barrier Functions for
+mathematically certifiable and physically bounded. This engine           Safety (Gap 4)
+decouples task intention from morphological and physical                 Safety certification breaks down during sim-to-real transfer
+constraints, dynamically bridging the sim-to-real domain shift        due to unmodeled dynamics [16], [17]. If a quadruped operating
+through rigorous mathematical priors [1], [18], [24].                 in a railway slips, its standard DRL policy cannot formally
+                                                                      guarantee non-collision.
+A. Koopman Operator Theory for Task-Invariant Dynamics
+    (Gaps 1 & 2)                                                          The Transfer Engine enforces safety using a Disturbance
+    The reality gap is fundamentally a mismatch in non-linear         Observer-based Control Barrier Function (DOB-CBF) [16]. Let
+dynamics 𝑥t + 1 = 𝐹(𝑥t ) between simulation and reality [24]. In      the safe operating region be defined as a superlevel set 𝐶 = {𝑥 ∈
+warehouse manipulation [22] and quadruped locomotion [28],            ℝ𝑛 : ℎ(𝑥) ≥ 0}. To guarantee forward invariance of C in the
+estimating the exact non-linear discrepancy is computationally        physical world, the system requires ḣ(𝑥, 𝑢) ≥ −𝛼(ℎ(𝑥)) ,
+intractable on edge devices.                                          where α is a class-K function [17].
+   The Transfer Engine utilizes Koopman Operator Theory                    Because the simulation dynamics 𝑓𝑠𝑖𝑚 (𝑥) differ from real
+[18], [27] to linearize these dynamics. Let the true real-world       dynamics 𝑓real (𝑥), we model the sim-to-real gap as an unknown
+dynamics be defined on a state space 𝑀. We introduce a learned        time-varying disturbance 𝑑(𝑡) [16]. The Transfer Engine
+observable lifting function 𝑔: 𝑀 → 𝐻 that maps the finite-            estimates this bounded discrepancy online via a residual
+dimensional state into an infinite-dimensional Hilbert space H.       disturbance observer 𝑑̂ (𝑡) . The DRL action 𝑢𝑅𝐿 is passed
+The Koopman operator 𝐾 acts linearly on these observables:            through a minimally invasive Quadratic Program (QP) safety
+                       𝑔(𝑥𝑡+1 ) = 𝐾𝑔(𝑥t )                             filter [16], [17]:
+                                                                                        𝑢𝑠𝑎𝑓𝑒 = 𝑎𝑟𝑔𝑚𝑖𝑛u ‖𝑢-𝑢RL ‖2
+     𝑠. 𝑡. 𝛻ℎ(𝑥) ⋅ (𝑓𝑠𝑖𝑚 (𝑥) + 𝑔(𝑥)𝑢 + d̂(t)) ≥ −𝛼(ℎ(𝑥))                                             REFERENCES
+    This provides a strict mathematical certificate that
+                                                                      [1]  H. Abe, T. Osa, Y. Mukuta, and T. Harada, "Cross-Embodiment Offline
+constraints (e.g., torque limits [19] or spatial bounds [17]) are          Reinforcement Learning for Heterogeneous Robot Datasets," ICLR,
+satisfied in the real world, actively overriding the RL policy only        2026. DOI: 10.48550/arXiv.2602.18025
+when 𝑑(𝑡)pushes the robot toward a critical failure boundary          [2] M. Saad, et al., "Hybrid Framework for Robotic Manipulation: Integrating
+[16], [17].                                                                Reinforcement Learning and Large Language Models," arXiv preprint
+                                                                           arXiv:2603.30022, 2026.
+D. Energy-Aware Edge Execution (Gap 5)                                [3] A. Ding, "Deep reinforcement learning for robotic arm control via inverse
+    Finally, industrial transfer learning must operate under the           kinematics and stepwise reward shaping," DR-NTU (Nanyang
+strict microsecond constraints of real-time control [19], [26].            Technological University), 2026.
+While the offline Optimal Transport alignment [15] and                [4] J. Liang, et al., "Learning Task-Invariant Properties via Dreamer:
+                                                                           Enabling Efficient Policy Transfer for Quadruped Robots," arXiv
+Koopman K matrices [18] are computationally heavy during                   preprint, 2026.
+training, their inference counterparts are linear and highly
+                                                                      [5] S. de Kam, et al., "SENSE-STEP: Learning Sim-to-Real Locomotion for
+efficient [26], [27]. Furthermore, by projecting high-                     a Sensory-Enabled Soft Quadruped Robot," arXiv preprint
+dimensional perception via the frozen GW mapping, the                      arXiv:2602.13078, 2026.
+onboard CPU is only required to compute the lightweight DOB-          [6] A. Shakerimov, T. Alizadeh, and H. A. Varol, "Efficient Sim-to-Real
+CBF quadratic program [16] and the Koopman lifting network                 Transfer in Reinforcement Learning Through Domain Randomization
+𝑔𝜃 [18]. This specific architectural pipeline implicitly                   and Domain Adaptation," IEEE Access, vol. 11, pp. 136814-136825,
+regularizes computational load, translating sample efficiency              2023.
+into physical energy efficiency suitable for untethered               [7] N. Jaquier, et al., "Transfer learning in robotics: An upcoming
+                                                                           breakthrough? A review of promises and challenges," The International
+deployments [19], [26].                                                    Journal of Robotics Research, vol. 44, pp. 465–485, 2024.
+                                                                      [8] M. Elseiagy, et al., "Data-Driven Dynamic Parameter Learning of
+                 IV. RESEARCH ROADMAP                                      manipulator robots," IEEE/SICE International Symposium on System
+   Building upon the mathematical architecture, development                Integration, 2026.
+of a “Universal, Safety-Certifiable Neuro-Mathematical                [9] Li, Q.; Cicirelli, F.; Vinci, A.; Guerrieri, A.; Qi, W.; Fortino, G.
+Transfer Engine (NMTE) for Cross-Embodiment Sim-to-Real                    Quadruped Robots: Bridging Mechanical Design, Control, and
+                                                                           Applications. Robotics 2025, 14, 57. DOI: 10.3390/robotics14050057
+Adaptation in Industrial Robotics via Optimal Transport and
+Koopman Dynamics” is proposed.                                        [10] C. Cruz Ulloa, et al., "Efficient Navigation for Quadruped Robots in Post-
+                                                                           Disaster Scenarios," IEEE/RSJ International Conference on Intelligent
+A. Divergence-Free Dynamic Modeling:                                       Robots and Systems (IROS), 2025.
+                                                                      [11] L. Zhang, et al., "Key point detection of lightweight robotic arms based
+    Design and validate the Koopman lifting function 𝑔𝜃 to                 on transfer learning," SPIE Digital Library, 2025.
+extract task-invariant flow fields for contact-rich warehouse         [12] Patrashko, D.Y.; Gurau, V. Machine Learning-Powered Vision for
+manipulation [22] and unstructured railway locomotion [28],                Robotic Inspection in Manufacturing: A Review. Sensors 2026, 26, 788.
+eliminating the need for heavy, edge-taxing domain                         DOI: 10.3390/s26030788
+randomization [18], [27].                                             [13] Z. Su, et al., "Leveraging Symmetry in RL-based Legged Locomotion
+                                                                           Control," IEEE/RSJ International Conference on Intelligent Robots and
+B. Latent Manifold Alignment:                                              Systems (IROS), pp. 6899-6906, 2024.
+    Formulate a sample-efficient Gromov-Wasserstein                   [14] G. Bellegarda and A. Ijspeert, "CPG-RL: Learning Central Pattern
+optimization algorithm capable of zero-shot cross-embodiment               Generators for Visually-Guided Quadruped Locomotion," IEEE Robotics
+                                                                           and Automation Letters, pp. 1420-1427, 2024.
+transfer [1] of low-level manipulation skills between simulated
+                                                                      [15] Tianyu Wang, Dwait Bhatt, Xiaolong Wang, Nikolay Atanasov, "Cross-
+6-DoF arms and real-world mobile quadrupeds [15], [25].                    Embodiment Robot Manipulation Skill Transfer using Latent Space
+                                                                           Alignment," arXiv, 2024. DOI: 10.48550/arXiv.2406.01968
+C. Sim-to-Real Safety Certification:
+                                                                      [16] D. Kalaria and K. Karydis, "Disturbance Observer-based Control Barrier
+    Integrate a real-time Disturbance Observer (DOB) with                  Functions with Residual Model Learning for Safe Reinforcement
+Minkowski-based Control Barrier Functions [16], [17] to                    Learning," arXiv, 2024. DOI: 10.48550/arXiv.2410.06570
+guarantee collision avoidance and torque-limit safety during the      [17] Y.-H. Chen, S. Liu, W. Xiao, C. Belta, and M. Otte, "Control Barrier
+initial, highly uncertain phases of physical deployment [19].              Functions via Minkowski Operations for Safe Navigation among
+                                                                           Polytopic Sets," in Proc. IEEE 64th Conference on Decision and Control
+D. Hardware Validation and Edge Optimization:                              (CDC), 2025. DOI: 10.1109/CDC57313.2025.11312188
+    Prove the computational viability of the Transfer Engine by       [18] L. Shi, Z. Liu, and K. Karydis, "Koopman Operators for Modeling and
+                                                                           Control of Soft Robotics," Current Robotics Reports, vol. 4, pp. 23–31,
+deploying it on physical edge-compute modules [26], mapping                2023. DOI: 10.1007/s43154-023-00099-8
+policies trained on high-performance clusters to physical             [19] M. Lee et al., "Learning Quadrupedal Locomotion for a Heavy Hydraulic
+hardware operating at >500 Hz control loops [19], [23].                    Robot Using an Actuator Model," IEEE Robotics and Automation Letters,
+                                                                           vol. 10, no. 12, 2025. DOI: 10.1109/LRA.2025.3623024
+                       V. EXPERIMENTS + VI. CONCLUSION (full text appended below)       [20] A. V. Pitkevich and I. Makarov, "A Survey of Sim-to-Real Transfer
+   …                                                                       Methods for Robotic Manipulation," in Proc. IEEE 22nd Int. Symp. on
+                                                                           Intelligent Systems and Informatics (SISY), 2024. DOI:
+                      ACKNOWLEDGMENT                                       10.1109/SISY62279.2024.10737545
+                                                                      [21] H. Lai et al., "Sim-to-Real Transfer for Quadrupedal Locomotion via
+   …                                                                       Terrain Transformer," in Proc. IEEE Int. Conf. on Robotics and
+                                                                           Automation (ICRA), 2023. DOI: 10.1109/ICRA48891.2023.10160497
+[22] J. Huber et al., "Domain Randomization for Sim2real Transfer of
+     Automatically Generated Grasping Datasets," arXiv, 2023. DOI:
+     10.48550/arXiv.2310.04517
+[23] E. Aljalbout, F. Frank, M. Karl, and P. van der Smagt, "On the Role of
+     the Action Space in Robot Manipulation Learning and Sim-to-Real
+     Transfer," IEEE Robotics and Automation Letters, vol. 9, no. 6, pp. 5895-
+     5902, 2024. DOI: 10.1109/LRA.2024.3398428
+[24] N. Jaquier et al., "Transfer learning in robotics: An upcoming
+     breakthrough? A review of promises and challenges," The International
+     Journal of Robotics Research, 2024. DOI: 10.48550/arXiv.2311.18044
+[25] G. Pan et al., "Roboduet: A framework affording mobile-manipulation
+     and cross-embodiment," arXiv, 2024. DOI: 10.48550/arXiv.2403.17367
+[26] Y. Wang, G. Pittiglio, X. Lin, and P. E. Dupont, "Few-Shot Magnet
+     Localization Using Sim-to-Real Transfer Learning," IEEE Robotics and
+     Automation       Letters,  vol.    10,    no.    12,     2025.       DOI:
+     10.1109/LRA.2025.3623010
+[27] A. K. Li, T. C. Silva, V. Edwards, V. Kumar, and M. A. Hsieh,
+     "KoopMotion: Learning Almost Divergence Free Koopman Flow Fields
+     for Motion Planning," Proceedings of Machine Learning Research
+     (PMLR), vol. 305, 2025. DOI: 10.48550/arXiv.2509.09074
+[28] L. Chang et al., "Beyond Robustness: Learning Unknown Dynamic Load
+     Adaptation for Quadruped Locomotion on Rough Terrain," in Proc. IEEE
+     Int. Conf. on Robotics and Automation (ICRA), 2025. DOI:
+     10.1109/ICRA2025.11127273
+
+======================================================================
+APPENDED DRAFT SECTIONS (single-column working text; to be flowed into
+the two-column layout above, replacing the V. CONCLUSION placeholder)
+======================================================================
+
+        V. EXPERIMENTAL EVALUATION OF THE TRANSFER-FIRST PARADIGM
+    We instantiate the NMTE program on a differential-drive
+navigation benchmark (Isaac Lab/Isaac Sim, ROS 2) and evaluate
+its central proposition — a policy trained ONCE in a source
+world is redeployed to unseen worlds by adapting interfaces
+only, weights frozen — along the geometry, dynamics, safety,
+and task/deployment axes. The source policy is trained solely
+in 8 m rooms with 4-12 scattered walls; every result below uses
+the same frozen checkpoint, and every negative is reported
+alongside the positives.
+
+A. Zero-Shot Transfer Across Geometry: a Gradient with a
+   Measured Boundary
+    On a designed difficulty ladder (same spawn/goal, same
+13.2 m path), the frozen policy solves the easy rung (scattered
+walls) in 29.3 s and the mid rung (full-width staggered
+partitions, a map class absent from training) in 26.2 s —
+faster than easy, because the transferred primitives
+(gap-threading, contact recovery) are even funneled by the
+partitions. The hard rung (gaps offset off the direct line)
+fails with a corner-wedge signature; narrow-corridor and far-
+gap maps fail likewise. Transfer is thus not monotone in visual
+complexity but in behavioural overlap with the source
+distribution, and its residual boundary localizes to a specific
+behaviour (approach angle at narrow passages), not to "maze
+complexity". Four seeded repeats with spawn jitter (+-0.15 m,
++-15 deg) succeed 4/4 (20.9-33.5 s): the positive side of the
+gradient is robust, not a lucky seed.
+
+B. Interface Ablations: What Does the Adapting
+    Blinding the geodesic-waypoint channel (zeroing the
+interface observation) on the same map turns 4/4 success into
+0/1 (final gap 5.7 m): the math-guided interface is load-
+bearing for transfer — the frozen LiDAR reflexes alone do not
+compose into gap-threading. On the dynamics axis, a
+disturbance-observer interface recovers tracking under degraded
+friction with frozen weights (DOB-lite A/B); on the safety
+axis, a QP CBF filter enforces bounds without touching the
+policy (CBF-lite A/B); and an offline Koopman operator fit in
+the source world, kept frozen, closes degraded-regime
+prediction error by refitting only the lightweight lifting
+statistics — the dynamics-side analogue of "weights frozen,
+interface adapts".
+
+C. Task Structure and Deployment Axes
+    Without retraining, the same frozen policy composes into an
+ordered three-goal tour (46.1 s, 3 brief recoveries) via goal
+sequencing and per-leg field rebuilds at the interface level —
+transfer across task structure, not just geometry. The policy
+deploys through plain ROS 2 topics with a single map file as
+the shared world model of simulator and controller, and the
+same interface drives a second embodiment (pioneer3dx),
+evidencing cross-embodiment deployability of the interface
+layer pending full GW latent alignment.
+
+D. Framework-Arm Tally and Honest Gaps
+    Koopman core: frozen source fit, few-shot lift refit
+(offline validated). DOB-lite / CBF-lite: A/B-validated at
+deploy time. Geodesic waypoint interface: load-bearing
+(ablation). Recovery layer: quantified behavioural fallback
+(3-25 events per run), whose wedge failure motivates bearing-
+aware CBF shaping. Serial composition: demonstrated. Honest
+gaps remain: the GW cross-embodiment arm is not yet validated
+beyond a deployment smoke test, and most geometry results are
+single-seed demos by design; the ladder and seed repeats form
+the qualitative gradient, while the transfer table and
+adaptation-budget curve remain the quantitative backbone.
+
+                       VI. CONCLUSION
+    We argued that the reality gap is best attacked transfer-
+first: teach the simple behaviour once, and let mathematical
+interfaces carry it into new worlds. On a frozen differential-
+drive policy we showed that learning can be transferred —
+across unseen geometry (a measured gradient, 4/4 under spawn
+jitter), across task structure (three-goal tour), across
+dynamics and safety axes (DOB-lite/CBF-lite A/B), and toward a
+second embodiment — while ablations localize what makes the
+transfer work (the geodesic interface) and what remains to be
+covered (bearing-aware recovery at narrow passages). The NMTE
+components (Koopman core, DOB, CBF) are offered as validated-
+in-part concepts whose idea — frozen learned core, lightweight
+certifiable interface — is the contribution. Future work: few-
+shot lift refits in closed loop, CBF-shaped recoveries, and
+hardware validation on the edge.
+

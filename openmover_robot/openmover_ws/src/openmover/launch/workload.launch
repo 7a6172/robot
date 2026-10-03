@@ -1,0 +1,11 @@
+<!-- 文件描述：加载机器人系统 -->
+<launch>
+    <!-- 启动机器人 -->
+    <include file="$(find openmover)/launch/bootloader.launch"></include>
+    <!-- 启动业务流程 -->
+    <node name="workload" pkg="openmover" type="workload.py" output="screen">
+        <rosparam file="$(env HOME)/openmover_robot/config/hardwares/hardwares.yaml" command="load" />
+        <rosparam file="$(env HOME)/openmover_robot/config/modules/modules.yaml" command="load" />
+        <rosparam file="$(env HOME)/openmover_robot/config/apps/navigation/navigation.yaml" command="load" />
+    </node>
+</launch>

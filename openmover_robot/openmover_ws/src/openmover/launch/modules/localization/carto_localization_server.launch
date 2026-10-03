@@ -1,0 +1,14 @@
+<!-- 2023-6-24 0.0.0.1A -->
+
+<!-- 文件描述：启动机器人 Cartographer 系统 -->
+<launch>
+    <!-- 设置参数 -->
+    <arg name="localization_mode" value="true" />
+    <arg name="launch_file_cartographer" value="$(find openmover)/launch/modules/localization/carto_localization.launch" />
+
+    <!-- 启动 Server -->
+    <node name="cartographer_localization_server_handler" pkg="openmover" type="cartographer_server_handler.py" output="screen">
+        <param name="localization_mode" value="$(arg localization_mode)" />
+        <param name="launch_file_cartographer" value="$(arg launch_file_cartographer)" />
+    </node>
+</launch>

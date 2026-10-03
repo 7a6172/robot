@@ -1,0 +1,88 @@
+# ==============================================================================
+# Robotics Project Root .gitignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Bytecode and Python Caches
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+
+# ------------------------------------------------------------------------------
+# Virtual Environments and Tooling Caches
+# ------------------------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ------------------------------------------------------------------------------
+# Editors, IDEs, and OS Files
+# ------------------------------------------------------------------------------
+.idea/
+.DS_Store
+*.swp
+*~
+# Ignore editor caches while preserving documents
+.trae/*
+!.trae/documents/
+
+# ------------------------------------------------------------------------------
+# Media and Generated Videos
+# ------------------------------------------------------------------------------
+*.mp4
+*.avi
+*.mov
+*.webm
+
+# ------------------------------------------------------------------------------
+# Root-level Runtime Logs
+# ------------------------------------------------------------------------------
+/log/
+
+# ------------------------------------------------------------------------------
+# Caasi Runtime Artifacts & Caches
+# ------------------------------------------------------------------------------
+caasi/dist/
+caasi/runs/
+caasi/datasets/
+
+# ------------------------------------------------------------------------------
+# openmover_robot (ROS 1 Reference) - Build, Devel, and Cloned Dependencies
+# ------------------------------------------------------------------------------
+openmover_robot/openmover_ws/build/
+openmover_robot/openmover_ws/devel/
+openmover_robot/cartographer_ws/abseil-cpp/
+
+# ------------------------------------------------------------------------------
+# openmover_ws (ROS 2 + Isaac Reference) - Build, Install, Logs & Runtime Data
+# ------------------------------------------------------------------------------
+openmover_ws/build/
+openmover_ws/install/
+openmover_ws/log/
+openmover_ws/logs/
+openmover_ws/nohup.out
+openmover_ws/test_home/
+openmover_ws/tools/osqp_build/
+openmover_ws/tools/osqp06_install/
+
+# Isaac Sim / Isaac Lab runtime outputs, runs, checkpoints, and video dumps
+openmover_ws/isaac/logs/
+openmover_ws/isaac/lab/logs/
+openmover_ws/isaac/lab/videos/
+openmover_ws/isaac/lab/campaign/videos_present/
+openmover_ws/isaac/lab/campaign/heldout/videos_present/
+
+# Omniverse / Isaac Sim local caches
+.local/
+.nv/
+.nvidia-omniverse/

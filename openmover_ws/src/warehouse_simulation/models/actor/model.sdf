@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<sdf version="1.10">
+  <!-- Placeholder model file; the actual actor is defined directly in
+       worlds/warehouse.sdf and only references meshes/walk.dae from here. -->
+  <model name="actor_placeholder">
+    <static>true</static>
+    <link name="link"/>
+  </model>
+</sdf>

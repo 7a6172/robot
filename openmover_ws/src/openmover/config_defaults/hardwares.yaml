@@ -1,0 +1,57 @@
+# 机器人硬件参数（ROS 2 参数文件格式）
+# 对应 ROS 1 ~/openmover_robot/config/hardwares/hardwares.yaml
+
+# 足迹按节点名下发（不能放 /** 通配：nav2 costmap 子节点把
+# "footprint" 声明为 string 类型，通配下的扁平 double 数组会触发
+# InvalidParameterTypeException 并导致 navigation_handler 崩溃）
+navigation_handler:
+  ros__parameters:
+    footprint: [0.27, 0.22, 0.27, -0.22, -0.27, -0.22, -0.27, 0.22]
+    footprint_padding: 0.00
+obstacle_handler:
+  ros__parameters:
+    footprint: [0.27, 0.22, 0.27, -0.22, -0.27, -0.22, -0.27, 0.22]
+    footprint_padding: 0.00
+
+/**:
+  ros__parameters:
+
+    # 电机
+    motor:
+      # 控制频率
+      control_freq: 100
+
+      ip_address: "192.168.100.100"
+      port: 23
+
+      # 车轮最高速度（RPM）
+      wheel_max_speed_rpm: 300
+      # 加速度（RPM/s^2）
+      wheel_acc: 6000
+
+      # 底盘回转半径（m）
+      chassis_radius: 0.162
+      # 车轮半径
+      wheel_radius: 0.05035
+      # 里程计真值补偿系数
+      odom_compensation_ratio: 1.0
+
+    # 底盘IO板
+    robot:
+      # 软件版本号（a.b.c）
+      version_a: 1
+      version_b: 0
+      version_c: 0
+
+      # 机器人编号
+      robot_id: 1
+
+      # 控制频率
+      control_freq: 10
+
+      ip_address: "192.168.100.100"
+      port: 26
+
+      # 电池电量阈值
+      low_battery_threshold: 5
+      loc_conf_threshold: 45

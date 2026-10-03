@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Packages — OpenMover ROS 2</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand"><span class="logo"></span>OpenMover&nbsp;ROS&nbsp;2</span>
+  <a href="index.html">Index</a>
+  <a href="getting_started.html">Getting Started</a>
+  <a href="build.html">Build</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="packages.html" class="active">Packages</a>
+  <a href="usage.html">Usage</a>
+  <a href="hardware.html">Hardware</a>
+  <a href="audit.html">Audit</a>
+  <a href="changelog.html">Changelog</a>
+</nav>
+
+<div class="wrap">
+  <div class="page-head">
+    <span class="kicker">Reference</span>
+    <h1>Packages</h1>
+    <p class="lede">The workspace builds 9 colcon packages across 7 top-level directories.
+    Below is what each package contains and what it provides.</p>
+  </div>
+
+  <div class="toc">
+    <h3>Packages</h3>
+    <ol>
+      <li><a href="#openmover_msgs">openmover_msgs</a></li>
+      <li><a href="#openmover">openmover (robot core)</a></li>
+      <li><a href="#auto_mapping">auto_mapping_toolbox + msgs</a></li>
+      <li><a href="#relocalization">relocalization_toolbox + msgs</a></li>
+      <li><a href="#bluesea2">bluesea2</a></li>
+      <li><a href="#ira">ira_laser_tools</a></li>
+      <li><a href="#warehouse">warehouse_simulation</a></li>
+    </ol>
+  </div>
+
+  <h2 id="openmover_msgs">1. openmover_msgs <span class="badge info">interfaces</span></h2>
+  <p>Pure rosidl interface package. 8 message + 10 service definitions, field-identical to
+  ROS&nbsp;1 (only CamelCase/type-syntax renames were needed). Service files were flattened out of
+  their ROS&nbsp;1 subfolders because ROS&nbsp;2 requires a flat <code>srv/</code> directory.</p>
+  <table>
+    <tr><th>Messages</th><td><code>BmsData</code>, <code>FlowState</code>, <code>MotorState</code>,
+        <code>NavToSimple</code>, <code>NavToState</code>, <code>Obstacle</code>, <code>Pose</code>,
+        <code>Twist</code></td></tr>
+    <tr><th>Services</th><td><code>CmdVelModeRequest</code>, <code>DirectRequest</code>,
+        <code>FlowAction</code>, <code>FlowCmd</code>, <code>NavToRequest</code>,
+        <code>NavToSimpleRequest</code>, <code>PlaysoundRequest</code>,
+        <code>SelfTestReportRequest</code>, <code>StopRequest</code>,
+        <code>WorkModeRequest</code></td></tr>
+  </table>
+
+  <h2 id="openmover">2. openmover (robot core) <span class="badge info">core</span></h2>
+  <p>The largest package: C++ nodes, static libraries, the Python HAL/servers, launch files,
+  URDF + meshes, Gazebo world, rviz configs, config defaults, and map defaults.</p>
+
+  <h3>C++ executables</h3>
+  <table>
+    <tr><th>Node</th><th>Role</th></tr>
+    <tr><td><code>motor_handler</code></td><td>Motor-controller UDP driver (real robot @192.168.100.100:23); publishes odom</td></tr>
+    <tr><td><code>io_board_handler</code></td><td>IO-board UDP driver (@192.168.100.100:26); BMS / buttons / emergency</td></tr>
+    <tr><td><code>simulation_handler</code></td><td>Simulation odometry source (subscribes <code>odom_sim</code> from the gz bridge)</td></tr>
+    <tr><td><code>teleop_handler</code></td><td>Joystick / manual teleop</td></tr>
+    <tr><td><code>localization_handler</code></td><td>Pose fusion + <code>odom&rarr;base_link</code> TF; consumes cartographer <code>tracked_pose</code></td></tr>
+    <tr><td><code>localization_confidence_handler</code></td><td>Scan-vs-map confidence scoring (likelihood field)</td></tr>
+    <tr><td><code>obstacle_handler</code></td><td>PCL-based obstacle processing</td></tr>
+    <tr><td><code>navigation_handler</code></td><td>Global + local planner; costmap-as-library; GetPlan service</td></tr>
+  </table>
+
+  <h3>Static libraries</h3>
+  <p><code>crc8_maxim</code>, <code>math_utils</code>, <code>likelihood_field</code>,
+  <code>controllers</code>, <code>mover</code>, <code>path_follower</code>,
+  <code>collision_checker</code>, <code>path_checker</code>, <code>global_planner_deps</code>
+  (links <code>osqp::osqp</code>). Algorithm code is unchanged from ROS&nbsp;1 except includes
+  (<code>tf</code>&rarr;<code>tf2</code>, message headers).</p>
+
+  <h3>Python nodes</h3>
+  <p><code>workload.py</code>, <code>hal/</code> (cli, hal, protocol, config, symbols, logger,
+  utils), <code>launch_manager.py</code>, five mode servers, <code>speaker_handler.py</code>
+  (pygame), <code>teleop_handler.py</code> (pynput), and
+  <code>cartographer_initialpose_adapter.py</code> (added for the ROS&nbsp;2 cartographer).</p>
+
+  <h3>Launch files</h3>
+  <p><code>bootloader.launch.py</code>, <code>workload.launch.py</code>,
+  <code>hardwares/bringup.launch.py</code>, <code>apps/mapping.launch.py</code>,
+  <code>apps/navigation.launch.py</code>, <code>apps/navigation/navigation.launch.py</code>,
+  <code>modules/localization/{localization,carto_localization,carto_localization_server}.launch.py</code>,
+  <code>modules/mapping/{carto_mapping,map_server}.launch.py</code>.</p>
+
+  <h3>Data &amp; assets</h3>
+  <p><code>config_defaults/</code> (hardwares.yaml, modules.yaml, navigation.yaml, mapping.yaml,
+  cartographer lua files, rviz configs), <code>maps_defaults/simulation/</code> (pgm + yaml +
+  pbstream), <code>urdf/</code> (robot + environment description), <code>meshes/</code>,
+  <code>worlds/simulation.world</code>.</p>
+
+  <h2 id="auto_mapping">3. auto_mapping_toolbox (+ msgs) <span class="badge info">algorithm</span></h2>
+  <p>Frontier-based autonomous mapping. <code>auto_mapping_handler</code> runs a 7-state machine,
+  uses boost R-tree spatial queries, its own <code>nav2_costmap_2d</code> costmap, Dijkstra
+  expansion, and an OSQP path smoother. Provides global + local exploration, collision
+  prediction, and TSP ordering of frontier goals.</p>
+  <p>Interfaces: <code>AutoMappingState.msg</code>, <code>AutoMappingRequest.srv</code>.
+  Built with default optimization; config in <code>config/config.yaml</code>.</p>
+
+  <h2 id="relocalization">4. relocalization_toolbox (+ msgs) <span class="badge info">algorithm</span></h2>
+  <p>Global 2D relocalization using a likelihood-field score plus PCL GICP scan matching, with
+  RRT/reachability sampling of candidate poses. <code>relocalization_2d_handler</code> exposes
+  relocalization and initial-pose services.</p>
+  <p>Interfaces: <code>InitialPoseRequest.srv</code>, <code>RelocalizationRequest.srv</code>.
+  Built with <code>-O3 -flto -ffast-math -funroll-loops</code> (scoring/sampling are compute
+  hot-spots) — restored to match ROS&nbsp;1 during the audit. Config in
+  <code>config/config_2d.yaml</code>.</p>
+
+  <h2 id="bluesea2">5. bluesea2 <span class="badge info">driver</span></h2>
+  <p>Lanhai (BlueSea) 2D LiDAR driver, a ROS&nbsp;2 port supporting UDP transport, angle
+  filtering, inversion, and configurable scan topic/frame. The bring-up parameters (UDP, LiDAR
+  IPs 192.168.100.101/.102, ports 6667/6668, &plusmn;1.57 rad filter) are inlined in
+  <code>openmover/launch/hardwares/bringup.launch.py</code> with full ROS&nbsp;1 parity, publishing
+  <code>openmover/hardware/lidar_forward/scan</code> and
+  <code>openmover/hardware/lidar_rear/scan</code>.</p>
+  <div class="note"><span class="tag">Note</span><div><p>This is a manually completed ROS&nbsp;2
+  port, not the vendor's official driver as originally planned — see the
+  <a href="audit.html">audit</a>.</p></div></div>
+
+  <h2 id="ira">6. ira_laser_tools <span class="badge info">perception</span></h2>
+  <p><code>laserscan_multi_merger</code> merges the two LiDAR scans into a single 360&deg; scan on
+  frame <code>lidar_link</code> (<code>openmover/hardware/lidar/scan</code>) plus a PointCloud2.
+  The ROS&nbsp;1 <code>laserscan_virtualizer</code> was never used by bring-up and was not carried
+  over. <code>dynamic_reconfigure</code> was replaced with declared parameters.</p>
+
+  <h2 id="warehouse">7. warehouse_simulation <span class="badge info">demo</span></h2>
+  <p>The Pioneer3DX warehouse demo. Contains:</p>
+  <table>
+    <tr><th>Asset</th><th>Description</th></tr>
+    <tr><td><code>worlds/warehouse.sdf</code></td><td>gz-sim8 world: workcell + bins + 2 walking actors (LiDAR-visible, no physics proxy)</td></tr>
+    <tr><td><code>urdf/pioneer3dx.urdf.xacro</code></td><td>Pioneer3DX with gz diff-drive + gpu_lidar</td></tr>
+    <tr><td><code>config/gz_bridge.yaml</code></td><td>ros_gz bridge map: clock / scan / odom / cmd_vel / tf / joint_states</td></tr>
+    <tr><td><code>config/nav2_params.yaml</code></td><td>Nav2 stack: MPPI controller, NavfnPlanner, voxel costmaps, collision_monitor</td></tr>
+    <tr><td><code>config/slam_toolbox.yaml</code></td><td>Async online mapping parameters</td></tr>
+    <tr><td><code>scripts/trajectory_server.py</code></td><td>Publishes map&rarr;base path history (replaces hector_trajectory_server)</td></tr>
+    <tr><td><code>scripts/cmd_vel_watchdog.py</code></td><td>Sends zero velocity 0.4 s after teleop stops</td></tr>
+    <tr><td><code>src/key_control.cpp</code></td><td>Keyboard teleop (ported from ROS 1)</td></tr>
+    <tr><td><code>rviz/navigation.rviz</code></td><td>RViz2 layout for the demo</td></tr>
+    <tr><td><code>models/</code></td><td>workcell, workcell_bin, actor (meshes + textures)</td></tr>
+  </table>
+
+</div>
+
+<footer>OpenMover ROS 2 Jazzy migration &middot; Packages &middot; self-contained (no external assets)</footer>
+</body>
+</html>

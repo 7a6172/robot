@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usage — OpenMover ROS 2</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand"><span class="logo"></span>OpenMover&nbsp;ROS&nbsp;2</span>
+  <a href="index.html">Index</a>
+  <a href="getting_started.html">Getting Started</a>
+  <a href="build.html">Build</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="packages.html">Packages</a>
+  <a href="usage.html" class="active">Usage</a>
+  <a href="hardware.html">Hardware</a>
+  <a href="audit.html">Audit</a>
+  <a href="changelog.html">Changelog</a>
+</nav>
+
+<div class="wrap">
+  <div class="page-head">
+    <span class="kicker">Run Book</span>
+    <h1>Usage</h1>
+    <p class="lede">Step-by-step instructions for running the warehouse simulation, driving
+    the robot, watching pedestrian avoidance, and starting the robot-core stack in simulation
+    or on hardware.</p>
+  </div>
+
+  <div class="warn">
+    <span class="tag">Before every run</span>
+    <div>
+      <p>Make sure no stale Gazebo or ROS processes are left over from a previous session —
+      a new launch can silently attach to an old server and show the wrong world:</p>
+      <p><code>pkill -f "gz sim"; pkill -f ruby; sleep 2; ps aux | grep -E "gz sim|ruby" | grep -v grep</code></p>
+    </div>
+  </div>
+
+  <h2>1. Warehouse simulation (recommended first run)</h2>
+  <p>This is the validated end-to-end demo. In <strong>terminal 1</strong> start the full stack
+  (Gazebo + bridge + slam_toolbox + Nav2 + rviz2):</p>
+<pre><code><span class="cmd">source /opt/ros/jazzy/setup.bash</span>
+<span class="cmd">source ~/openmover_ws/install/setup.bash</span>
+<span class="cmd">ros2 launch warehouse_simulation warehouse_simulation.launch.py</span></code></pre>
+
+  <p>Available launch arguments:</p>
+  <table>
+    <tr><th>Argument</th><th>Default</th><th>Meaning</th></tr>
+    <tr><td><code>use_sim_time</code></td><td><code>true</code></td><td>Use the Gazebo clock bridge</td></tr>
+    <tr><td><code>rviz</code></td><td><code>true</code></td><td>Start rviz2 with the demo config</td></tr>
+    <tr><td><code>headless</code></td><td><code>false</code></td><td>Run the Gazebo server only (no GUI) — for low-power hosts</td></tr>
+    <tr><td><code>x_pos</code> / <code>y_pos</code> / <code>z_pos</code></td><td><code>0.0</code></td><td>Robot spawn position (matches ROS&nbsp;1)</td></tr>
+  </table>
+
+  <p>In <strong>terminal 2</strong> start keyboard teleop:</p>
+<pre><code><span class="cmd">source ~/openmover_ws/install/setup.bash</span>
+<span class="cmd">ros2 run warehouse_simulation key_control</span></code></pre>
+  <p>Drive with the arrow keys: <strong>hold a key to keep driving</strong> — commands repeat at
+  20&nbsp;Hz while it is held, and the robot auto-stops when you let go. <code>UP</code> forward,
+  <code>DOWN</code> reverse, <code>LEFT</code>/<code>RIGHT</code> rotate, <code>q</code> quits.
+  As an extra safety net, <code>cmd_vel_watchdog</code> also sends zero velocity 0.4&nbsp;s after
+  the last command.</p>
+
+  <h3>Sending a Nav2 goal</h3>
+  <p>In rviz2 select the <span class="kbd">2D Goal Pose</span> tool and click on the map. Nav2
+  plans with NavfnPlanner and drives with the MPPI controller while slam_toolbox keeps updating
+  the map.</p>
+
+  <h3>Watching pedestrian avoidance</h3>
+  <div class="tip">
+    <span class="tag">Verified behavior</span>
+    <div>
+      <p>Two actors walk fixed routes across the warehouse. Drive (or send a goal) so the robot's
+      path crosses an actor. The LiDAR sees the actor's legs, they appear as a red/occupied region
+      in the local costmap, and <strong>Nav2 slows, stops, and waits</strong>. Once the actor
+      clears the path the robot resumes. This is perception-based — there is no physics proxy —
+      exactly how the real robot will avoid a moving person.</p>
+    </div>
+  </div>
+
+  <h2>2. Inspecting the running system</h2>
+<pre><code><span class="cmd">ros2 topic list</span>
+<span class="cmd">ros2 topic hz /scan</span>                <span class="cmt"># lidar rate</span>
+<span class="cmd">ros2 topic echo /cmd_vel</span>            <span class="cmt"># commanded velocity</span>
+<span class="cmd">ros2 node list</span>
+<span class="cmd">ros2 run tf2_tools view_frames</span>      <span class="cmt"># TF tree -> frames.pdf</span>
+<span class="cmd">ros2 lifecycle get /slam_toolbox</span>    <span class="cmt"># should reach active</span></code></pre>
+
+  <h2>3. Robot-core stack (<code>openmover</code>)</h2>
+  <p>The production stack is started through <code>workload.launch.py</code> (which includes the
+  bootloader). Choose simulation or real-hardware mode with <code>system_mode</code>.</p>
+
+  <h3>Simulation mode</h3>
+<pre><code><span class="cmd">source ~/openmover_ws/install/setup.bash</span>
+<span class="cmd">ros2 launch openmover workload.launch.py system_mode:=0</span></code></pre>
+  <p>This brings up the HAL, mode servers, cartographer, the laser merger, rviz2, and rosbridge
+  (port 8080), with the simulation odometry source and the openmover simulation world.</p>
+
+  <h3>Real-hardware mode</h3>
+<pre><code><span class="cmd">source ~/openmover_ws/install/setup.bash</span>
+<span class="cmd">ros2 launch openmover workload.launch.py system_mode:=1</span></code></pre>
+  <p>This switches bring-up to the real drivers: two <code>bluesea2</code> LiDARs
+  (192.168.100.101/.102), the motor controller (192.168.100.100:23), and the IO board
+  (192.168.100.100:26). See <a href="hardware.html">Hardware</a> for the network layout.</p>
+
+  <div class="danger">
+    <span class="tag">Real robot</span>
+    <div>
+      <p>The real-robot branch is migrated and configured but <strong>not yet tested on
+      hardware</strong>. Before first physical use: verify the network addresses, ensure the
+      e-stop is reachable, and run in an empty area. This documentation reflects simulation-verified
+      behavior.</p>
+    </div>
+  </div>
+
+  <h3>Bootloader launch arguments</h3>
+  <table>
+    <tr><th>Argument</th><th>Default</th><th>Meaning</th></tr>
+    <tr><td><code>system_mode</code></td><td><code>0</code></td><td>0 = simulation, 1 = real robot</td></tr>
+    <tr><td><code>sim_area</code></td><td><code>1</code></td><td>Simulation start pose / area</td></tr>
+    <tr><td><code>enable_visualization</code></td><td><code>true</code></td><td>Start rviz2</td></tr>
+  </table>
+
+  <h2>4. High-level workflow (HAL scripting)</h2>
+  <p>The robot's behavior is orchestrated by the Python HAL. Rather than calling individual
+  topics, you script against <code>hal</code>/<code>cli</code> using the service layer. A typical
+  flow (mirrors the ROS&nbsp;1 scripted test):</p>
+  <ol>
+    <li>Start in <strong>manual</strong> mode and teleop to position the robot.</li>
+    <li>Switch to <strong>mapping</strong> mode (<code>set_func_mode</code> &rarr; create_map) and
+        drive to build a map; auto-mapping can drive for you.</li>
+    <li><strong>Save</strong> the map (cartographer <code>WriteState</code> + pgm/yaml).</li>
+    <li>Switch to <strong>localization</strong> mode on the saved map; issue an initial pose.</li>
+    <li>Switch to <strong>navigation</strong> mode and send a goal with
+        <code>navigation/request</code>; monitor <code>navigation/state</code> until
+        <code>reached</code>.</li>
+  </ol>
+  <p>These steps are exposed through the services listed in
+  <a href="architecture.html">Architecture</a>. Interactive scripts import the
+  <code>hal</code> and <code>cli</code> modules from the installed <code>openmover</code> scripts
+  directory.</p>
+
+  <h2>5. Keyboard teleop alternatives</h2>
+  <ul>
+    <li>Warehouse demo: <code>ros2 run warehouse_simulation key_control</code> (ported, same key
+        semantics).</li>
+    <li>Any robot: <code>ros2 run teleop_twist_keyboard teleop_twist_keyboard</code> with the
+        command topic remapped to the robot's <code>cmd_vel</code>.</li>
+    <li>Openmover manual mode uses <code>cmd_vel_mode/request</code> + <code>cmd_vel_manual</code>
+        (HAL-driven), matching ROS&nbsp;1.</li>
+  </ul>
+
+  <div class="note">
+    <span class="tag">Manual mode has no avoidance</span>
+    <div><p>As in ROS&nbsp;1, manual/teleop driving is raw — obstacle avoidance is only applied in
+    autonomous navigation modes. This is intentional parity, not a bug.</p></div>
+  </div>
+
+</div>
+
+<footer>OpenMover ROS 2 Jazzy migration &middot; Usage &middot; self-contained (no external assets)</footer>
+</body>
+</html>

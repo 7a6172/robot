@@ -1,0 +1,111 @@
+[INFO]: Parsing configuration from: openmover_lab.openmover_nav_cfg:OpenmoverNavEnvCfg
+Loading user config located at: '/home/zar/isaacsim/kit/data/Kit/IsaacLab/3.0/user.config.json'
+2026-09-06T06:05:41Z [0ms] [Warning] [omni.ext.plugin] [ext: isaaclab_visualizers] Extensions config 'extension.toml' doesn't exist '/home/zar/isaaclab/source/isaaclab_visualizers' or '/home/zar/isaaclab/source/isaaclab_visualizers/config'
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1788674741.332699 2913045 descriptor_database.cc:633] File already exists in database: grpc/health/v1/health.proto
+W0000 00:00:1788674741.332736 2913045 message.cc:301] Protobuf GeneratedMessageFactory: File is already registered: grpc/health/v1/health.proto
+2026-09-06T06:05:41Z [277ms] [Warning] [omni.usd_config.extension] Enable omni.materialx.libs extension to use MaterialX
+[ISAACLAB] AppLauncher initialization complete
+2026-09-06T06:05:43Z [1,863ms] [Warning] [isaaclab_physx.physics.physx_manager] TGS solver with enable_external_forces_every_iteration=False may cause noisy velocities.
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 42
+	Physics step-size     : 0.008333333333333333
+	Rendering step-size   : 0.05
+	Environment step-size : 0.05
+[INFO]: Registered backend 'physx' for factory Articulation.
+[INFO]: Registered backend 'physx' for factory RayCaster.
+[INFO]: Registered backend 'physx' for factory ContactSensor.
+[INFO] Generating terrains randomly took Last: 0.006236 s
+[INFO]: Time taken for scene creation Last: 0.349712 s, Mean: 0.349712 s, Std: 0.000000 s, N: 1
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 4
+	Environment spacing   : 6.0
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : []
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-09-06T06:05:44Z [3,031ms] [Warning] [usdrt.population.plugin] Last global time was not created. Did you call setEnableUsdNoticeHandling?
+2026-09-06T06:05:44Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,060ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Simulation parameters for joints in /World/envs/env_.*/Robot:
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                        Simulation Joint Information (Prim path: /World/envs/env_.*/Robot)                                                       |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+| Index | Name                   | Stiffness | Damping | Armature | Static Friction | Dynamic Friction | Viscous Friction |   Position Limits   | Velocity Limits | Effort Limits |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+|   0   | ball_front_left_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   1   | ball_front_right_joint |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   2   | ball_rear_left_joint   |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   3   | ball_rear_right_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   4   | wheel_left_joint       |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
+|   5   | wheel_right_joint      |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+2026-09-06T06:05:44Z [3,151ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,151ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,151ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,151ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Read mesh prim: /World/ground/terrain/mesh with 368 vertices and 1488 faces.
+2026-09-06T06:05:44Z [3,156ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,156ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,156ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,156ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,182ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,182ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,182ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,182ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,182ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,182ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,182ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-06T06:05:44Z [3,182ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+[INFO]: Time taken for simulation start Last: 0.972086 s, Mean: 0.972086 s, Std: 0.000000 s, N: 1
+[INFO]: Completed setting up the environment...
+[nav] obstacle table built (warm cache): 4 tiles, obstacles/tile 10-10
+[nav] custom map spawn/goal fixed from /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/gen/f1_b0_m01.json
+[nav] geodesic grid: 4 tiles x 40x40 cells (res 0.25 m, inflate 0.2 m)
+
+===== PROBE sleep (3s) =====
+map=f1_b0_m01 envs=4 seed=42 horizon=98s geo_iters=128
+wheel_ids=[4, 5] joint_names=['ball_front_left_joint', 'ball_front_right_joint', 'ball_rear_left_joint', 'ball_rear_right_joint', 'wheel_left_joint', 'wheel_right_joint']
+default_root_pose[0] z=+0.0050
+has joint_vel_target buffer=True
+[sleep] after reset:  map=( 8.9380, 1.0620) z=+0.0050 yaw=+1.9782 |vxy|=0.0000 wz=+0.000 jv=[0.0, 0.0] tgt=[0.0, 0.0]
+  [rest=  20] k=  0 dyaw=+0.0110 |vxy|=0.0673 wz=+0.2984 jv=[-2.4838, 2.4991] tgt=[-2.5, 2.5]
+  [rest=  20] k=  1 dyaw=+0.0247 |vxy|=0.0662 wz=+0.3965 jv=[-1.2338, 1.8624] tgt=[-2.5, 2.5]
+  [rest=  20] k=  2 dyaw=+0.0488 |vxy|=0.0208 wz=+0.2911 jv=[-2.6578, 1.7904] tgt=[-2.5, 2.5]
+  [rest=  20] k= 10 dyaw=+0.2068 |vxy|=0.0158 wz=+0.6385 jv=[-2.4695, 2.4598] tgt=[-2.5, 2.5]
+  [rest=  20] k= 20 dyaw=+0.3770 |vxy|=0.0150 wz=+0.6247 jv=[-2.4751, 2.4763] tgt=[-2.5, 2.5]
+  [rest=  20] k= 30 dyaw=+0.6083 |vxy|=0.0032 wz=+0.6275 jv=[-2.5059, 2.4718] tgt=[-2.5, 2.5]
+SLEEP_PHASE rest_ticks=20 (  1.0 s) rest_end|vxy|=0.00019 -> spin 40 ticks: dyaw=+0.8112 rad max|wheel_jv|=10.7517 rad/s responds
+  [rest= 100] k=  0 dyaw=+0.0190 |vxy|=0.0194 wz=+0.3819 jv=[-1.9766, 2.5578] tgt=[-2.5, 2.5]
+  [rest= 100] k=  1 dyaw=+0.0305 |vxy|=0.0613 wz=+0.2261 jv=[-2.4555, 2.5] tgt=[-2.5, 2.5]
+  [rest= 100] k=  2 dyaw=+0.0487 |vxy|=0.0214 wz=+0.2174 jv=[-2.4998, 2.5008] tgt=[-2.5, 2.5]
+  [rest= 100] k= 10 dyaw=+0.1811 |vxy|=0.0051 wz=+0.6769 jv=[-2.4989, 2.4985] tgt=[-2.5, 2.5]
+  [rest= 100] k= 20 dyaw=+0.3474 |vxy|=0.0033 wz=+0.0542 jv=[-2.501, 2.5019] tgt=[-2.5, 2.5]
+  [rest= 100] k= 30 dyaw=+0.5127 |vxy|=0.0140 wz=+0.5941 jv=[-2.269, 2.4453] tgt=[-2.5, 2.5]
+SLEEP_PHASE rest_ticks=100 (  5.0 s) rest_end|vxy|=0.00021 -> spin 40 ticks: dyaw=+0.6761 rad max|wheel_jv|=4.2571 rad/s responds
+  [rest= 300] k=  0 dyaw=+0.0142 |vxy|=0.0350 wz=+0.5358 jv=[-2.4667, 2.46] tgt=[-2.5, 2.5]
+  [rest= 300] k=  1 dyaw=+0.0427 |vxy|=0.0082 wz=+0.4028 jv=[-2.3847, 2.7429] tgt=[-2.5, 2.5]
+  [rest= 300] k=  2 dyaw=+0.0629 |vxy|=0.0089 wz=+0.5553 jv=[-2.4536, 2.4884] tgt=[-2.5, 2.5]
+  [rest= 300] k= 10 dyaw=+0.3092 |vxy|=0.0088 wz=+0.6606 jv=[-2.4525, 2.4934] tgt=[-2.5, 2.5]
+  [rest= 300] k= 20 dyaw=+0.5688 |vxy|=0.0100 wz=+0.6735 jv=[-2.4915, 2.5053] tgt=[-2.5, 2.5]
+  [rest= 300] k= 30 dyaw=+0.7895 |vxy|=0.0189 wz=+0.5947 jv=[-2.437, 2.5782] tgt=[-2.5, 2.5]
+SLEEP_PHASE rest_ticks=300 ( 15.0 s) rest_end|vxy|=0.00038 -> spin 40 ticks: dyaw=+0.9694 rad max|wheel_jv|=10.9816 rad/s responds
+  [rest= 600] k=  0 dyaw=+0.0000 |vxy|=0.0048 wz=-0.0156 jv=[-2.5009, 2.4992] tgt=[-2.5, 2.5]
+  [rest= 600] k=  1 dyaw=+0.0000 |vxy|=0.0051 wz=-0.0115 jv=[-2.506, 2.4949] tgt=[-2.5, 2.5]
+  [rest= 600] k=  2 dyaw=+0.0124 |vxy|=0.0070 wz=+0.7993 jv=[-2.4996, 2.4044] tgt=[-2.5, 2.5]
+  [rest= 600] k= 10 dyaw=+0.1579 |vxy|=0.0522 wz=+0.3276 jv=[-5.7475, 2.3252] tgt=[-2.5, 2.5]
+  [rest= 600] k= 20 dyaw=+0.4476 |vxy|=0.0382 wz=+0.4525 jv=[-2.4847, 2.4964] tgt=[-2.5, 2.5]
+  [rest= 600] k= 30 dyaw=+0.6662 |vxy|=0.0605 wz=+0.3324 jv=[-0.3677, 2.222] tgt=[-2.5, 2.5]
+SLEEP_PHASE rest_ticks=600 ( 30.0 s) rest_end|vxy|=0.00315 -> spin 40 ticks: dyaw=+0.8663 rad max|wheel_jv|=14.2623 rad/s responds
+  [reverse k=  0] d=(-0.0038,+0.0103) |vxy|=0.2957 jv=[-10.0, -10.0] tgt=[-10.0, -10.0]
+  [reverse k=  1] d=(-0.0070,+0.0244) |vxy|=0.3261 jv=[-9.967, -11.111] tgt=[-10.0, -10.0]
+  [reverse k=  2] d=(-0.0144,+0.0369) |vxy|=0.3778 jv=[-10.0, -10.0] tgt=[-10.0, -10.0]
+  [reverse k= 10] d=(-0.0869,+0.1756) |vxy|=0.2746 jv=[-10.0, -10.0] tgt=[-10.0, -10.0]
+  [reverse k= 20] d=(-0.1732,+0.3379) |vxy|=0.3515 jv=[-10.0, -9.936] tgt=[-10.0, -10.0]
+  [reverse k= 30] d=(-0.2836,+0.5009) |vxy|=0.4703 jv=[-10.233, -9.997] tgt=[-10.0, -10.0]
+SLEEP_RESULT map=f1_b0_m01 seed=42 envs=4 reverse_disp=0.7668 m
+
+===== PROBE done in 38s =====

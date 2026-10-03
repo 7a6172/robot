@@ -1,0 +1,167 @@
+/* OpenMover ROS 2 documentation - shared stylesheet (self-contained, no external deps) */
+
+:root{
+  --bg:#0f1420;
+  --bg-soft:#161c2c;
+  --panel:#1b2333;
+  --panel-2:#202a3d;
+  --fg:#e6ebf5;
+  --fg-dim:#9aa7bd;
+  --accent:#4da3ff;
+  --accent-2:#7ee0a3;
+  --warn:#ffb454;
+  --danger:#ff6b6b;
+  --ok:#7ee0a3;
+  --border:#2a3650;
+  --code-bg:#0b101c;
+  --radius:10px;
+  --mono:'DejaVu Sans Mono','Cascadia Code','Consolas',monospace;
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  background:var(--bg);
+  color:var(--fg);
+  line-height:1.65;
+  font-size:16px;
+}
+
+a{color:var(--accent);text-decoration:none;}
+a:hover{text-decoration:underline;}
+
+/* ---------- top navigation ---------- */
+.topnav{
+  position:sticky;top:0;z-index:50;
+  display:flex;flex-wrap:wrap;align-items:center;gap:4px;
+  background:rgba(15,20,32,.94);
+  backdrop-filter:blur(6px);
+  border-bottom:1px solid var(--border);
+  padding:10px 20px;
+}
+.topnav .brand{
+  font-weight:700;color:var(--fg);margin-right:18px;
+  display:flex;align-items:center;gap:8px;white-space:nowrap;
+}
+.topnav .brand .logo{
+  width:22px;height:22px;border-radius:6px;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  display:inline-block;
+}
+.topnav a{
+  color:var(--fg-dim);padding:6px 11px;border-radius:8px;font-size:.93rem;
+  transition:background .15s,color .15s;white-space:nowrap;
+}
+.topnav a:hover{background:var(--panel);color:var(--fg);text-decoration:none;}
+.topnav a.active{background:var(--accent);color:#04121f;font-weight:600;}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1080px;margin:0 auto;padding:28px 22px 80px;}
+.page-head{margin:6px 0 26px;}
+.page-head .kicker{
+  display:inline-block;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent-2);background:var(--panel);border:1px solid var(--border);
+  border-radius:999px;padding:3px 12px;margin-bottom:12px;
+}
+h1{font-size:2.1rem;line-height:1.2;margin:.1em 0 .4em;}
+h2{
+  font-size:1.5rem;margin:2.2em 0 .6em;padding-top:.4em;
+  border-bottom:1px solid var(--border);padding-bottom:.25em;
+}
+h3{font-size:1.18rem;margin:1.7em 0 .5em;color:var(--fg);}
+h4{font-size:1rem;margin:1.3em 0 .4em;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.05em;}
+p{margin:.7em 0;}
+.lede{font-size:1.13rem;color:var(--fg-dim);max-width:70ch;}
+
+/* ---------- cards ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin:20px 0;}
+.card{
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 18px;display:block;color:inherit;transition:transform .12s,border-color .12s,background .12s;
+}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);background:var(--panel-2);text-decoration:none;}
+.card .icon{font-size:1.6rem;display:block;margin-bottom:8px;}
+.card h3{margin:.1em 0 .3em;font-size:1.05rem;color:var(--fg);}
+.card p{margin:.2em 0;font-size:.9rem;color:var(--fg-dim);}
+
+/* ---------- panels / callouts ---------- */
+.note,.warn,.danger,.tip{
+  border-radius:var(--radius);padding:14px 16px;margin:16px 0;border:1px solid;
+  display:flex;gap:12px;align-items:flex-start;
+}
+.note{background:#14233a;border-color:#2b5a94;}
+.tip{background:#14301f;border-color:#2f7a4d;}
+.warn{background:#3a2a12;border-color:#8a6a2f;}
+.danger{background:#3a1616;border-color:#8a3a3a;}
+.note .tag,.tip .tag,.warn .tag,.danger .tag{
+  font-weight:700;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;
+  border-radius:6px;padding:2px 8px;flex:none;margin-top:2px;
+}
+.note .tag{background:var(--accent);color:#04121f;}
+.tip .tag{background:var(--ok);color:#05230f;}
+.warn .tag{background:var(--warn);color:#2a1a00;}
+.danger .tag{background:var(--danger);color:#2a0404;}
+.note p,.tip p,.warn p,.danger p{margin:.2em 0;}
+
+/* ---------- code ---------- */
+code{
+  font-family:var(--mono);font-size:.88em;background:var(--code-bg);
+  border:1px solid var(--border);border-radius:5px;padding:.15em .45em;color:#cfe3ff;
+}
+pre{
+  background:var(--code-bg);border:1px solid var(--border);border-radius:var(--radius);
+  padding:15px 17px;overflow:auto;line-height:1.5;position:relative;
+}
+pre code{background:none;border:none;padding:0;font-size:.86rem;color:#dce9ff;}
+pre .cmt{color:#6b7c96;}
+pre .cmd{color:var(--accent-2);}
+pre .path{color:var(--warn);}
+
+/* ---------- tables ---------- */
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:.92rem;}
+th,td{border:1px solid var(--border);padding:9px 12px;text-align:left;vertical-align:top;}
+th{background:var(--panel-2);color:var(--fg);font-weight:600;}
+tr:nth-child(even) td{background:rgba(27,35,51,.45);}
+td code{white-space:nowrap;}
+
+/* ---------- badges ---------- */
+.badge{
+  display:inline-block;font-size:.72rem;font-weight:700;border-radius:999px;
+  padding:2px 10px;letter-spacing:.03em;vertical-align:middle;
+}
+.badge.ok{background:#1d4030;color:var(--ok);border:1px solid #2f7a4d;}
+.badge.warn{background:#40341d;color:var(--warn);border:1px solid #8a6a2f;}
+.badge.info{background:#1d3350;color:var(--accent);border:1px solid #2b5a94;}
+.badge.danger{background:#402020;color:var(--danger);border:1px solid #8a3a3a;}
+
+/* ---------- misc ---------- */
+ul,ol{padding-left:1.4em;}
+li{margin:.3em 0;}
+hr{border:none;border-top:1px solid var(--border);margin:34px 0;}
+.muted{color:var(--fg-dim);}
+.small{font-size:.85rem;}
+.kbd{
+  font-family:var(--mono);background:var(--panel-2);border:1px solid var(--border);
+  border-bottom-width:2px;border-radius:6px;padding:.1em .5em;font-size:.85em;
+}
+footer{
+  border-top:1px solid var(--border);margin-top:50px;padding:22px;color:var(--fg-dim);
+  font-size:.85rem;text-align:center;
+}
+.toc{
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 22px;margin:18px 0;
+}
+.toc h3{margin:.1em 0 .5em;}
+.toc ol{margin:.2em 0;}
+
+/* two-column help grid */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media (max-width:820px){.cols{grid-template-columns:1fr;}}
+
+@media print{
+  .topnav{display:none;}
+  body{background:#fff;color:#000;}
+}

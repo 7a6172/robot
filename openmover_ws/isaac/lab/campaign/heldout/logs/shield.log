@@ -1,0 +1,399 @@
+[INFO]: Parsing configuration from: openmover_lab.openmover_nav_cfg:OpenmoverNavEnvCfg
+[nav] custom map 'heldout': 884 wall boxes, spawn=[7.812, 2.312] goal=[7.812, 11.938]
+[nav] episode horizon extended to 148 s (map path 34.4 m)
+[nav] geo_iters raised to 177 for converged field (map path 34.4 m)
+Loading user config located at: '/home/zar/isaacsim/kit/data/Kit/IsaacLab/3.0/user.config.json'
+2026-09-07T05:13:30Z [0ms] [Warning] [omni.ext.plugin] [ext: isaaclab_visualizers] Extensions config 'extension.toml' doesn't exist '/home/zar/isaaclab/source/isaaclab_visualizers' or '/home/zar/isaaclab/source/isaaclab_visualizers/config'
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1788758010.832682   84360 descriptor_database.cc:633] File already exists in database: grpc/health/v1/health.proto
+W0000 00:00:1788758010.832901   84360 message.cc:301] Protobuf GeneratedMessageFactory: File is already registered: grpc/health/v1/health.proto
+2026-09-07T05:13:31Z [409ms] [Warning] [omni.usd_config.extension] Enable omni.materialx.libs extension to use MaterialX
+[ISAACLAB] AppLauncher initialization complete
+2026-09-07T05:13:33Z [2,608ms] [Warning] [isaaclab_physx.physics.physx_manager] TGS solver with enable_external_forces_every_iteration=False may cause noisy velocities.
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : 42
+	Physics step-size     : 0.008333333333333333
+	Rendering step-size   : 0.05
+	Environment step-size : 0.05
+[INFO]: Registered backend 'physx' for factory Articulation.
+[INFO]: Registered backend 'physx' for factory RayCaster.
+[INFO]: Registered backend 'physx' for factory ContactSensor.
+[INFO] Generating terrains randomly took Last: 3.229567 s
+[INFO]: Time taken for scene creation Last: 3.677838 s, Mean: 3.677838 s, Std: 0.000000 s, N: 1
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 10
+	Environment spacing   : 6.0
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : []
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-09-07T05:13:37Z [7,064ms] [Warning] [usdrt.population.plugin] Last global time was not created. Did you call setEnableUsdNoticeHandling?
+2026-09-07T05:13:37Z [7,125ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,125ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,125ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,125ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,125ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_4/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,125ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_5/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,125ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_6/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,125ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_7/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,125ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_8/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,125ms] [Warning] [omni.physx.tensors.plugin] Failed to find articulation at '/World/envs/env_9/Robot/Geometry/base_link/base_link'
+[INFO]: Simulation parameters for joints in /World/envs/env_.*/Robot:
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                        Simulation Joint Information (Prim path: /World/envs/env_.*/Robot)                                                       |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+| Index | Name                   | Stiffness | Damping | Armature | Static Friction | Dynamic Friction | Viscous Friction |   Position Limits   | Velocity Limits | Effort Limits |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+|   0   | ball_front_left_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   1   | ball_front_right_joint |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   2   | ball_rear_left_joint   |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   3   | ball_rear_right_joint  |   0.000   |  0.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     0.100     |
+|   4   | wheel_left_joint       |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
+|   5   | wheel_right_joint      |   0.000   |  2.000  |  0.000   |      0.000      |      0.000       |      0.000       | [-3.4e+38, 3.4e+38] |     1.7e+04     |     5.000     |
++-------+------------------------+-----------+---------+----------+-----------------+------------------+------------------+---------------------+-----------------+---------------+
+2026-09-07T05:13:37Z [7,232ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,232ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,232ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,232ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,232ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_4/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,232ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_5/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,232ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_6/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,232ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_7/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,232ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_8/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,232ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_9/Robot/Geometry/base_link/base_link'
+[INFO]: Read mesh prim: /World/ground/terrain/mesh with 113248 vertices and 509304 faces.
+2026-09-07T05:13:37Z [7,253ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,253ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,253ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,253ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,253ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_4/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,253ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_5/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,253ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_6/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,253ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_7/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,253ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_8/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:37Z [7,253ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_9/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,318ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,318ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,318ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,318ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,318ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_4/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,318ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_5/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,318ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_6/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,318ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_7/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,318ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_8/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,318ms] [Warning] [omni.physx.tensors.plugin] Failed to find rigid body at '/World/envs/env_9/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,318ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_0/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,318ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_1/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,319ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_2/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,319ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_3/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,319ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_4/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,319ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_5/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,319ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_6/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,319ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_7/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,319ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_8/Robot/Geometry/base_link/base_link'
+2026-09-07T05:13:38Z [7,319ms] [Warning] [omni.physx.tensors.plugin] Failed to find contact report API at '/World/envs/env_9/Robot/Geometry/base_link/base_link'
+[INFO]: Time taken for simulation start Last: 1.036720 s, Mean: 1.036720 s, Std: 0.000000 s, N: 1
+[INFO]: Completed setting up the environment...
+[nav] obstacle table OK (cold cache, replay cross-checked): 16 tiles (16 fresh, 0 from mesh cache), obstacles/tile 884-884
+[nav] custom map spawn/goal fixed from /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/heldout.json
+[nav] geodesic grid: 16 tiles x 60x60 cells (res 0.25 m, inflate 0.2 m)
+[nav] obs space: Box(-inf, inf, (10, 1208), float32)
+[nav] act space: Box(-inf, inf, (10, 2), float32)
+[nav] num_envs=10 device=cuda:0
+[INFO]: Parsing configuration from: openmover_lab.rsl_rl_ppo_cfg:OpenmoverNavPPORunnerCfg
+--------------------------------------------------------------------------------
+Resolved observation sets: 
+	 actor :  ['policy']
+	 critic :  ['policy']
+--------------------------------------------------------------------------------
+Actor Model: MLPModel(
+  (obs_normalizer): Identity()
+  (distribution): GaussianDistribution()
+  (mlp): MLP(
+    (0): Linear(in_features=1208, out_features=128, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=128, out_features=128, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=128, out_features=2, bias=True)
+  )
+)
+Critic Model: MLPModel(
+  (obs_normalizer): Identity()
+  (mlp): MLP(
+    (0): Linear(in_features=1208, out_features=128, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=128, out_features=128, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=128, out_features=1, bias=True)
+  )
+)
+[nav] loaded checkpoint: /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/logs/rsl_rl/openmover_nav/bc_init_v3/model_0.pt
+[nav] Shield-lite enabled (policy_node v7.4 port; v_full=0.504 m/s, w_full=3.108 rad/s, 884 boxes, policy=trained)
+[shield-lite] env 8: pinned at (+8.05,+2.93) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+8.11,+2.91) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+8.10,+2.94) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+8.27,+2.92) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+7.99,+2.94) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+8.11,+2.93) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+8.25,+2.92) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+8.23,+2.93) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+8.05,+2.91) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+8.32,+3.04) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+8.12,+2.96) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+8.02,+2.96) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+8.26,+3.02) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+8.42,+3.03) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+8.48,+3.04) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+8.32,+3.03) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+8.55,+2.95) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+8.25,+2.98) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+8.20,+3.04) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+8.20,+3.02) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+8.50,+3.05) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+8.65,+2.96) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+8.80,+2.95) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+8.42,+3.05) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+8.69,+2.96) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+8.72,+3.03) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+8.90,+2.96) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+8.40,+2.97) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+8.89,+2.97) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+8.82,+2.96) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+8.98,+3.03) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+8.41,+2.96) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+8.82,+3.03) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+9.08,+2.96) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+9.18,+3.04) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+9.07,+3.04) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+9.07,+3.03) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+9.14,+2.95) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+9.25,+3.02) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+9.31,+3.04) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+8.91,+2.96) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+8.70,+2.96) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+9.67,+3.00) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+9.72,+3.00) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+8.29,+2.98) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+9.02,+2.96) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+10.07,+2.97) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+9.94,+3.00) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+9.76,+2.96) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+9.89,+2.96) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+8.76,+2.99) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+9.45,+2.96) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+9.92,+3.04) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+9.27,+2.98) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+8.99,+2.97) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+10.46,+2.98) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+10.07,+3.04) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+10.07,+2.96) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+10.17,+2.96) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+9.20,+2.98) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+9.12,+3.06) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+9.46,+3.04) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+10.65,+3.04) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+9.82,+2.95) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+10.58,+2.95) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+10.31,+3.05) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+8.94,+3.00) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+10.66,+2.96) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+9.66,+2.96) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+10.83,+3.03) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+9.57,+2.99) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+9.49,+2.96) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+10.62,+2.95) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+9.89,+2.96) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+10.54,+2.96) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+9.89,+2.96) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+10.25,+2.97) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+10.42,+2.96) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+10.10,+3.04) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+11.36,+2.98) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+10.09,+2.99) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+9.55,+2.96) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+9.93,+2.98) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+10.61,+3.00) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+10.42,+3.01) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+11.05,+3.00) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+10.65,+2.95) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+10.56,+3.00) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+9.71,+3.03) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+10.54,+2.96) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+10.74,+2.96) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+10.81,+3.04) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+11.37,+3.01) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+10.83,+2.96) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+10.30,+2.96) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+11.56,+3.01) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+10.73,+3.04) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+10.82,+2.96) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+11.10,+3.05) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+11.66,+3.08) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+11.01,+2.95) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+11.79,+3.52) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+11.11,+2.99) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+11.44,+2.96) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+9.17,+2.95) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+10.77,+2.96) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+11.70,+3.11) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+11.24,+3.04) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+10.60,+2.97) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+9.35,+3.03) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+11.77,+3.24) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+10.66,+2.95) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+9.89,+2.97) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+10.76,+2.96) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+11.80,+3.56) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+10.95,+2.96) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+10.14,+3.05) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+10.33,+3.04) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+11.07,+2.98) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+11.14,+3.03) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+10.83,+4.83) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+11.26,+3.04) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+10.64,+2.95) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+11.69,+3.11) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+10.23,+2.97) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+11.66,+3.09) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+10.83,+3.04) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+10.92,+4.79) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+10.04,+4.86) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+10.90,+4.78) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+10.68,+4.92) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+9.84,+4.93) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+10.65,+4.92) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+10.31,+4.94) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+10.86,+4.80) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+10.53,+2.92) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+11.60,+2.95) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+10.63,+4.92) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+10.84,+4.80) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+10.37,+4.94) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+9.64,+4.85) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+10.90,+4.78) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+11.75,+3.72) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+10.65,+4.92) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+8.49,+4.84) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+10.76,+4.89) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+10.95,+3.01) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+9.68,+4.84) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+9.01,+4.78) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+9.46,+4.93) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+9.84,+4.85) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+9.85,+4.85) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+9.43,+4.85) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+7.42,+4.84) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+11.48,+2.93) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+9.47,+4.95) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+8.72,+4.84) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+8.87,+4.90) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+9.15,+4.94) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+10.80,+4.86) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+10.90,+4.83) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+10.61,+4.93) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+10.63,+4.94) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+8.33,+4.95) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+10.31,+4.95) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+6.08,+4.85) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+9.29,+4.86) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+5.91,+4.92) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+10.13,+4.86) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+9.33,+4.85) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+11.80,+3.59) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+7.40,+4.84) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+9.18,+4.84) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+11.01,+4.79) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+5.39,+4.94) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+9.11,+4.93) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+10.81,+4.91) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+8.95,+4.93) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+7.16,+4.93) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+8.10,+4.95) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+10.38,+4.85) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+8.29,+4.95) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+10.11,+4.95) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+6.71,+4.76) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+9.86,+4.86) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+7.99,+4.84) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+9.84,+4.86) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+8.93,+4.84) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+9.57,+4.94) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+4.62,+4.75) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+9.47,+4.83) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+6.59,+4.85) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+7.54,+4.95) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+8.76,+4.92) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+9.33,+4.84) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+8.10,+4.86) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+9.29,+4.92) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+6.43,+4.92) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+8.59,+4.84) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+8.18,+4.92) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+10.91,+4.80) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+8.08,+4.89) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+8.59,+4.84) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+6.01,+4.79) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+5.46,+4.79) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+7.68,+4.94) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+4.53,+4.84) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+8.36,+4.93) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+8.76,+4.84) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+6.32,+4.84) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+9.34,+4.78) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+9.38,+4.85) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+5.30,+4.91) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+5.55,+4.93) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+8.57,+4.93) -> escape prefers reverse
+[shield-lite] env 7: pinned at (+6.14,+4.92) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+8.90,+4.86) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+9.16,+4.92) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+8.08,+4.95) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+4.91,+4.83) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+4.92,+4.83) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+8.38,+4.85) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+8.78,+4.95) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+7.45,+4.96) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+4.92,+4.87) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+3.95,+4.87) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+7.88,+4.92) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+6.39,+4.95) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+5.09,+4.85) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+6.46,+4.77) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+6.74,+4.84) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+4.29,+4.87) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+6.89,+4.94) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+4.79,+4.93) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+6.06,+4.96) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+3.74,+5.11) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+8.04,+4.90) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+6.32,+4.90) -> escape prefers reverse
+[shield-lite] env 9: pinned at (+6.31,+4.96) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+6.88,+4.82) -> escape prefers reverse
+[shield-lite] env 4: pinned at (+3.81,+5.33) -> escape prefers reverse
+[shield-lite] env 6: pinned at (+3.91,+4.89) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+5.58,+4.98) -> escape prefers reverse
+[shield-lite] env 0: pinned at (+5.55,+4.83) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+6.90,+4.84) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+6.71,+4.93) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+6.79,+4.92) -> escape prefers reverse
+[shield-lite] env 2: pinned at (+5.13,+6.67) -> escape prefers reverse
+[shield-lite] env 5: pinned at (+6.52,+4.95) -> escape prefers reverse
+[shield-lite] env 8: pinned at (+6.60,+4.93) -> escape prefers reverse
+[shield-lite] env 1: pinned at (+5.12,+4.98) -> escape prefers reverse
+[shield-lite] env 3: pinned at (+10.64,+4.91) -> escape prefers reverse
+[nav] done: 2971 steps in 164.87 s (180 env-steps/s)
+[nav] Shield-lite: shield=22549 hyst=12099 escape=1546 retreat=1335 pin=252 off_map=0 over 29710 env-steps
+[nav] final obs shape=(10, 1208) norm=45.4717
+[nav] scan front: min=0.057 mean=0.186 max=0.583
+[nav] scan rear : min=0.057 mean=0.183 max=0.579
+[nav] tail (goal_xy, vx, wz) env0: [-0.5817537903785706, -3.7298054695129395, 0.0, 0.0, -0.4156900942325592, 0.03983248025178909, 11.022199630737305, 0.0]
+[nav] base xy env0: [-22.209156036376953, -27.45557403564453]
+[nav] displacement env0 over run: [-0.021, 0.232] m
+[nav] wheel joint vel env0 (L,R): [-16.279098510742188, 6.186735153198242, -12.00743293762207, 11.17556095123291, -9.88003158569336, -3.035212278366089]
+[nav] contact force env0: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+[nav] episode-reset batches observed=10, mean success rate=0.000, mean collision rate=0.000
+[nav] no successes -> time-to-goal undefined
+[nav] blocked-goal episodes: 10 of 10 (100.0%), blocked success=0.000
+[nav] results_json: 10/10 first episodes -> /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/campaign/heldout/results/shield/heldout.json
+[INFO]: SimulationContext cleared

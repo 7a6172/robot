@@ -1,0 +1,14 @@
+<!-- 2023-6-24 0.0.0.1A -->
+
+<!-- 文件描述：机器人导航地图加载 -->
+<launch>
+    <!-- 设置参数 -->
+    <arg name="map_filename" default="$(find openmover)/maps/simulation/navigation.yaml" />
+    
+    <!-- 地图加载 -->
+    <node name="map_server" type="map_server" pkg="map_server" args="$(arg map_filename)">
+        <remap from="map_metadata" to="openmover/mapping/map_metadata" />
+        <remap from="map" to="openmover/mapping/map" />
+        <param name="frame_id" value="map" />
+    </node>
+</launch>

@@ -1,0 +1,5 @@
+<launch>
+    <node name="auto_mapping_handler" pkg="auto_mapping_toolbox" type="auto_mapping_handler" output="screen">
+        <rosparam file="$(find auto_mapping_toolbox)/config/config.yaml" command="load" />
+    </node>
+</launch>

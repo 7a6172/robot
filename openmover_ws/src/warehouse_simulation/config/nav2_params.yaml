@@ -1,0 +1,310 @@
+# Nav2 parameters derived from warehouse_simulation_toolkit/param/*.yaml
+# (move_base_params, base_local_planner_params, navfn, global/local costmap,
+#  costmap_common).
+# 保持原值：goal tolerances 0.2 / 0.12、robot_radius 0.25、
+#  inflation_radius 1.0 / cost_scaling_factor 2.58、voxel 层全部参数、
+#  acc 限制 3.0、sim_time ≈ 3.0。
+# 有意偏离（见各处注释）：
+#  - controller_frequency 5.0 -> 20.0（MPPI 要求 == 1/model_dt）
+#  - max_vel_x 3.0 -> vx_max 1.0、max_vel_theta 3.0 -> wz_max 1.9（MPPI 稳定调参）
+#  - min_vel_x 0.1 -> vx_min -0.35（允许倒车，配合 behavior_server backup）
+controller_server:
+  ros__parameters:
+    use_sim_time: true
+    # MPPI 要求 controller 周期 == model_dt (0.05s) -> 20 Hz
+    controller_frequency: 20.0
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.5
+    min_theta_velocity_threshold: 0.001
+    progress_checker_plugin: "progress_checker"
+    goal_checker_plugins: ["goal_checker"]
+    controller_plugins: ["FollowPath"]
+
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.5
+      movement_time_allowance: 10.0
+
+    goal_checker:
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.2
+      yaw_goal_tolerance: 0.12
+      stateful: true
+
+    # 本地控制器：Jazzy 默认 MPPI（DWB 在该版本首个 goal 时偶发 segfault）
+    FollowPath:
+      plugin: "nav2_mppi_controller::MPPIController"
+      time_steps: 56
+      model_dt: 0.05
+      batch_size: 1000
+      ax_max: 3.0
+      ax_min: -3.0
+      ay_max: 0.0
+      ay_min: 0.0
+      az_max: 3.0
+      vx_std: 0.2
+      vy_std: 0.0
+      wz_std: 0.4
+      vx_max: 1.0
+      vx_min: -0.35
+      vy_max: 0.0
+      wz_max: 1.9
+      iteration_count: 1
+      prune_distance: 1.7
+      transform_tolerance: 0.1
+      temperature: 0.3
+      gamma: 0.015
+      motion_model: "DiffDrive"
+      visualize: false
+      regenerate_noises: true
+      critics: [
+        "ConstraintCritic", "CostCritic", "GoalCritic",
+        "GoalAngleCritic", "PathAlignCritic", "PathFollowCritic",
+        "PathAngleCritic", "PreferForwardCritic"]
+      ConstraintCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+      GoalCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 1.4
+      GoalAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.0
+        threshold_to_consider: 0.5
+      PreferForwardCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 0.5
+      CostCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.81
+        near_collision_cost: 253
+        critical_cost: 300.0
+        consider_footprint: false
+        collision_cost: 1000000.0
+        near_goal_distance: 1.0
+        trajectory_point_step: 2
+      PathAlignCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 14.0
+        max_path_occupancy_ratio: 0.05
+        trajectory_point_step: 4
+        threshold_to_consider: 0.5
+        offset_from_furthest: 20
+        use_path_orientations: false
+      PathFollowCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        offset_from_furthest: 5
+        threshold_to_consider: 1.4
+      PathAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 2.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+        max_angle_to_furthest: 1.0
+        mode: 0
+
+    local_costmap:
+      global_frame: odom
+      robot_base_frame: base_link
+      update_frequency: 2.0
+      publish_frequency: 2.0
+      rolling_window: true
+      width: 4
+      height: 4
+      resolution: 0.05
+      transform_tolerance: 0.5
+      robot_radius: 0.25
+      plugins: ["voxel_layer", "inflation_layer"]
+      voxel_layer:
+        plugin: "nav2_costmap_2d::VoxelLayer"
+        enabled: true
+        publish_voxel_map: true
+        origin_z: 0.0
+        z_resolution: 0.1
+        z_voxels: 22
+        max_obstacle_height: 4.2
+        mark_threshold: 0
+        unknown_threshold: 15
+        observation_sources: scan
+        obstacle_range: 2.5
+        raytrace_range: 3.0
+        combination_method: 1
+        track_unknown_space: true
+        scan:
+          topic: /scan
+          data_type: "LaserScan"
+          marking: true
+          clearing: true
+          min_obstacle_height: 0.1
+          max_obstacle_height: 3.3
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        enabled: true
+        cost_scaling_factor: 2.58
+        inflation_radius: 1.0
+      always_send_full_costmap: false
+
+planner_server:
+  ros__parameters:
+    use_sim_time: true
+    expected_planner_frequency: 1.0
+    planner_plugins: ["GridBased"]
+    # NavfnPlanner (equivalent of navfn/NavfnROS: dijkstra, allow_unknown true)
+    GridBased:
+      plugin: "nav2_navfn_planner::NavfnPlanner"
+      tolerance: 0.0
+      use_astar: false
+      allow_unknown: true
+
+    global_costmap:
+      global_frame: map
+      robot_base_frame: base_link
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      rolling_window: false
+      transform_tolerance: 0.5
+      resolution: 0.05
+      robot_radius: 0.25
+      plugins: ["static_layer", "voxel_layer", "inflation_layer"]
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        enabled: true
+        map_topic: /map
+        subscribe_to_updates: false
+        map_subscribe_transiently: true
+      voxel_layer:
+        plugin: "nav2_costmap_2d::VoxelLayer"
+        enabled: true
+        publish_voxel_map: true
+        origin_z: 0.0
+        z_resolution: 0.1
+        z_voxels: 22
+        max_obstacle_height: 4.2
+        mark_threshold: 0
+        unknown_threshold: 15
+        observation_sources: scan
+        obstacle_range: 2.5
+        raytrace_range: 3.0
+        combination_method: 1
+        track_unknown_space: true
+        scan:
+          topic: /scan
+          data_type: "LaserScan"
+          marking: true
+          clearing: true
+          min_obstacle_height: 0.1
+          max_obstacle_height: 3.3
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        enabled: true
+        cost_scaling_factor: 2.58
+        inflation_radius: 1.0
+      always_send_full_costmap: false
+
+smoother_server:
+  ros__parameters:
+    use_sim_time: true
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      tolerance: 1.0e-10
+      max_its: 1000
+      do_refinement: true
+
+behavior_server:
+  ros__parameters:
+    use_sim_time: true
+    local_costmap_topic: local_costmap/costmap_raw
+    global_costmap_topic: global_costmap/costmap_raw
+    local_footprint_topic: local_costmap/published_footprint
+    global_footprint_topic: global_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "wait"]
+    spin:
+      plugin: "nav2_behaviors::Spin"
+    backup:
+      plugin: "nav2_behaviors::BackUp"
+    drive_on_heading:
+      plugin: "nav2_behaviors::DriveOnHeading"
+    wait:
+      plugin: "nav2_behaviors::Wait"
+    local_frame: odom
+    global_frame: map
+    robot_base_frame: base_link
+    transform_tolerance: 0.5
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 3.0
+    min_rotational_vel: 0.4
+    rotational_acc_lim: 3.0
+
+bt_navigator:
+  ros__parameters:
+    use_sim_time: true
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /odom
+    bt_loop_duration: 10
+    default_server_timeout: 20
+    navigators: ["navigate_to_pose", "navigate_through_poses"]
+    navigate_to_pose:
+      plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
+    navigate_through_poses:
+      plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
+
+# Jazzy 的 navigation_launch.py 默认还会拉起 collision_monitor，
+# 需要最小可用配置（ROS 1 时代没有此组件）
+collision_monitor:
+  ros__parameters:
+    use_sim_time: true
+    base_frame_id: "base_link"
+    odom_frame_id: "odom"
+    cmd_vel_in_topic: "cmd_vel_smoothed"
+    cmd_vel_out_topic: "cmd_vel"
+    state_topic: "collision_monitor_state"
+    transform_tolerance: 0.5
+    source_timeout: 5.0
+    base_shift_correction: true
+    stop_pub_timeout: 2.0
+    polygons: ["PolygonStop"]
+    # 仓库货架间距较窄，0.3m 的停止区会误触发导致机器人被永久刹停；
+    # 障碍物规避由代价地图负责，这里只保留较小的最后防线
+    PolygonStop:
+      type: "polygon"
+      points: "[[0.15, 0.15], [0.15, -0.15], [-0.15, -0.15], [-0.15, 0.15]]"
+      action_type: "stop"
+      min_points: 4
+      visualize: false
+      enabled: true
+    observation_sources: ["scan"]
+    scan:
+      type: "scan"
+      topic: "/scan"
+      enabled: true
+
+# Jazzy 的 navigation_launch.py 默认还会拉起 docking_server，
+# 需要至少一个 dock 插件才能配置成功（本项目不使用充电桩）
+docking_server:
+  ros__parameters:
+    use_sim_time: true
+    controller_frequency: 5.0
+    initial_perception_timeout: 5.0
+    wait_charge_timeout: 5.0
+    dock_plugins: ["simple_charging_dock"]
+    simple_charging_dock:
+      plugin: "opennav_docking::SimpleChargingDock"
+    docks: ["home_dock"]
+    home_dock:
+      type: "simple_charging_dock"
+      frame: "map"
+      pose: [0.0, 0.0, 0.0]

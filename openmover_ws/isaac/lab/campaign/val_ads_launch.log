@@ -1,0 +1,13 @@
+[camp] plan: 1 runs (1 maps x arms ['astar_dwa_shield'])
+[camp]   astar_dwa_shield f1_b0_m00 seeds=4 horizon=96s steps=1950 est~8.5 min
+[camp] estimated total wall clock: 0.14 h
+
+[camp] [1/1] [camp] === astar_dwa_shield f1_b0_m00 (seeds=4, horizon=96 s, steps=1950) ===
+[camp] cmd: /home/zar/isaaclab/_isaac_sim/python.sh /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/21_run_openmover_nav.py --task Isaac-Nav-Openmover-v0 --map_file /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/maps/gen/f1_b0_m00.json --policy astar_dwa --num_envs 4 --num_steps 1950 --seed 42 --episode_cap 190.0 --results_json campaign/val_ads/results/astar_dwa_shield/f1_b0_m00.json --shield
+[camp] FAILED: no results JSON (rc=0); see campaign/val_ads/logs/astar_dwa_shield_f1_b0_m00.log
+[camp] done in 100 s: success=None collision=None ttg=None
+
+[camp] campaign pass complete: 0/1 runs produced results (1 failed)
+
+[camp] ===== summary =====
+[camp] astar_dwa_shield: no completed runs

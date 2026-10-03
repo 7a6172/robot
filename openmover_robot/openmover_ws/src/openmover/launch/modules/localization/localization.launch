@@ -1,0 +1,28 @@
+<!-- 2022-5-9 0.0.0.4A -->
+
+<!-- 文件描述：启动机器人定位模式选择器 -->
+<launch>
+    <!-- 设置参数 -->
+    <arg name="init_diff_x" default="0" />
+    <arg name="init_diff_y" default="0" />
+    <arg name="init_diff_z" default="0" />
+    <arg name="init_diff_yaw" default="0" />
+    <arg name="system_mode" default="0" />
+
+    <!-- 定位模块 -->
+    <arg name="launch_file_map" value="$(find openmover)/launch/modules/localization/carto_localization_server.launch" />
+
+    <!-- 启动 server -->
+    <node name="localization_mode_server_handler" pkg="openmover" type="localization_mode_server_handler.py" output="screen">
+        <param name="launch_file_map" value="$(arg launch_file_map)" />
+        <param name="system_mode" value="$(arg system_mode)" />
+    </node>
+
+    <!-- 启动机器人定位管理系统 -->
+    <node pkg="openmover" type="localization_handler" name="localization_handler" output="screen">
+        <param name="init_diff_x" value="$(arg init_diff_x)" />
+        <param name="init_diff_y" value="$(arg init_diff_y)" />
+        <param name="init_diff_z" value="$(arg init_diff_z)" />
+        <param name="init_diff_yaw" value="$(arg init_diff_yaw)" />
+    </node>
+</launch>

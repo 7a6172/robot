@@ -1,0 +1,26 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "${default}",
+                "limitSymbolsToIncludedHeaders": false
+            },
+            "includePath": [
+                "${workspaceFolder}/openmover_ws/devel/include/**",
+                "${workspaceFolder}/cartographer_ws/install_isolated/include/**",
+                "/opt/ros/noetic/include/**",
+                "${workspaceFolder}/openmover_ws/src/openmover/include/**",
+                "${workspaceFolder}/openmover_ws/src/auto_mapping_toolbox/auto_mapping_toolbox/include/**",
+                "${workspaceFolder}/openmover_ws/src/relocalization_toolbox/relocalization_toolbox/include/**",
+                "/usr/include/**",
+                "/usr/include/eigen3",
+                "/usr/local/include/**"
+            ],
+            "name": "ROS",
+            "intelliSenseMode": "gcc-x64",
+            "cStandard": "gnu11",
+            "cppStandard": "c++14"
+        }
+    ],
+    "version": 4
+}

@@ -1,0 +1,50 @@
+{
+ "map": "f1_b0_m01",
+ "policy": "astar_dwa",
+ "shield": false,
+ "seed": 42,
+ "num_envs": 4,
+ "num_steps": 1982,
+ "horizon_s": 98.08,
+ "n_first_episodes": 4,
+ "mean_success": 0.75,
+ "mean_collision": 1.0,
+ "mean_ttg_success": 83.73333231608073,
+ "per_env": [
+  {
+   "env": 0,
+   "reached": false,
+   "penalized": true,
+   "ttg": 98.05000305175781,
+   "yaw0": 1.9782452583312988
+  },
+  {
+   "env": 1,
+   "reached": true,
+   "penalized": true,
+   "ttg": 80.8499984741211,
+   "yaw0": 1.9293034076690674
+  },
+  {
+   "env": 2,
+   "reached": true,
+   "penalized": true,
+   "ttg": 86.0,
+   "yaw0": -2.4371402263641357
+  },
+  {
+   "env": 3,
+   "reached": true,
+   "penalized": true,
+   "ttg": 84.3499984741211,
+   "yaw0": 1.4164307117462158
+  }
+ ],
+ "baseline_stats": {
+  "plan": 2252,
+  "replan": 2248,
+  "dwa_reject": 0,
+  "stuck": 0,
+  "steps": 7928
+ }
+}

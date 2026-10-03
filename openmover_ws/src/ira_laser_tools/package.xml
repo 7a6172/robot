@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ira_laser_tools</name>
+  <version>2.0.0</version>
+  <description>
+    ROS 2 port of ira_laser_tools for the openmover project. Merges multiple
+    LaserScan sources into a single scan (laserscan_multi_merger).
+  </description>
+  <maintainer email="zar@my.swjtu.edu.cn">zar</maintainer>
+  <author email="augusto.ballardini@unimib.it">Augusto (upstream ira_laser_tools)</author>
+  <author email="p.colombo45@campus.unimib.it">Pietro (upstream ira_laser_tools)</author>
+  <author email="f.delia2@campus.unimib.it">Fabio (upstream ira_laser_tools)</author>
+  <author email="zar@my.swjtu.edu.cn">zar (manual ROS 2 port)</author>
+  <license>BSD</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>laser_geometry</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

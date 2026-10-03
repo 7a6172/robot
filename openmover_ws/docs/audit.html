@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit — OpenMover ROS 2</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand"><span class="logo"></span>OpenMover&nbsp;ROS&nbsp;2</span>
+  <a href="index.html">Index</a>
+  <a href="getting_started.html">Getting Started</a>
+  <a href="build.html">Build</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="packages.html">Packages</a>
+  <a href="usage.html">Usage</a>
+  <a href="hardware.html">Hardware</a>
+  <a href="audit.html" class="active">Audit</a>
+  <a href="changelog.html">Changelog</a>
+</nav>
+
+<div class="wrap">
+  <div class="page-head">
+    <span class="kicker">Quality gate</span>
+    <h1>ROS 1 &rarr; ROS 2 Parity Audit</h1>
+    <p class="lede">
+      A complete line-level audit of the migrated stack, using the ROS&nbsp;1 Noetic tree as
+      ground truth. Because the real robot was not yet available, the goal was to be as sure
+      as possible <em>now</em>: every config value, launch argument, message field, driver
+      parameter and build flag was compared between the two trees. The audit found
+      <strong>8 defects</strong>; all 8 were fixed and re-validated.
+    </p>
+  </div>
+
+  <div class="toc">
+    <h3>Contents</h3>
+    <ol>
+      <li><a href="#scope">Scope &amp; method</a></li>
+      <li><a href="#fixes">Findings &amp; fixes (A&ndash;H)</a></li>
+      <li><a href="#faithful">Verified faithful</a></li>
+      <li><a href="#minors">Known minors (accepted)</a></li>
+      <li><a href="#validation">Validation summary</a></li>
+      <li><a href="#scripts">Helper scripts</a></li>
+    </ol>
+  </div>
+
+  <h2 id="scope">1. Scope &amp; method</h2>
+  <p>
+    Ground truth: <code>openmover_robot/openmover_ws/src</code> (ROS&nbsp;1 packages) plus the
+    repo-root runtime config <code>openmover_robot/config</code>. Target:
+    <code>openmover_ws/src</code> (ROS&nbsp;2). Four read-only audit tracks ran in parallel:
+  </p>
+  <table>
+    <tr><th style="width:240px;">Track</th><th>What was compared</th></tr>
+    <tr>
+      <td>Messages &amp; drivers</td>
+      <td>All <code>.msg</code>/<code>.srv</code> definitions field-by-field; bluesea2 LiDAR
+      driver parameters (IPs, ports, RPM, angle filter, inversion); ira_laser_tools merger
+      configuration.</td>
+    </tr>
+    <tr>
+      <td>Robot core (openmover)</td>
+      <td>Every launch file and every YAML in <code>config_defaults/</code> against the ROS&nbsp;1
+      runtime config; mode-server logic; HAL Python nodes; C++ handlers (navigation, mapping,
+      auto-mapping); URDF and meshes.</td>
+    </tr>
+    <tr>
+      <td>Algorithm toolboxes</td>
+      <td>auto_mapping_toolbox and relocalization_toolbox: sources, CMake flags, service
+      interfaces, parameter usage.</td>
+    </tr>
+    <tr>
+      <td>Simulation + build hygiene</td>
+      <td>warehouse_simulation world, bridge, nav2 params, tests; install-tree hygiene
+      (stale artifacts, dangling references from removed features).</td>
+    </tr>
+  </table>
+  <p>
+    Each track reported: <span class="badge danger">defect</span> (behavior diverges from
+    ROS&nbsp;1), <span class="badge warn">minor</span> (cosmetic / dead config), or
+    <span class="badge ok">faithful</span> (parity confirmed). All defects below were fixed in
+    the same session and re-validated.
+  </p>
+
+  <h2 id="fixes">2. Findings &amp; fixes</h2>
+
+  <h3>A &mdash; Costmap observation sources dropped during config merge <span class="badge danger">defect</span></h3>
+  <p>
+    ROS&nbsp;1 kept full <code>global_costmap:</code> sections in
+    <code>navigation.yaml</code> / <code>mapping.yaml</code>. During the ROS&nbsp;2 config merge
+    these sections were not carried over, so the in-process
+    <code>nav2_costmap_2d</code> instances inside <code>navigation_handler</code> /
+    <code>auto_mapping_handler</code> ran with default-only sensor configuration.
+  </p>
+  <p>
+    <strong>Fix:</strong> the ROS&nbsp;1 values were ported verbatim (nav2 plugin syntax):
+    <code>static_layer</code> (<code>map_topic: /openmover/mapping/map</code>) +
+    <code>obstacle_layer</code> observing <code>/openmover/hardware/lidar/scan</code>, with the
+    ROS&nbsp;1 ranges &mdash; navigation: <code>obstacle_range 2.5</code> /
+    <code>raytrace_range 3.0</code>; mapping: <code>4.5</code> / <code>5.0</code>,
+    <code>track_unknown_space</code> and <code>unknown_cost_value -1</code> only in mapping mode.
+    Top-level sections route to the child costmap nodes by base-name matching (constructor
+    verified in <code>nav2_costmap_2d/costmap_2d_ros.hpp</code>).
+    Files: <code>config_defaults/apps/navigation/navigation.yaml</code>,
+    <code>config_defaults/apps/mapping/mapping.yaml</code>.
+  </p>
+  <div class="note">
+    <span class="tag">Parity note</span>
+    <div><p>In ROS&nbsp;1 these sections were consumed only by an orphan handler
+    (<code>global_planner_handler.cpp</code>, never launched) &mdash; i.e. dead config. The ROS&nbsp;2
+    merge activated the capability but dropped the config; porting the YAML keeps the newly-active
+    costmaps tuned exactly as the original authors intended.</p></div>
+  </div>
+
+  <h3>B &mdash; map_server never left &ldquo;Unconfigured&rdquo; <span class="badge danger">defect</span></h3>
+  <p>
+    <code>nav2_map_server</code> is a lifecycle node; launched as a plain node it stays in the
+    <em>Unconfigured</em> state and never publishes the map. ROS&nbsp;1's
+    <code>map_server</code> had no lifecycle, so nothing in the original port triggered the
+    transitions.
+  </p>
+  <p>
+    <strong>Fix:</strong> added a <code>nav2_lifecycle_manager</code>
+    (<code>lifecycle_manager_mapping</code>, <code>autostart: true</code>,
+    <code>node_names: ['map_server']</code>, <code>bond_timeout_ms: 4000</code>) to
+    <code>launch/modules/mapping/map_server.launch.py</code>, and declared
+    <code>&lt;exec_depend&gt;nav2_lifecycle_manager&lt;/exec_depend&gt;</code> in
+    <code>package.xml</code>. The include is only reachable from
+    <code>bootloader.launch.py</code>, so no name collisions with the warehouse demo's own
+    navigation lifecycle manager.
+  </p>
+
+  <h3>C &mdash; <code>package://ssir2</code> remnants in URDF <span class="badge danger">defect</span></h3>
+  <p>
+    <code>urdf/environment_description.urdf</code> still referenced
+    <code>package://ssir2/meshes/environment_description/base_link.STL</code> in both the visual
+    and collision geometries &mdash; a package that does not exist in the ROS&nbsp;2 workspace,
+    so robot-state publishing of that link would fail mesh resolution.
+  </p>
+  <p><strong>Fix:</strong> repointed both to
+  <code>package://openmover/meshes/environment_description/base_link.STL</code> (mesh confirmed
+  present in the package).</p>
+
+  <h3>D &mdash; <code>get_navigation_state</code> cleared its buffer <span class="badge danger">defect</span></h3>
+  <p>
+    The ROS&nbsp;2 port of <code>scripts/hal/protocol.py</code> set the shared buffer to
+    <code>None</code> after reading it. ROS&nbsp;1 semantics are <em>read without clearing</em>
+    (retain the latest state), so a second query right after the first would wrongly return
+    nothing.
+  </p>
+  <p><strong>Fix:</strong> restored retain semantics &mdash; the buffer is copied under the lock
+  and returned, never cleared, matching ROS&nbsp;1 line-for-line.</p>
+
+  <h3>E &mdash; relocalization_toolbox lost its optimization flags <span class="badge danger">defect</span></h3>
+  <p>
+    The ROS&nbsp;1 CMakeLists compiled the toolbox with
+    <code>-O3 -flto -ffast-math -funroll-loops</code> because relocalization
+    scoring/sampling is a compute hotspot. The ROS&nbsp;2 port only kept
+    <code>-Wall -Wextra</code>, producing a measurably slower node.
+  </p>
+  <p><strong>Fix:</strong> restored the exact flag set (plus <code>-flto</code> link option) in
+  <code>relocalization_toolbox/CMakeLists.txt</code> and rebuilt successfully
+  (only benign sign-compare warnings).</p>
+
+  <h3>F &mdash; misleading nav2_params header comment <span class="badge warn">minor&rarr;fixed</span></h3>
+  <p>
+    <code>warehouse_simulation/config/nav2_params.yaml</code> carried a header comment claiming
+    values were copied from the robot config, which was no longer accurate after tuning.
+    <strong>Fix:</strong> comment rewritten to describe what the file actually is (the
+    warehouse-demo Nav2 parameter set).
+  </p>
+
+  <h3>G &mdash; actor comment overstated parity <span class="badge warn">minor&rarr;fixed</span></h3>
+  <p>
+    The pedestrian-actor comment in <code>warehouse_simulation/worlds/warehouse.sdf</code>
+    claimed full waypoint parity with ROS&nbsp;1, but the z coordinate was intentionally raised
+    from 0 to 1.0 for the gz Harmonic actor skin anchor.
+    <strong>Fix:</strong> comment now states exactly that: x/y and timing match ROS&nbsp;1, z was
+    lifted, and actors have no physics collision body (avoidance happens via the LiDAR &rarr;
+    costmap path).
+  </p>
+
+  <h3>H &mdash; stale <code>__pycache__</code> in install tree <span class="badge warn">minor&rarr;fixed</span></h3>
+  <p>
+    Stray <code>__pycache__</code> directories had accumulated in the workspace during test
+    runs. <strong>Fix:</strong> removed; builds use <code>--symlink-install</code> so Python
+    sources stay live and no caching is needed.
+  </p>
+
+  <h2 id="faithful">3. Verified faithful</h2>
+  <table>
+    <tr><th style="width:300px;">Item</th><th>Result</th></tr>
+    <tr><td>Message / service definitions (8 msg + 10 srv)</td>
+        <td><span class="badge ok">field-for-field parity</span></td></tr>
+    <tr><td>Warehouse-demo costmaps (robot_radius 0.25, voxel layer params, inflation 1.0 / radius 2.58)</td>
+        <td><span class="badge ok">parity</span></td></tr>
+    <tr><td>bluesea2 LiDAR params in bringup (IPs 192.168.100.101/.102, ports 6667/6668, 900&nbsp;rpm, &plusmn;1.57&nbsp;rad filter, inverted)</td>
+        <td><span class="badge ok">parity</span></td></tr>
+    <tr><td><code>SIM_AREAS</code> region definitions in bringup</td>
+        <td><span class="badge ok">preserved</span></td></tr>
+    <tr><td>Pedestrian actor waypoints (x, y, timing)</td>
+        <td><span class="badge ok">identical</span> (z lifted, see fix G)</td></tr>
+    <tr><td>HAL service surface &amp; 5-step workflow</td>
+        <td><span class="badge ok">parity</span></td></tr>
+    <tr><td>Mode servers (5) and their launch arguments</td>
+        <td><span class="badge ok">parity</span></td></tr>
+    <tr><td>TF tree and frame names</td>
+        <td><span class="badge ok">parity</span></td></tr>
+  </table>
+
+  <h2 id="minors">4. Known minors (accepted unless marked resolved)</h2>
+  <table>
+    <tr><th style="width:340px;">Item</th><th>Why accepted</th></tr>
+    <tr>
+      <td><code>config_defaults/rviz</code> contains rviz1-format configs</td>
+      <td>ROS&nbsp;2 runs its own RViz2 configs; the files are inert legacy and harmless.</td>
+    </tr>
+    <tr>
+      <td>OSQP used by a package but not declared in <code>package.xml</code></td>
+      <td>System-level dependency installed via <code>tools/osqp_build</code>; documented in
+      <a href="getting_started.html">Getting Started</a>.</td>
+    </tr>
+    <tr>
+      <td>Dead keys present in <em>both</em> trees
+      (<code>dist_gain_far</code>/<code>dist_gain_near</code>;
+      <code>rrt_sampling_duration</code> vs <code>reachability_sampling_duration</code>)</td>
+      <td>Parity is exact &mdash; the keys are equally dead in ROS&nbsp;1; removing them would
+      create a diff, not fix one.</td>
+    </tr>
+    <tr>
+      <td>License TODO headers in a few ported files</td>
+      <td><span class="badge ok">resolved</span> &mdash; all package licenses were restored to
+      their ROS&nbsp;1 declarations and author/maintainer metadata clarified; see
+      <a href="changelog.html#attribution">Changelog &sect;12</a>.</td>
+    </tr>
+  </table>
+
+  <h2 id="validation">5. Validation summary</h2>
+  <ul>
+    <li>YAML / XML / SDF / Python syntax checks &mdash; all pass;
+        <code>gz sdf --check</code> reports <em>Valid</em>.</li>
+    <li><code>relocalization_toolbox</code> rebuilt with the restored flags
+        (<code>-j2</code>, per the <a href="hardware.html">16&nbsp;GB constraint</a>) &mdash; success.</li>
+    <li>All 6 <code>warehouse_simulation</code> tests pass
+        (<code>colcon test --packages-select warehouse_simulation</code>).</li>
+    <li>End-to-end simulation re-run after the fixes: drive &rarr; map &rarr; save &rarr;
+        localize &rarr; navigate &rarr; pedestrian stop/resume &mdash; all working.</li>
+  </ul>
+  <div class="warn">
+    <span class="tag">Remaining risk</span>
+    <div><p>The audit covers simulation and configuration parity only. The real-robot branch has
+    not been exercised on hardware yet; see <a href="hardware.html">Hardware</a>.</p></div>
+  </div>
+
+  <h2 id="scripts">6. Helper scripts</h2>
+  <p>
+    Three scripts in <code>openmover_ws/tools/</code> automate the environment checks and
+    dependency installation described in <a href="getting_started.html">Getting Started</a>.
+    All are safe to re-run at any time; <code>check_system.sh</code> is strictly read-only.
+  </p>
+  <table>
+    <tr><th style="width:280px;">Script</th><th>What it does</th></tr>
+    <tr>
+      <td><code>tools/setup.sh</code></td>
+      <td>Interactive setup wizard: detects OS/ROS/Gazebo/RAM/GPU/disk, reports whether the
+      machine is sufficient, proposes a build-parallelism tier sized to RAM
+      (32&nbsp;GB+: parallel, 16&nbsp;GB: 2 jobs, less: 1 job), then offers to install
+      dependencies, build the workspace and run tests &mdash; each behind a yes/no prompt.
+      Flags: <code>--check</code> (detection only), <code>--yes</code>, <code>--jobs N</code>.</td>
+    </tr>
+    <tr>
+      <td><code>tools/check_system.sh</code></td>
+      <td>Verifies OS release, ROS&nbsp;2 Jazzy, gz-sim, the apt dependency set, the OSQP
+      install, GPU presence and free RAM, then prints a PASS/WARN/FAIL summary. Exit code 0
+      means the machine can build and run the workspace.</td>
+    </tr>
+    <tr>
+      <td><code>tools/install_deps.sh</code></td>
+      <td>Installs the apt packages, runs <code>rosdep install</code> over the workspace, and
+      builds/installs OSQP from <code>tools/osqp_build</code> if it is missing. Uses
+      <code>-j2</code> for the OSQP build to respect the memory constraint.</td>
+    </tr>
+  </table>
+  <pre><code><span class="cmt"># from the workspace root</span>
+<span class="cmd">bash tools/setup.sh</span>             <span class="cmt"># interactive wizard (recommended)</span>
+<span class="cmd">bash tools/check_system.sh</span>      <span class="cmt"># read-only health check</span>
+<span class="cmd">sudo bash tools/install_deps.sh</span> <span class="cmt"># installs system dependencies</span></code></pre>
+</div>
+
+</body>
+</html>

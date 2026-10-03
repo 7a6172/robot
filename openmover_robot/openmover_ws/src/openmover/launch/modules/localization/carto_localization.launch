@@ -1,0 +1,47 @@
+<!-- 2023-6-24 0.0.0.1A -->
+
+<!-- 文件描述：启动机器人 Cartographer 系统 -->
+<launch>
+    <!-- 设置参数 -->
+    <arg name="config_filepath" default="$(env HOME)/openmover_robot/config/apps/navigation" />
+    <arg name="config_basename" default="navigation.lua" />
+    <arg name="pbstream_filename" default="$(find openmover)/maps/simulation/navigation.pbstream" />
+
+    <node name="cartographer_node" pkg="cartographer_ros" type="cartographer_node" args="
+            -configuration_directory $(arg config_filepath)
+            -configuration_basename $(arg config_basename)
+            -load_state_filename $(arg pbstream_filename)">
+        <remap from="scan" to="openmover/hardware/lidar/scan" />
+        <remap from="odom" to="openmover/localization/odom" />
+        <remap from="tracked_pose" to="openmover/localization/pose_aft_mapped" />
+        <remap from="initialpose" to="openmover/localization/initialpose" />
+        <remap from="write_state" to="openmover/mapping/write_state/request" />
+    </node>
+    
+    <node name="cartographer_occupancy_grid_node" pkg="cartographer_ros" type="cartographer_occupancy_grid_node" args="
+            -localization_mode 1
+            -resolution 0.05">
+        <remap from="map" to="openmover/mapping/map" />
+        <remap from="map_metadata" to="openmover/mapping/map_metadata" />
+    </node>
+
+    <!-- <node name="amcl" pkg="amcl" type="amcl" output="screen">
+        <param name="use_map_topic" value="true"/>
+        <rosparam file="$(env HOME)/openmover_robot/config/apps/navigation/amcl.yaml" command="load" />
+        <remap from="amcl_pose" to="openmover/localization/pose_aft_mapped" />
+        <remap from="scan" to="openmover/hardware/lidar/scan" />
+        <remap from="map" to="openmover/mapping/map" />
+        <remap from="initialpose" to="openmover/localization/initialpose" />
+        <remap from="odom" to="openmover/localization/odom_legacy" />
+    </node> -->
+
+    <!-- <node name="gmcl" pkg="gmcl" type="gmcl" output="screen">
+            <param name="use_map_topic" value="true"/>
+            <rosparam file="$(env HOME)/openmover_robot/config/apps/navigation/gmcl.yaml" command="load" />
+            <remap from="gmcl_pose" to="openmover/localization/pose_aft_mapped" />
+            <remap from="scan" to="openmover/hardware/lidar/scan" />
+            <remap from="map" to="openmover/mapping/map" />
+            <remap from="initialpose" to="openmover/localization/initialpose" />
+            <remap from="odom" to="openmover/localization/odom_legacy" />
+    </node> -->
+</launch>

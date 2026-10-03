@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview — Caasi CLI Documentation</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/theme.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html">Caa<span>si</span></a>
+  <span class="badge">v0.3.0</span>
+  <span class="tagline">CLI-first orchestration for Isaac Sim, Isaac Lab &amp; the ROS 2 ecosystem</span>
+  <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
+</header>
+<div class="layout">
+<aside id="sidebar"></aside>
+<main>
+
+<h1>Caasi CLI</h1>
+<p class="lead">
+Caasi is a lightweight, <strong>CLI-first orchestration layer</strong> for NVIDIA Isaac Sim,
+Isaac Lab and the wider robotics ecosystem (ROS 2, Nav2, MoveIt 2, ros2_control, …).
+It discovers the tools you already have, launches them headlessly, tracks every long-running
+process as a first-class <em>run</em>, and gives you uniform, scriptable output for all of it.
+</p>
+
+<div class="callout note">
+  <div class="c-title">Note</div>
+  <p>Caasi is an independent open-source project. It is not affiliated with, endorsed by,
+  or an official product of NVIDIA.</p>
+</div>
+
+<h2 id="philosophy">Philosophy</h2>
+<ul>
+  <li><strong>Use existing software. Don't reinvent it.</strong> Caasi discovers, configures,
+      launches, connects, monitors and manages tools that already exist. It never reimplements
+      a simulator, a trainer, or a ROS middleware.</li>
+  <li><strong>Simulation is not visualization.</strong> Everything runs headless by default;
+      a viewer (<code>rviz2</code>, Foxglove, Open3D) is attached only when you ask for it.</li>
+  <li><strong>Minimum required stack.</strong> The CLI process never imports Isaac Sim,
+      Isaac Lab, PyTorch or rclpy. It stays fast and installs with three small dependencies
+      (<code>typer</code>, <code>rich</code>, <code>pyyaml</code>).</li>
+  <li><strong>Don't become another ROS.</strong> ROS orchestration delegates to the real
+      <code>ros2</code> binary of the distro you already have installed.</li>
+  <li><strong>Unix-friendly.</strong> Small commands, <code>--json</code> output everywhere it
+      matters, meaningful exit codes, errors on stderr.</li>
+</ul>
+
+<h2 id="architecture">Architecture: delegation, not reimplementation</h2>
+<p>Caasi is an <em>orchestrator</em>. Every heavy operation is delegated to the real tool,
+located through a layered discovery process:</p>
+<pre><code>            ┌────────────────────────────────────────────────┐
+            │                    caasi                        │
+            │  (typer + rich + yaml — nothing else imported)  │
+            └───────┬──────────────┬──────────────┬──────────┘
+                    │              │              │
+        discover    │      launch  │      inspect │
+                    ▼              ▼              ▼
+     ┌──────────────────┐  ┌──────────────┐  ┌──────────────────┐
+     │ tool registry    │  │ run manager  │  │ real binaries    │
+     │ ~/.config/caasi  │  │ ~/.caasi/runs│  │ python.sh        │
+     │ env vars         │  │ detached +   │  │ isaaclab.sh      │
+     │ common paths     │  │ tracked      │  │ ros2 · ssh ·     │
+     │ pip metadata     │  │ processes    │  │ docker · nvidia- │
+     └──────────────────┘  └──────────────┘  │ smi …            │
+                                             └──────────────────┘</code></pre>
+<p>The 0.3.0 ecosystem surface sits on the same three verbs. Layers, top to bottom:</p>
+<pre><code>┌──────────────────────────────────────┐
+│               CAASI CLI              │
+│  Commands / Help / Completion / JSON │
+└───────────────────┬──────────────────┘
+                    │
+┌───────────────────▼──────────────────┐
+│         Orchestration Layer          │
+│  Detect / Configure / Launch         │
+│  Connect / Monitor / Stop            │
+│  (capability catalog + adapters)     │
+└───────────────────┬──────────────────┘
+                    │
+      ┌─────────────┼─────────────┐
+      │             │             │
+┌─────▼─────┐ ┌─────▼─────┐ ┌─────▼─────┐
+│Simulation │ │ Robotics  │ │   AI/ML   │
+└─────┬─────┘ └─────┬─────┘ └─────┬─────┘
+      │             │             │
+ Isaac Sim        ROS 2       Isaac Lab
+ PhysX · Newton   Nav2        PyTorch · Warp
+ Replicator       MoveIt 2    GR00T · Cosmos
+                  ros2_control TensorRT
+                  Isaac ROS · NITROS
+                  nvblox · cuMotion</code></pre>
+<p>Nothing in the bottom two rows is implemented by Caasi. Each box is reached through a
+<em>capability</em> — a declarative list of packages, binaries, Python modules, env vars and paths
+to probe — and an <em>adapter</em> that turns a resolved capability into the command line of the real
+tool. A new upstream release is a config change, not a code change:</p>
+<pre class="term"><code><span class="t-head">shell</span><span class="t-body"><span class="in">caasi config catalog slam</span>
+<span class="in">caasi config set catalog.slam.toolbox.packages '["slam_toolbox"]'</span></span></code></pre>
+
+<h3>How tools are found</h3>
+<p>Each ecosystem component is located in a fixed priority order — no imports, no daemons:</p>
+<table>
+  <thead><tr><th>Component</th><th>Discovery order</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Isaac Sim</strong></td><td>tool registry (<code>tools.isaacsim</code>) → <code>ISAACSIM_PATH</code> env → common install locations (<code>/opt/isaac-sim*</code>, <code>~/isaacsim</code>, Omniverse launcher paths) → pip metadata <code>isaacsim</code></td></tr>
+    <tr><td><strong>Isaac Lab</strong></td><td>tool registry (<code>tools.isaaclab</code>) → <code>ISAACLAB_PATH</code> env → <code>~/isaaclab</code>, <code>~/IsaacLab</code>, <code>~/workspace/*</code> → pip metadata <code>isaaclab</code></td></tr>
+    <tr><td><strong>ROS 2</strong></td><td><code>ROS_DISTRO</code> env → scan <code>/opt/ros</code> for <code>setup.bash</code> → <code>ros2</code> on <code>PATH</code></td></tr>
+    <tr><td><strong>Python packages</strong> (torch, cv2, …)</td><td>pip metadata only (<code>importlib.metadata</code>) — never imported</td></tr>
+    <tr><td><strong>Isaac ROS &amp; accelerated stacks</strong></td><td><code>ros2 pkg prefix &lt;package&gt;</code> in the registered workspace (<code>ISAAC_ROS_WS</code> env → common workspace paths), then the launch file inside that prefix — <a href="accelerated.html">details</a></td></tr>
+    <tr><td><strong>Physics engines</strong></td><td>PhysX: extension globs under the Isaac Sim root (<code>extsPhysics/*physx*</code>, <code>exts/omni.physx*</code>) · Newton: <code>isaac-sim.newton.sh</code>, else pip metadata <code>newton-physics</code> · Warp / MuJoCo: pip metadata · Gazebo: <code>gz</code> / <code>gazebo</code> on <code>PATH</code></td></tr>
+    <tr><td><strong>GR00T</strong></td><td><code>GR00T_PATH</code> env → <code>~/Isaac-GR00T</code>, <code>~/gr00t</code>, <code>~/workspaces/Isaac-GR00T</code> → pip metadata <code>gr00t</code>; training goes through the repo's own <code>scripts/finetune.py</code> / <code>eval.py</code> / <code>data.py</code></td></tr>
+    <tr><td><strong>Cosmos · NuRec · USD tools</strong></td><td>binaries on <code>PATH</code> (<code>cosmos</code>, <code>ngc</code>, <code>nurec</code>, <code>usdcat</code>, <code>usdchecker</code>, <code>check_urdf</code>) → pip metadata (<code>cosmos_predict1</code>) → Replicator extensions under the Isaac Sim root</td></tr>
+    <tr><td><strong>Teleop</strong></td><td>the ROS 2 packages behind the device (<code>teleop_twist_keyboard</code>, <code>teleop_twist_joy</code> / <code>joy</code>, <code>rosbag2</code>) → <code>isaac-sim.xr.vr.sh</code> for XR</td></tr>
+    <tr><td><strong>GPUs</strong></td><td><code>nvidia-smi</code> queries</td></tr>
+    <tr><td><strong>Containers</strong></td><td><code>docker</code> on <code>PATH</code>, else <code>podman</code>; daemon probed with <code>&lt;tool&gt; info</code></td></tr>
+    <tr><td><strong>Remote machines</strong></td><td>the <code>remotes:</code> section of your config; executed via the system <code>ssh</code> client</td></tr>
+  </tbody>
+</table>
+
+<h3>Runs: every long process is tracked</h3>
+<p>Simulations, training jobs, ROS launches, SSH batch jobs and container runs are all
+started <strong>detached</strong> and recorded under <code>~/.caasi/runs/</code>. The CLI returns
+immediately; the run keeps going after you close the terminal. See
+<a href="runs.html">Runs &amp; Logs</a> for the full model. The short version:</p>
+<pre class="term"><code><span class="t-head">terminal</span><span class="t-body"><span class="in">caasi sim run experiments/wave.yaml</span>
+<span class="ok">Run 20260905-142301-wave started in the background.</span>
+<span class="dim">  Follow it with: caasi logs 20260905-142301-wave -f</span>
+<span class="in">caasi run list</span>
+<span class="out">ID                    Name  Backend  Status   Created                    PID
+20260905-142301-wave  wave  sim      running  2026-09-05T14:23:01+08:00  48213</span>
+<span class="in">caasi logs latest -f</span>
+<span class="out">[14:23:04] stage loaded, 4096 envs
+[14:23:11] step 1000/100000 …</span></span></code></pre>
+
+<h2 id="installation">Installation</h2>
+<p>Requirements: <strong>Python 3.10+</strong> on Linux. Nothing else — the Isaac stack,
+ROS 2, PyTorch etc. are discovered, not installed, by Caasi.</p>
+<pre class="term"><code><span class="t-head">shell</span><span class="t-body"><span class="dim"># recommended: isolated env, command linked into ~/.local/bin</span>
+<span class="in">pipx install caasi</span>
+<span class="dim"># or into the active environment:</span>
+<span class="in">pip install caasi</span>
+<span class="in">caasi version</span>
+<span class="ok">caasi 0.3.0</span></span></code></pre>
+<p>Both install the <code>caasi</code> console script into the environment's
+<code>bin/</code>; pipx additionally links it into <code>~/.local/bin</code> so it is
+available system-wide for your user (<code>pipx ensurepath</code> if that is not on your
+PATH). On PEP 668 distros (Ubuntu 23.04+, Debian 12+, Fedora) a bare system-wide
+<code>pip install</code> is refused — use pipx or a dedicated venv:</p>
+<pre class="term"><code><span class="t-head">shell</span><span class="t-body"><span class="in">python3 -m venv ~/.venvs/caasi &amp;&amp; ~/.venvs/caasi/bin/pip install caasi</span></span></code></pre>
+<p>From source:</p>
+<pre class="term"><code><span class="t-head">shell</span><span class="t-body"><span class="in">git clone https://github.com/7a6172/caasi.git &amp;&amp; cd caasi</span>
+<span class="in">pip install -e .</span>
+<span class="dim"># development (adds pytest):</span>
+<span class="in">pip install -e ".[dev]"</span></span></code></pre>
+<p>Upgrade with <code>pipx upgrade caasi</code> or <code>pip install -U caasi</code>.
+Shell completion is available:</p>
+<pre class="term"><code><span class="t-head">shell</span><span class="t-body"><span class="in">caasi --install-completion</span>
+<span class="out">bash completion installed in /home/you/.bashrc</span></span></code></pre>
+
+<h2 id="quickstart">Quickstart: a first project, end to end</h2>
+<p>The typical Caasi workflow — diagnose, scaffold, run, follow, review:</p>
+
+<h4>1. Check what your machine has</h4>
+<pre class="term"><code><span class="t-head">shell</span><span class="t-body"><span class="in">caasi doctor</span>
+<span class="out">Environment Diagnostics
+
+system
+  ✓ OS — Ubuntu 24.04.1 LTS
+  ✓ Kernel — 6.8.0-45-generic
+
+nvidia
+  ✓ nvidia-smi — 550.107.02
+  ✓ GPU 0 — NVIDIA GeForce RTX 4090 (24564 MiB)
+  ✓ CUDA — 12.4
+
+isaac
+  ! Isaac Sim — not detected
+
+ros
+  ✓ ROS 2 distro — jazzy at /opt/ros/jazzy
+
+<span class="warn">2 warning(s)</span></span>
+<span class="in">caasi setup</span>
+<span class="dim"># shows which components are missing and how to install them</span></span></code></pre>
+
+<h4>2. Scaffold a project</h4>
+<pre class="term"><code><span class="t-head">shell</span><span class="t-body"><span class="in">caasi init ~/experiments/demo --name demo</span>
+<span class="ok">Created project 'demo' at /home/you/experiments/demo</span>
+<span class="out">  caasi.yaml
+  robots/  scenes/  tasks/  experiments/  datasets/  runs/
+  artifacts/  logs/  .caasi/</span>
+<span class="in">cd ~/experiments/demo &amp;&amp; caasi project robot create agv -d "Warehouse AGV"</span>
+<span class="ok">Created robot 'agv' at /home/you/experiments/demo/robots/agv.yaml.</span></span></code></pre>
+
+<h4>3. Register your Isaac install once</h4>
+<pre class="term"><code><span class="t-head">shell</span><span class="t-body"><span class="in">caasi config set tools.isaacsim.versions."6.0".path /opt/isaac-sim-6.0</span>
+<span class="in">caasi config set tools.isaacsim.default "6.0"</span>
+<span class="in">caasi config tools</span>
+<span class="out">Tool      Default  Versions  Resolved path
+isaacsim  6.0      6.0       /opt/isaac-sim-6.0</span></span></code></pre>
+
+<h4>4. Describe an experiment and run it headless</h4>
+<pre class="term"><code><span class="t-head">experiments/wave.yaml</span><span class="t-body"><span class="out">name: wave
+backend: sim            # sim | lab | python
+script: scripts/wave.py # resolved relative to this YAML
+headless: true
+args: ["--steps", "10000"]</span></span></code></pre>
+<pre class="term"><code><span class="t-head">shell</span><span class="t-body"><span class="in">caasi sim run experiments/wave.yaml</span>
+<span class="ok">Run 20260905-142301-wave started in the background.</span>
+<span class="in">caasi logs latest -f</span>
+<span class="dim"># Ctrl+C stops following — the run keeps going</span>
+<span class="in">caasi run status latest</span>
+<span class="out">wave (20260905-142301-wave)
+  Status    succeeded
+  Backend   sim</span></span></code></pre>
+
+<h4>5. Train, benchmark, collect data, review</h4>
+<pre class="term"><code><span class="t-head">shell</span><span class="t-body"><span class="in">caasi train experiments/ant.yaml --steps 500000 --envs 4096</span>
+<span class="in">caasi benchmark start experiments/fps.yaml --steps 20000</span>
+<span class="in">caasi benchmark report latest</span>
+<span class="in">caasi dataset generate experiments/collect.yaml --episodes 100 --record-images</span>
+<span class="in">caasi replay latest --viewer rviz</span></span></code></pre>
+
+<h2 id="conventions">Global options &amp; output conventions</h2>
+<h3>Global options</h3>
+<p>These belong to the root command and must come <strong>before</strong> the subcommand
+(<code>caasi --json gpu status</code>, not <code>caasi gpu --json status</code>).</p>
+<table>
+  <thead><tr><th>Option</th><th>Short</th><th>Effect</th></tr></thead>
+  <tbody>
+    <tr><td><code>--verbose</code></td><td><code>-v</code></td><td>Enable verbose output.</td></tr>
+    <tr><td><code>--quiet</code></td><td><code>-q</code></td><td>Suppress human output (JSON still prints).</td></tr>
+    <tr><td><code>--json</code></td><td>—</td><td>Force JSON output for every command that supports it.</td></tr>
+    <tr><td><code>--color &lt;mode&gt;</code></td><td>—</td><td><code>auto</code> (default), <code>always</code> or <code>never</code>; honors <code>NO_COLOR</code>.</td></tr>
+    <tr><td><code>--layout &lt;mode&gt;</code></td><td>—</td><td><code>rich</code> (default, bordered tables) or <code>plain</code> (space-aligned columns); honors <code>CAASI_LAYOUT</code> and <code>layout:</code> in <code>config.yaml</code>.</td></tr>
+    <tr><td><code>--config &lt;path&gt;</code></td><td>—</td><td>Merge an additional config file (highest precedence).</td></tr>
+    <tr><td><code>--lang &lt;code&gt;</code></td><td>—</td><td>Language for messages (only <code>en</code> is bundled).</td></tr>
+    <tr><td><code>--version</code></td><td>—</td><td>Print <code>caasi &lt;version&gt;</code> and exit.</td></tr>
+    <tr><td><code>--help</code></td><td><code>-h</code></td><td>Show help for any command or subcommand; <code>caasi help gpu status</code> does the same. The root listing is grouped by topic — <code>CAASI_HELP_ORDER=alpha</code> (or <code>help_order:</code> in <code>config.yaml</code>) gives a flat a–z list, <code>core</code> pins the entry points above it.</td></tr>
+  </tbody>
+</table>
+
+<h3>Output conventions</h3>
+<ul>
+  <li><strong>JSON mode</strong> — most data commands accept <code>--json</code> (locally or
+      globally). JSON always goes to <strong>stdout</strong>, pretty-printed with 2-space indent,
+      and prints even under <code>--quiet</code>. It is safe to pipe into <code>jq</code>.</li>
+  <li><strong>Errors</strong> — handled failures print <code>Error: &lt;message&gt;</code> in red to
+      <strong>stderr</strong> and exit <code>1</code>. Errors never emit JSON.</li>
+  <li><strong>Exit codes</strong> — <code>0</code> success · <code>1</code> handled failure or a
+      failing readiness check · <code>2</code> usage error (bad flag, missing argument — Click
+      convention) · <code>3</code> a <code>check</code> report resolved to
+      <code>incompatible</code>. Readiness commands (<code>doctor</code>, <code>check</code>,
+      <code>nav test</code>, <code>container check</code>, …) deliberately use the exit code so you
+      can script them: <code>if caasi doctor -q; then …; fi</code>.</li>
+  <li><strong>Bare groups</strong> — invoking a group with no subcommand (<code>caasi gpu</code>)
+      prints its help and exits 0.</li>
+</ul>
+
+<h2 id="verbs">The five verbs</h2>
+<p>One organising principle runs through the whole CLI: every diagnostic-ish command is one of
+five verbs, each with exactly one job. <code>doctor</code> never absorbs <code>check</code> or
+<code>audit</code> — they answer different questions. Full walkthrough in
+<a href="observability.html#verbs">Observability</a>.</p>
+<table>
+  <thead><tr><th>Verb</th><th>Question it answers</th><th>Scope</th></tr></thead>
+  <tbody>
+    <tr><td><code>doctor</code></td><td><strong>What's wrong with my environment?</strong> (is the machine capable?)</td><td>machine / toolchain</td></tr>
+    <tr><td><code>check</code></td><td><strong>Can this work here?</strong> (preflight / compatibility)</td><td>project ↔ machine, per-domain</td></tr>
+    <tr><td><code>test</code></td><td><strong>Does it actually work when executed?</strong> (live smoke)</td><td>per-domain</td></tr>
+    <tr><td><code>validate</code></td><td><strong>Is this config / data / resource structurally valid?</strong></td><td>per-domain</td></tr>
+    <tr><td><code>audit</code></td><td><strong>Can I account for and reproduce what happened?</strong></td><td>project + runs + environment</td></tr>
+  </tbody>
+</table>
+<p><code>inspect</code> is the per-domain deep-dive (<code>env inspect</code>,
+<code>project inspect</code>, <code>run inspect</code>); <code>setup</code> provisions the
+machine/toolchain; <code>project</code> manages the robotics project.</p>
+
+<h2 id="check-contract">The check contract</h2>
+<p><strong>One check architecture, multiple entry points.</strong> Root
+<code>caasi check</code> orchestrates only the checkers relevant to the project's registered
+components; domain specialists (<code>sim check</code>, <code>container check</code>,
+<code>control check</code>) call the same engine for one scope. There is deliberately
+<strong>no <code>caasi check sim</code> alias</strong> — root aggregates, a domain specialises.
+Every entry point emits the same <code>CheckReport</code> (full detail in
+<a href="environment.html#check">Environment</a>):</p>
+<table>
+  <thead><tr><th>Field</th><th>Type</th><th>Values / meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>CheckItem.compatibility</code></td><td>enum</td><td><code>compatible</code> · <code>untested</code> · <code>missing</code> · <code>incompatible</code></td></tr>
+    <tr><td><code>CheckReport.result</code></td><td>enum</td><td><code>ready</code> · <code>warning</code> · <code>incompatible</code></td></tr>
+    <tr><td><code>CheckReport.scope</code></td><td>string</td><td><code>project</code> / <code>run</code> for the orchestrator; the domain for a specialist</td></tr>
+    <tr><td><code>missing</code> / <code>warnings</code></td><td>string[]</td><td>required-but-absent names · untested-or-needs-attention names</td></tr>
+  </tbody>
+</table>
+<p>The human report renders each item's <code>compatibility</code> as a rung of a confidence
+ladder, then collapses to one <code>Result:</code> line — and <code>check</code> exits
+<code>3</code> when that result is <code>incompatible</code>, so it drops straight into CI as a
+gate:</p>
+<table>
+  <thead><tr><th>Ladder rung</th><th><code>compatibility</code></th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill ok">VERIFIED</span></td><td><code>compatible</code> (required)</td><td>A required component is present and known to work.</td></tr>
+    <tr><td><span class="pill ok">COMPATIBLE</span></td><td><code>compatible</code></td><td>Present and known to work (not strictly required).</td></tr>
+    <tr><td><span class="pill warn">UNVERIFIED</span></td><td><code>untested</code></td><td>Present, but this exact version has not been validated against the project.</td></tr>
+    <tr><td><span class="pill warn">WARNING</span></td><td><code>missing</code></td><td>A component was not detected.</td></tr>
+    <tr><td><span class="pill fail">INCOMPATIBLE</span></td><td><code>incompatible</code></td><td>Present, but known not to work here — blocks the launch.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="command-map">Command map</h2>
+<div class="cards">
+  <div class="card">
+    <h3><a href="environment.html">Environment</a></h3>
+    <p>Diagnose the machine, pre-flight compatibility, and capture the environment fingerprint; inspect GPUs, OS and versions.</p>
+    <div class="cmds"><code>doctor</code> · <code>check</code> · <code>env inspect|fingerprint|lock|compare|show</code> · <code>gpu status|info|memory|doctor|monitor|test</code> · <code>system status|doctor|memory|processes</code> · <code>info</code> · <code>version</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="configuration.html">Configuration</a></h3>
+    <p>Layered YAML config, tool registry with multiple versions, remotes, env vars.</p>
+    <div class="cmds"><code>config show|get|set|path|tools|catalog</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="projects.html">Projects</a></h3>
+    <p>Scaffold a project, guide installation of missing components, manage robot/scene/task definitions, project config and the lockfile.</p>
+    <div class="cmds"><code>init</code> (alias) · <code>setup</code> · <code>project info|validate|add|remove|list|inspect|add-file|config</code> · <code>project robot|scene|task list|create|inspect|validate</code> · <code>project scene capture|reconstruct</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="runs.html">Runs &amp; Logs</a></h3>
+    <p>Every long process is a tracked, detached run with logs, status, a provenance bundle and lifecycle control.</p>
+    <div class="cmds"><code>run start|restart|list|status|logs|attach|stop|pause|resume|delete|inspect</code> · <code>start</code> (alias) · <code>logs</code> (alias)</div>
+  </div>
+  <div class="card">
+    <h3><a href="observability.html">Observability</a></h3>
+    <p>Watch live runs, aggregate logs, account for the environment with the five verbs, and inspect the provenance bundle every run writes.</p>
+    <div class="cmds"><code>monitor --once|--json</code> · <code>logs</code> · <code>audit --fix</code> · <code>run inspect</code> (provenance)</div>
+  </div>
+  <div class="card">
+    <h3><a href="simulation.html">Simulation</a></h3>
+    <p>Run experiment YAMLs headless on Isaac Sim / Isaac Lab / plain Python; pre-flight checks. Sim lifecycle and logs are now <code>run … --backend sim</code>.</p>
+    <div class="cmds"><code>sim run|headless|check|extensions</code> · <code>lab status|run|play|evaluate</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="training.html">Training</a></h3>
+    <p>Launch headless training and benchmark physics throughput; parse metrics from logs.</p>
+    <div class="cmds"><code>train</code> · <code>benchmark start|report</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="data.html">Data &amp; Sensors</a></h3>
+    <p>Generate, inspect, convert and validate datasets; discover sensors; diagnose the vision stack.</p>
+    <div class="cmds"><code>dataset list|generate|inspect|convert|validate|download</code> · <code>sensor</code> · <code>vision</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="review.html">Review</a></h3>
+    <p>Replay recorded data and attach viewers (RViz 2, Foxglove, Open3D) without rerunning anything.</p>
+    <div class="cmds"><code>replay</code> · <code>view rviz|foxglove|open3d|attach|run</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="ros.html">ROS Ecosystem</a></h3>
+    <p>Orchestrate ROS 2, Nav2, MoveIt 2 and ros2_control by delegating to the real <code>ros2</code> CLI.</p>
+    <div class="cmds"><code>ros status|doctor|list|launch|topic|node|graph|service</code> · <code>nav</code> · <code>moveit</code> · <code>control</code> — each with its own <code>doctor</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="accelerated.html">GPU-Accelerated Robotics</a></h3>
+    <p>Isaac ROS plus functional groups for perception, SLAM, mapping, motion planning and NITROS transport — detected, launched and inspected, never reimplemented.</p>
+    <div class="cmds"><code>isaac-ros status|list|doctor|launch</code> · <code>perception</code> · <code>slam</code> · <code>mapping</code> · <code>motion</code> · <code>nitros</code> · <code>pipeline inspect</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="synthetic.html">Synthetic Data &amp; Teleop</a></h3>
+    <p>Generate synthetic data with Isaac Sim Replicator (the root <code>synth</code> group was folded into <code>dataset generate</code>), drive a robot from keyboard/joystick/XR, record demonstrations and replay the bags.</p>
+    <div class="cmds"><code>dataset generate</code> (Replicator via the <code>sdg</code> catalog) · <code>teleop start|record|stop|replay</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="platform.html">Physics &amp; Foundation Models</a></h3>
+    <p>Detect and pick a physics engine launcher, test Warp devices, delegate to the GR00T repo's own scripts, pass through to Cosmos.</p>
+    <div class="cmds"><code>physics status|list|run|benchmark</code> · <code>warp status|test|benchmark</code> · <code>groot status|setup|run|train|evaluate</code> · <code>cosmos status|run|dataset</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="native.html">Native &amp; Shell</a></h3>
+    <p>Escape hatches: run raw <code>python.sh</code> / <code>isaaclab.sh</code> / <code>ros2</code> commands or open a shell with the environment wired up.</p>
+    <div class="cmds"><code>native run|sim|lab|ros</code> · <code>shell</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="remote.html">Remote &amp; Containers</a></h3>
+    <p>Run experiments on remote GPU machines over SSH and inside official Isaac container images.</p>
+    <div class="cmds"><code>remote list|connect|run</code> · <code>container list|status|check|doctor|run</code></div>
+  </div>
+</div>
+
+<div class="callout tip">
+  <div class="c-title">Tip — scripting</div>
+  <p>Every readiness check is designed for pipelines:
+  <code>caasi doctor -q &amp;&amp; caasi nav test --json | jq '.ok' &amp;&amp; caasi sim run exp.yaml --name ci-1</code>.</p>
+</div>
+
+<div class="page-nav">
+  <span></span>
+  <a class="next" href="environment.html"><span class="pn-label">Next</span><span class="pn-title">Environment →</span></a>
+</div>
+
+<footer class="doc-footer">
+  Caasi CLI 0.3.0 — these pages live in <code>docs/</code> and need no build step.
+  Source: <a href="https://github.com/7a6172/caasi">github.com/7a6172/caasi</a>.
+</footer>
+</main>
+</div>
+<script src="assets/copy.js"></script>
+<script src="assets/sidebar.js"></script>
+</body>
+</html>

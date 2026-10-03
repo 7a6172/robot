@@ -1,0 +1,33 @@
+auto_mapping:
+  max_x_vel: 1.0
+  max_yaw_vel: 1.57
+
+  map_free_threshold: 30
+  map_occupied_threshold: 60
+
+  polyline_path_max_length: 1.2
+  exploration_min_dist_to_obs: 0.26
+
+  global_min_expand_dist: 0.2
+  global_max_expand_dist: 1.0
+  global_frontier_points_min_dist: 0.5
+  global_sensing_radius: 20.0
+  global_sampling_timeout_secs: 2
+  global_rrt_memory_limit: 1024
+
+  local_min_expand_dist: 0.1
+  local_max_expand_dist: 1.0
+  local_rrt_coverage_check_density: 0.15
+  local_frontier_points_min_dist: 0.3
+  local_sensing_radius: 20.0
+  local_sampling_timeout_secs: 10
+
+  planner_min_dist_to_obs: 0.25
+
+  share_common_distance_table: true
+  enable_collision_precheck: false
+
+  info_gain: 0.5
+  dist_gain: 1.0
+  dir_gain: 5.0
+  free_gain: 0.8

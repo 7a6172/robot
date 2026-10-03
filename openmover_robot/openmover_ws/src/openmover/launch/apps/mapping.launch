@@ -1,0 +1,65 @@
+<!-- 文件描述：启动机器人建图模式 -->
+<launch>
+    <!-- 建图 -->
+    <include file="$(find openmover)/launch/modules/mapping/carto_mapping.launch"></include>
+
+    <!-- 最新算法 -->
+    <node name="auto_mapping_handler" pkg="auto_mapping_toolbox" type="auto_mapping_handler" output="screen">
+        <remap from="path_with_orientation" to="openmover/navigation/path_with_orientation" />
+        <remap from="occupancy_grid" to="openmover/mapping/map" />
+        <remap from="map" to="openmover/mapping/map" />
+        <remap from="scan" to="openmover/hardware/lidar/scan" />
+        <remap from="twist" to="openmover/localization/twist" />
+        <remap from="auto_mapping/request" to="openmover/mapping/auto_mapping/request" />
+        <remap from="auto_mapping/state" to="openmover/mapping/auto_mapping/state" />
+        <remap from="cmd_vel_mode/request" to="openmover/control/cmd_vel_mode/request" />
+        <remap from="navigation/request" to="openmover/navigation/request" />
+        <remap from="navigation/state" to="openmover/navigation/state" />
+        <remap from="auto_mapping_handler/global_costmap/costmap" to="openmover/mapping/global_planner/costmap/costmap" />
+        <remap from="auto_mapping_handler/global_costmap/costmap_updates" to="openmover/mapping/global_planner/costmap/costmap_updates" />
+        <remap from="auto_mapping_handler/global_costmap/footprint" to="openmover/mapping/global_planner/costmap/footprint" />
+        <remap from="auto_mapping_handler/global_planner/plan" to="openmover/mapping/global_planner/planner/plan" />
+        <remap from="auto_mapping_handler/global_planner/potential" to="openmover/mapping/global_planner/planner/potential" />
+        <remap from="auto_mapping_handler/global_planner/polyline_plan" to="openmover/mapping/global_planner/planner/polyline_plan" />
+        <rosparam file="$(env HOME)/openmover_robot/config/hardwares/hardwares.yaml" command="load" />
+        <rosparam file="$(env HOME)/openmover_robot/config/modules/modules.yaml" command="load" />
+        <rosparam file="$(env HOME)/openmover_robot/config/apps/mapping/mapping.yaml" command="load" />
+    </node>
+
+    <node name="navigation_handler" pkg="openmover" type="navigation_handler" output="screen">
+        <remap from="current_point_in_path" to="openmover/navigation/current_point_in_path" />
+        <remap from="point_to_track" to="openmover/navigation/point_to_track" />
+        <remap from="best_trajectory" to="openmover/navigation/best_trajectory" />
+        <remap from="all_trajectory" to="openmover/navigation/all_trajectory" />
+        <remap from="footprint_transformed" to="openmover/navigation/footprint_transformed" />
+        <remap from="obstacle_lines" to="openmover/navigation/obstacle_lines" />
+        <remap from="visual_marker_array" to="openmover/navigation/visual_marker_array" />
+        <remap from="path_with_orientation" to="openmover/navigation/path_with_orientation" />
+        <remap from="occupancy_grid" to="openmover/mapping/map" />
+        <remap from="map" to="openmover/mapping/map" />
+        <remap from="scan" to="openmover/hardware/lidar/scan" />
+        <remap from="twist" to="openmover/localization/twist" />
+        <remap from="navigation_handler/global_costmap/costmap" to="openmover/navigation/global_planner/costmap/costmap" />
+        <remap from="navigation_handler/global_costmap/costmap_updates" to="openmover/navigation/global_planner/costmap/costmap_updates" />
+        <remap from="navigation_handler/global_costmap/footprint" to="openmover/navigation/global_planner/costmap/footprint" />
+        <remap from="navigation_handler/global_planner/plan" to="openmover/navigation/global_planner/planner/plan" />
+        <remap from="navigation_handler/global_planner/potential" to="openmover/navigation/global_planner/planner/potential" />
+        <rosparam file="$(env HOME)/openmover_robot/config/hardwares/hardwares.yaml" command="load" />
+        <rosparam file="$(env HOME)/openmover_robot/config/modules/modules.yaml" command="load" />
+        <rosparam file="$(env HOME)/openmover_robot/config/apps/mapping/mapping.yaml" command="load" />
+    </node>
+
+    <!-- 启动系统重置 -->
+    <node name="reset_server_handler" pkg="openmover" type="reset_server_handler.py" output="screen">
+        <rosparam file="$(env HOME)/openmover_robot/config/hardwares/hardwares.yaml" command="load" />
+        <rosparam file="$(env HOME)/openmover_robot/config/modules/modules.yaml" command="load" />
+        <rosparam file="$(env HOME)/openmover_robot/config/apps/mapping/mapping.yaml" command="load" />
+    </node>
+
+    <!-- 启动置信度计算 -->
+    <node name="localization_confidence_handler" pkg="openmover" type="localization_confidence_handler" output="screen">
+        <rosparam file="$(env HOME)/openmover_robot/config/hardwares/hardwares.yaml" command="load" />
+        <rosparam file="$(env HOME)/openmover_robot/config/modules/modules.yaml" command="load" />
+        <rosparam file="$(env HOME)/openmover_robot/config/apps/mapping/mapping.yaml" command="load" />
+    </node>
+</launch>
