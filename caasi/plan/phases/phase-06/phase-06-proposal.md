@@ -1,8 +1,8 @@
-# Phase 6 Proposal: Full Project Adoption & Caasi-Native Isaac/ROS Architecture
+# Phase 6 Proposal (Revised): Full Project Adoption & Caasi-Native Isaac/ROS Architecture
 
 **Date**: 2026-10-03  
-**Status**: Stage B Complete (Investigation & Architectural Recommendations — Pending User Review)  
-**Repository Baseline**: `1512c3f`  
+**Status**: Stage B Complete (Comprehensive Architectural Blueprint — Awaiting User Review)  
+**Repository Baseline**: `efd2a1b`  
 **Target Working Tree**: `/home/zar/Documents/phd/robot/caasi-workspace/`  
 **Immutable Reference Baselines**: `/openmover_robot` and `/openmover_ws` (100% untouched)
 
@@ -10,248 +10,290 @@
 
 ## 1. Executive Summary & Design Vision
 
-Phases 1–5 proved that `caasi`'s existing CLI commands and execution engine can manage, track, and audit an external OpenMover workspace across headless Isaac Sim, ROS 2 Nav2 closed-loop navigation, Isaac Lab RL training/evaluations, and physical hardware preflight checks.
+Phases 1–5 proved that `caasi`'s existing execution engine, Layer 6 provenance tracking, process management, and diagnostic tools can orchestrate, track, and audit an external robotics codebase.
 
-In Phase 6, we address the larger architectural challenge:
+In Phase 6, we address the foundational objective:
 > **Make caasi for an Isaac/ROS robotics project analogous in spirit to what `uv` provides for Python projects: one coherent project-level management layer that understands the project and removes unnecessary manual glue between ecosystem-specific tools.**
 
-Today, an OpenMover researcher must manually navigate and maintain glue across six disconnected layers:
-1. Sourcing ROS 2 Jazzy under `/opt/ros/jazzy/setup.bash` and the local overlay `install/setup.bash`.
-2. Running `colcon build --symlink-install` with memory-constrained flags (`-j2` or `-j4`).
-3. Switching to `~/isaacsim/python.sh` with specific environment scrubbing (`unset PYTHONPATH`, `unset CONDA_PREFIX`).
-4. Invoking `cd ~/isaaclab && ./isaaclab.sh -p` for Isaac Lab tasks.
-5. Managing procedural map generation, checkpoints, expert demonstration datasets, and episode logs across disparate paths.
-6. Hand-crafting inter-process wiring between Isaac Sim ray-traced sensors and ROS 2 topics.
+We do **not** want `caasi` to replace established tools like ROS 2, `colcon`, CMake, Nav2, Isaac Sim, Isaac Lab, PyTorch, USD, or Git. Those tools own domain execution and algorithms.
 
-This proposal lays out the blueprint for a **canonical, caasi-native OpenMover project** and outlines candidates for **caasi 0.4.0**.
+Instead, `caasi` must become the **declarative contract and orchestrator** that knows how those pieces fit together. As a developer, you interact with `caasi`, and `caasi` coordinates the underlying tools deterministically.
 
 ---
 
-## 2. Current Project Inventory & Ecosystem Artifacts
+## 2. Answers to the Core Architectural Questions
 
-An audit of the full OpenMover project establishes the following catalog of artifacts:
+### Question 1: What should the ideal caasi-managed Isaac/ROS project actually look like?
 
-### 2.1 Artifact Classification
-
-| Layer / Category | Artifact Types | Specific Code & Asset Locations | Ownership |
-| :--- | :--- | :--- | :--- |
-| **ROS 2 Source & Packages** | C++ (17), Python (3.12), CMakeLists.txt, package.xml | `src/openmover` (core product nodes, HAL, A* & pursuit)<br>`src/openmover_msgs` (custom interfaces)<br>`src/warehouse_simulation` (Pioneer 3DX, Nav2, actors)<br>`src/bluesea2` (dual LiDAR driver)<br>`src/ira_laser_tools` (scan merger)<br>`src/auto_mapping_toolbox`, `src/relocalization_toolbox` | **ROS 2 / colcon** (built via `ament_cmake`) |
-| **Robotics Config & Launch** | YAML, Python Launch | `src/openmover/launch/` (`bootloader.launch.py`, `bringup.launch.py`)<br>`src/warehouse_simulation/launch/` (`warehouse_simulation.launch.py`, `stack_b.launch.py`)<br>`src/warehouse_simulation/config/nav2_params.yaml`, `slam_toolbox.yaml` | **ROS 2 Launch / Nav2** |
-| **Simulation Assets & Scenes** | URDF, Xacro, USDA, USDC, USD | `src/openmover/urdf/robot_description.urdf`<br>`src/warehouse_simulation/urdf/pioneer3dx.urdf.xacro`<br>`isaac/scenes/warehouse.usda`, `workcell_mesh.usdc`, `simple_room.usda`<br>`isaac/assets/openmover_lab/robot_description/` | **USD / Isaac Sim** |
-| **Isaac Sim Bridge Scripts** | Python | `isaac/scripts/16_bridge_ros.py` (Stack B: Nav2 bridge)<br>`isaac/scripts/17_bridge_openmover.py` (Stack A: OpenMover bridge)<br>`isaac/scripts/common.py` (RAM guard, process check) | **Isaac Sim (`python.sh`)** |
-| **Isaac Lab RL Environments** | Python Gym, PyTorch | `isaac/lab/openmover_lab/openmover_nav_env.py` (DirectRLEnv)<br>`isaac/lab/openmover_lab/openmover_cfg.py`, `openmover_terrains.py`<br>`isaac/lab/21_run_openmover_nav.py` .. `34_aggregate_campaign.py` | **Isaac Lab (`isaaclab.sh -p`)** |
-| **Procedural Maps & Assets** | JSON, PNG, SVG | `isaac/lab/maps/gen/` (56 procedural mazes + `_manifest.json`) | **Project Asset Data** |
-| **Model Checkpoints & Demos** | PyTorch (`.pt`) | `isaac/lab/logs/rsl_rl/openmover_nav/bc_init_v3/model_0.pt`<br>`isaac/lab/logs/bc_demos/demos_p100_v3.pt` | **Model Artifacts (Git LFS / Storage)** |
-| **Dependencies & System Tools** | Bash scripts, C++ vendor | `tools/install_deps.sh`, `tools/setup.sh`<br>`tools/osqp_build` (vendored OSQP C solver) | **System / CMake / apt** |
-
----
-
-## 3. Current caasi Coverage vs. Project Requirements
-
-| Requirement | Existing caasi Capability | Coverage Status | Evidence & Limitations |
-| :--- | :--- | :---: | :--- |
-| **Project Manifest & Metadata** | `caasi project init / validate` | **Partially Sufficient** | `caasi.yaml` declares components (`robot`, `ros2`, `isaac_sim`, `isaac_lab`, `nav2`) and version requirements. Missing: declarative package listings, build settings, and workspace overlay specifications. |
-| **Environment Preflight & Locking** | `caasi env inspect`, `caasi check`, `caasi.lock` | **Sufficient** | Accurately validates ROS 2 Jazzy, Isaac Sim 6.0, Isaac Lab 3.0, CPU, RAM, and hardware GPU driver. |
-| **ROS 2 Build Orchestration** | N/A (Manual `colcon build`) | **Missing** | No `caasi build` command. User must manually source ROS 2, configure compiler flags (`-j2`), and execute `colcon build`. |
-| **Simulation Execution** | `caasi sim run <exp.yaml>` | **Sufficient** | Successfully executes headless Isaac Sim with `python.sh`, isolates logs, and captures Layer 6 provenance bundles. |
-| **Isaac Lab Task Execution** | `caasi lab run / play / evaluate` | **Partially Sufficient** | Supports `isaaclab.sh -p <script>`, but launcher lacks flexibility for Python scripts requiring clean env separation without `-p` dispatcher. |
-| **ROS 2 Launch Execution** | `caasi ros launch <file>` | **Sufficient** | Launches tracked ROS 2 graphs, connects over DDS, monitors active topics/services, and provides clean stop. |
-| **Run Lineage & Recovery** | `caasi run start / stop / restart / inspect` | **Sufficient** | Robust process-group termination (`os.killpg`), restart lineage tracking (`restarted_from`), and artifact inventory. |
-| **Sensor & Hardware Inspection** | `caasi sensor list / inspect` | **Sufficient** | Discovers V4L2 cameras, serial ports, and SDK availability without importing heavy vendor modules. |
-
----
-
-## 4. Problems Discovered in the Current OpenMover Project
-
-Our investigation identified four major friction areas in the existing codebase:
-
-### Problem 1: Hard-Coded Absolute Paths
-Many scripts embed user-specific absolute paths.
-- **Example in `isaac/lab/openmover_lab/openmover_cfg.py`**:
-  ```python
-  OPENMOVER_USD = "/home/zar/Documents/phd/robot/openmover_ws/isaac/assets/openmover_lab/robot_description/robot_description.usda"
-  ```
-- **Example in `isaac/lab/21_run_openmover_nav.py`**:
-  ```python
-  cd ~/isaaclab && ./isaaclab.sh -p /home/zar/Documents/phd/robot/openmover_ws/isaac/lab/21_run_openmover_nav.py
-  ```
-- **Consequence**: The codebase cannot be relocated, run on another workstation, or run in a branched workspace without breaking USD stage loading.
-
-### Problem 2: Fragile Relative CWD Assumptions
-Scripts assume specific execution directories:
-- `33_run_campaign.py` assumes subprocess cwd is `~/isaaclab`, requiring arguments like `--out` to be forced to absolute paths to prevent outputs from being scattered into the Isaac Lab home directory.
-- `func_mode_server_handler.py` assumes flat installed layout and hard-codes paths to `~/openmover_robot/maps/`.
-
-### Problem 3: Disconnected Build and Overlay Management
-- To build the C++ nodes (`motor_handler`, `navigation_handler`, `mover`), developers must know to run `bash tools/setup.sh` or remember `colcon build --symlink-install --parallel-workers 2`.
-- When running `caasi ros launch`, if the user has not manually sourced `install/setup.bash` in the launching shell, the launch fails because `caasi` only auto-sources `/opt/ros/jazzy/setup.bash`, unaware of local workspace overlays.
-
-### Problem 4: Fragmented Component Taxonomy
-In `openmover_ws`, files are split somewhat arbitrarily between `src/` (ROS 2), `isaac/` (simulation scripts & assets), `isaac/lab/` (RL tasks), and `tools/` (dependencies). A unified project model should clarify the relationships between robots, scenes, navigation tasks, and experiments.
-
----
-
-## 5. Proposed Caasi-Native Architecture
-
-We propose organizing the canonical OpenMover project under `/home/zar/Documents/phd/robot/caasi-workspace/openmover/` with the following clean, modular structure:
+An ideal caasi project is a self-contained, relocatable directory with an explicit contract defined in `caasi.yaml`. It replaces implicit developer memory (which scripts to source, what paths to set, what flags to pass) with declarative, deterministic project metadata.
 
 ```text
 caasi-workspace/openmover/
-├── caasi.yaml                      # Canonical project manifest & tool configuration
-├── caasi.lock                      # Resolved environment & component lockfile
+├── caasi.yaml                      # The Unified Project Manifest
+├── caasi.lock                      # Resolved environment & toolchain lockfile
 │
-├── packages/                       # [ROS 2 / C++ / Python packages]
-│   ├── openmover/                  # Core product package (HAL, controllers, nodes)
-│   ├── openmover_msgs/             # Custom message & service definitions
-│   ├── warehouse_simulation/       # Reference simulation & Nav2 bringup
-│   ├── bluesea2/                   # Dual LiDAR hardware drivers
-│   ├── ira_laser_tools/            # Multi-scan merger
+├── src/                            # ROS 2 Colcon Workspace
+│   ├── openmover/                  # Core robot stack (HAL, controllers, motion nodes)
+│   ├── openmover_msgs/             # ROS 2 interface definitions
+│   ├── warehouse_simulation/       # Simulation stack, actors, Nav2 bringup
+│   ├── bluesea2/                   # Dual LiDAR drivers
+│   ├── ira_laser_tools/            # Scan merger
 │   ├── auto_mapping_toolbox/       # Frontier exploration
 │   └── relocalization_toolbox/     # 2D global relocalization
 │
-├── robots/                         # [Robot definitions & asset models]
-│   ├── openmover/
-│   │   ├── robot.yaml              # Caasi robot definition (kind: robot, sensors, drives)
-│   │   ├── urdf/robot_description.urdf
-│   │   ├── meshes/                 # Visual and collision STL/DAE
-│   │   └── usd/robot_description.usda  # Converted Isaac USD articulation
-│   └── pioneer3dx/
-│       ├── robot.yaml
-│       ├── urdf/pioneer3dx.urdf.xacro
-│       └── usd/pioneer3dx.usda
+├── assets/                         # Canonical Multi-Ecosystem Asset Tree
+│   ├── robots/                     # Robot kinematic descriptions & geometries
+│   │   ├── openmover/
+│   │   │   ├── robot.yaml          # Robot definition (dof, sensors, joints, frames)
+│   │   │   ├── urdf/               # Canonical URDF/Xacro
+│   │   │   ├── meshes/             # Visual and collision STL/DAE
+│   │   │   └── usd/                # Converted Isaac USD articulation
+│   │   └── pioneer3dx/
+│   │       ├── robot.yaml
+│   │       ├── urdf/
+│   │       └── usd/
+│   └── scenes/                     # Simulation USD Stages and Worlds
+│       ├── warehouse/
+│       │   ├── scene.yaml          # Scene metadata (spawn points, bounds, lighting)
+│       │   ├── warehouse.usda      # Isaac Sim USD stage
+│       │   └── meshes/             # High-poly workcell collision meshes
+│       └── simple_room/
+│           ├── scene.yaml
+│           └── simple_room.usda
 │
-├── scenes/                         # [Simulation environments & USD worlds]
-│   ├── warehouse/
-│   │   ├── scene.yaml              # Caasi scene definition
-│   │   ├── warehouse.usda          # Isaac Sim USD scene
-│   │   └── meshes/workcell_mesh.usdc
-│   └── simple_room/
-│       ├── scene.yaml
-│       └── simple_room.usda
+├── lab/                            # Isaac Lab Learning & Evaluation Subsystem
+│   ├── openmover_lab/              # Python Gym package (DirectRLEnv, observation configs)
+│   ├── tasks/                      # Rollout & evaluation runners (21_run_openmover_nav.py)
+│   ├── campaign/                   # Multi-arm campaign runner & aggregator (33, 34)
+│   ├── maps/                       # Procedural maze JSONs & generators
+│   └── models/                     # Checkpoints & expert demo datasets (model_0.pt)
 │
-├── lab/                            # [Isaac Lab learning & evaluation]
-│   ├── environments/               # Gym DirectRLEnv definitions (openmover_nav_env.py)
-│   ├── tasks/                      # Rollout & runner scripts (21_run_openmover_nav.py)
-│   ├── campaign/                   # Campaign runners (33_run_campaign.py, 34_aggregate.py)
-│   ├── maps/                       # Procedural maze JSONs & generator scripts
-│   └── policies/                   # Checkpoints & expert demo datasets (model_0.pt)
+├── sim/                            # Isaac Sim Native Simulation Subsystem
+│   ├── bridges/                    # Headless bridges (16_bridge_ros.py, 17_bridge_openmover.py)
+│   ├── extensions/                 # Custom Omniverse Kit extensions
+│   └── configs/                    # Simulation rendering/physics configs
 │
-├── experiments/                    # [Declarative experiment manifests]
-│   ├── sim_warehouse_bridge.yaml   # Isaac Sim + ROS bridge run
-│   ├── nav2_closed_loop.yaml       # Nav2 navigation stack run
-│   ├── lab_smoke.yaml              # Gym environment rollout run
+├── config/                         # Unified Project Configuration
+│   ├── nav2/                       # Nav2 MPPI/DWB parameters & costmaps
+│   ├── slam/                       # SLAM Toolbox online async parameters
+│   └── hardware/                   # Physical robot motor/IO YAML configs
+│
+├── experiments/                    # Declarative Experiment Manifests
+│   ├── warehouse_nav2_sim.yaml     # Isaac Sim + Nav2 closed-loop run
+│   ├── lab_smoke.yaml              # Isaac Lab Gym smoke rollout
 │   └── campaign_bounded.yaml       # Multi-arm evaluation campaign run
 │
-├── config/                         # [Shared navigation & system parameters]
-│   ├── nav2_params.yaml
-│   ├── slam_toolbox.yaml
-│   └── hardwares.yaml
-│
-└── .caasi/                         # [Caasi internal state, local cache, run index]
+└── .caasi/                         # Caasi local state, overlay cache, and run index
 ```
 
-### Why this structure is appropriate:
-1. **Separation of Concerns**: ROS packages remain standard ROS packages inside `packages/` (fully buildable with `colcon`).
-2. **Explicit Robot/Scene Assets**: Moves robot descriptions and USD meshes into dedicated `robots/` and `scenes/` directories, matching `caasi`'s Layer 2 taxonomy.
-3. **Relocatable Path Anchors**: Replaces all hardcoded `/home/zar/...` paths with workspace-relative resolutions anchored to project root.
-4. **Clean Experiment Separation**: Experiments in `experiments/` define what to run; execution artifacts are isolated in `~/.caasi/runs/`.
+---
+
+### Question 2: What should caasi know about the project, and what should remain the responsibility of ROS/colcon/CMake/Isaac/etc.?
+
+| Responsibility Domain | What `caasi` Knows & Manages | What Underlying Tools Own & Execute |
+| :--- | :--- | :--- |
+| **Workspace Build** | `caasi` knows where packages reside (`src/`), derives RAM-safe parallel workers (`-j2` on $\le 16$ GB; `-j4` on 32 GB; `-j8` on 48 GB+), sources base ROS 2, and records the resulting local overlay path in `.caasi/overlay.json`. | **`colcon` / CMake / `ament_cmake`** parse `CMakeLists.txt` and `package.xml`, compile C++ binaries, generate ROS message headers, and install libraries to `install/`. |
+| **ROS 2 Middleware** | `caasi` knows which ROS distro is required (`jazzy`), chains `/opt/ros/jazzy/setup.bash` with the project's `install/setup.bash`, tracks background launch processes, and monitors graph health. | **ROS 2 / DDS** handles node discovery, pub/sub communication, intra-process zero-copy transport, and service execution. |
+| **Simulation** | `caasi` knows the resolved Isaac Sim installation path (`~/isaacsim`), injects `CAASI_PROJECT_ROOT`, manages headless/windowed flags, isolates stdout/stderr logs, and terminates the Kit process group cleanly without orphaned processes. | **Isaac Sim / Omniverse Kit** handles PhysX physics simulation, RTX ray-traced LiDAR rendering, and USD stage composition. |
+| **Isaac Lab Learning** | `caasi` knows which scripts are Gym tasks, launches them with the appropriate Python interpreter or `isaaclab.sh -p` wrapper, and tracks training runs as first-class experiments. | **Isaac Lab / PyTorch / Gymnasium** handles tensor stepping, policy optimization, CUDA memory allocation, and observation buffers. |
+| **Navigation & Autonomy**| `caasi` manages the launch parameters and lifecycle of the navigation stack. | **Nav2** executes path planning (NavFn/Smac), trajectory control (MPPI/DWB), costmap inflation, and recovery behaviors. |
+| **Assets & Paths** | `caasi` provides the root anchor (`CAASI_PROJECT_ROOT`) and resolves relative asset paths across robots, scenes, and meshes. | **USD / URDF** handles kinematic tree hierarchies, collision bounding boxes, and material shading. |
+| **Provenance & Runs** | `caasi` records exact Git commits, hardware snapshots, launch commands, environment variables, exit codes, and restart lineage in immutable run bundles. | **Operating System / File System** stores run artifacts. |
 
 ---
 
-## 6. Proposed Code Changes in OpenMover
+### Question 3: What is the best project layout and why?
 
-To achieve a clean, relocatable, and caasi-native project, the following specific adaptations are proposed:
-
-1. **Replace Hard-Coded Path Strings with Environment/Manifest Anchors**:
-   - `openmover_cfg.py`: Change `OPENMOVER_USD = "/home/zar/..."` to resolve relative to `PROJECT_ROOT / "robots/openmover/usd/robot_description.usda"`, or via an environment variable `CAASI_PROJECT_ROOT`.
-   - `16_bridge_ros.py` / `17_bridge_openmover.py`: Change asset and scene loading to use `PROJECT_ROOT / "scenes/warehouse/warehouse.usda"`.
-2. **Clean CWD Independence in Task Scripts**:
-   - Update `33_run_campaign.py` and `21_run_openmover_nav.py` so paths to maps (`lab/maps/gen/`), checkpoints (`lab/policies/`), and results are derived from the script's project anchor rather than `os.getcwd()`.
-3. **Consolidate Simulation Bridges**:
-   - Align bridge arguments with declarative `experiments/*.yaml` configs, eliminating redundant shell wrappers.
+The layout shown in Question 1 is chosen for five concrete reasons:
+1. **Colcon Compatibility**: Keeping ROS packages under `src/` preserves standard `colcon build` conventions. Any standard ROS tool or CI system can build the workspace without custom flags.
+2. **Explicit Layer 2 Asset Structure**: Splitting assets into `assets/robots/` and `assets/scenes/` directly mirrors `caasi`'s Layer 2 taxonomy (`kind: robot`, `kind: scene`), providing metadata-inspectable assets without launching a simulator.
+3. **Dedicated Subsystem Directories (`sim/` and `lab/`)**: Isolating Isaac Sim bridge scripts from Isaac Lab RL Gym environments avoids mixing Omniverse Kit scripts with RSL-RL training code.
+4. **Relocatable Root Anchoring**: Eliminates all hardcoded user paths (`/home/zar/...`) by establishing a predictable relative structure.
+5. **No Clutter in Root**: Cleanly separates source code (`src/`), learning code (`lab/`), declarative configs (`config/`, `experiments/`), and generated outputs (`.caasi/`, `~/.caasi/runs/`).
 
 ---
 
-## 7. What Should NOT Be Changed (Ecosystem Ownership Boundaries)
+### Question 4: How should caasi discover/adopt an existing raw project in the future?
 
-In strict accordance with our architectural principles, `caasi` will **NOT** replace or duplicate:
-1. **ROS 2 & colcon**: `caasi` will not replace `colcon` or `ament_cmake`. `packages/` will remain standard ROS 2 packages with standard `CMakeLists.txt` and `package.xml`.
-2. **Nav2 & Behavior Trees**: Nav2 algorithms, costmaps, and XML behavior trees remain 100% owned by Nav2.
-3. **Isaac Sim / Isaac Lab Core**: USD physics simulation, PhysX schemas, and Gym interfaces remain standard Isaac Sim/Lab components.
-4. **PyTorch & CUDA**: Tensor computation, GPU memory management, and neural network inference remain owned by PyTorch.
-5. **Git / OS Networking**: Version control and network interface configuration (IP addresses, subnets) remain OS/Git responsibilities.
+For an arbitrary, existing robotics repository, `caasi discover` (or `caasi project adopt`) should follow this deterministic four-stage pipeline:
 
----
-
-## 8. Caasi 0.4.0 Capability Candidates
-
-Based on actual migration friction, we have identified several high-value candidates for `caasi 0.4.0`. We categorize them strictly by necessity:
-
-### Category 1: Essential for Project Adoption
-
-#### Candidate A: `caasi build` (Workspace Build Orchestrator)
-- **Problem**: Building ROS 2 packages currently requires dropping out of `caasi`, remembering to source `/opt/ros/jazzy/setup.bash`, manually passing memory flags (`colcon build --symlink-install --parallel-workers 2`), and managing OSQP vendor includes.
-- **Proposed caasi solution**: `caasi build [package]`
-  - Detects `packages/` in project root.
-  - Automatically derives safe concurrency (`-j`) from available system RAM (e.g. 2 workers if RAM < 32 GB, preventing system freezes).
-  - Invokes `colcon build --symlink-install` with sourced ROS 2 environment.
-  - Registers the build overlay path (`install/setup.bash`) in `.caasi/overlay.json`.
-- **Value**: Provides the "one command build" analogous to `cargo build` or `uv build` without replacing `colcon`.
-
-#### Candidate B: Automatic Project Overlay Sourcing
-- **Problem**: When `caasi ros launch` or `caasi ros list` runs, `caasi.core.rosenv` only auto-sources `/opt/ros/<distro>/setup.bash`. It does not know about the project's local `install/setup.bash`, so local packages cannot be found unless sourced manually in the parent terminal.
-- **Proposed caasi solution**: Teach `rosenv.py` to inspect the project root for `install/setup.bash` and chain-source it after the base ROS distro.
-- **Value**: Eliminates the most common user friction in ROS development: forgetting to source the local workspace overlay.
-
-#### Candidate C: `CAASI_PROJECT_ROOT` Environment Injection
-- **Problem**: Python scripts and USD stage loaders need to locate project assets without hardcoding absolute paths.
-- **Proposed caasi solution**: When `caasi run start`, `caasi sim run`, or `caasi lab run` launches any experiment, automatically inject `CAASI_PROJECT_ROOT=<path>` into the process environment.
-- **Value**: Standardizes relocatable asset loading across all project scripts.
+```text
+Existing Raw Repo
+        ↓
+[1. Filesystem & Metadata Scan]
+  • Find package.xml / CMakeLists.txt → Detect ROS 1/2 packages & distros
+  • Find .usda / .usdc / .urdf / .xacro → Detect robots, meshes, and scenes
+  • Find DirectRLEnv / isaaclab.sh → Detect Isaac Lab tasks
+  • Find nav2_params.yaml / moveit → Detect navigation / manipulation stacks
+        ↓
+[2. Capability & Topology Mapping]
+  • Match discovered components against Caasi's capability catalog
+  • Check system compatibility (CPU, RAM, GPU, drivers)
+        ↓
+[3. Proposal Generation (Interactive Dry-Run)]
+  • Propose caasi.yaml manifest with detected components & requirements
+  • Propose safe migration mappings (e.g. moving assets to assets/, packages to src/)
+  • Highlight hard-coded absolute paths that need refactoring
+        ↓
+[4. Project Materialization]
+  • Generate canonical caasi.yaml and initial caasi.lock
+  • User confirms; project is adopted and ready for caasi build / caasi run
+```
 
 ---
 
-### Category 2: Strongly Useful Improvements
+### Question 5: How should a native caasi project avoid the discovery problem by having a deterministic structure?
 
-#### Candidate D: Declarative Workspace Overlays in `caasi.yaml`
-- **Proposal**: Allow `caasi.yaml` to declare project workspace subdirectories:
-  ```yaml
-  workspace:
-    packages: packages/
-    install_dir: install/
-    build_dir: build/
-  ```
-- **Value**: Explicitly informs `caasi check`, `caasi doctor`, and `caasi build` where project packages reside.
+A native caasi project avoids discovery heuristics entirely through a **strict project contract**:
+1. **Root Manifest Anchor**: The existence of `caasi.yaml` defines the project root.
+2. **Declared Project Layout in `caasi.yaml`**:
+   ```yaml
+   schema: 1
+   name: openmover
+   version: 0.1.0
+   
+   layout:
+     ros_workspace: src/
+     robots: assets/robots/
+     scenes: assets/scenes/
+     lab: lab/
+     sim: sim/
+     experiments: experiments/
+     config: config/
+   
+   components:
+     robot: true
+     ros2: true
+     nav2: true
+     isaac_sim: true
+     isaac_lab: true
+   
+   requires:
+     ros2: { distro: jazzy }
+     isaac_sim: { version: '>=5.0' }
+     isaac_lab: { version: '>=2.0' }
+     nav2: {}
+   ```
+3. **Deterministic Tool Behavior**:
+   - `caasi build` always knows to build `layout.ros_workspace` (`src/`).
+   - `caasi ros launch` always knows to check `install/setup.bash` inside the project.
+   - `caasi sim` always resolves scenes relative to `layout.scenes`.
+   - `caasi lab` always executes tasks relative to `layout.lab`.
 
-#### Candidate E: `caasi run diff <run1> <run2>`
-- **Proposal**: A CLI diff tool that compares two run directories, highlighting differences in Git commit, launch arguments, hardware RAM at launch, and dependency versions.
-- **Value**: Substantially aids empirical reproducibility and regression tracking.
+There is no guessing, regex parsing, or dynamic scanning during daily development.
 
 ---
 
-### Category 3: Future / Not Yet Justified (Defer)
-- **Custom USD Asset Packaging**: Defer; standard relative USD file references are sufficient.
-- **Custom ROS Package Generator (`caasi pkg new`)**: Defer; `ros2 pkg create` already handles this well.
-- **Remote Cloud Sync in Phase 6**: Defer to Phase 7.
+### Question 6: How should build systems, environments, overlays, assets, configs, experiments, datasets, and execution fit together?
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           caasi.yaml / caasi.lock                           │
+│                 (Manifest, Tool Requirements, Path Layout)                  │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                ┌──────────────────────┴──────────────────────┐
+                ▼                                             ▼
+     [Environment Layer]                             [Build Layer]
+   • Verify OS, GPU, CUDA                          • caasi build src/
+   • Sourced ROS 2 Jazzy                           • RAM-safe concurrency (-j2)
+   • Chain install/setup.bash                      • Emits local overlay
+                │                                             │
+                └──────────────────────┬──────────────────────┘
+                                       ▼
+                              [Execution Layer]
+           caasi run start experiments/warehouse_nav2_sim.yaml
+                                       │
+     ┌─────────────────────────────────┼─────────────────────────────────┐
+     ▼                                 ▼                                 ▼
+[Isaac Sim Engine]             [ROS 2 Node Graph]               [Isaac Lab RL]
+ • sim/bridges/16_bridge_ros    • packages/openmover             • lab/tasks/21_run...
+ • Loads assets/scenes/         • packages/warehouse_sim         • DirectRLEnv Gym
+ • Ingests /cmd_vel             • Nav2 planner & costmaps        • CUDA:0 rollout
+ • Publishes /clock, /scan      • Publishes /cmd_vel             • Checkpoints/demos
+     └─────────────────────────────────┬─────────────────────────────────┘
+                                       ▼
+                       [Centralized Provenance & Logs]
+                        ~/.caasi/runs/<run-id>/
+                        • manifest.yaml, hardware.yaml, git.json
+                        • stdout.log, stderr.log, exit_code
+```
 
 ---
 
-## 9. Migration Roadmap (Post-Approval Stages)
+### Question 7: What caasi capabilities are genuinely required to make the developer experience coherent?
 
-Once this proposal is discussed and approved, the implementation will proceed through these staged steps:
-
-1. **Stage 1 (Scaffold)**: Create canonical structure `/home/zar/Documents/phd/robot/caasi-workspace/openmover/` with updated `caasi.yaml`.
-2. **Stage 2 (Packages & Build)**: Copy ROS packages into `packages/`, verify build via `caasi build` (or colcon integration), test local overlay auto-sourcing.
-3. **Stage 3 (Assets & Robots)**: Migrate robot URDFs, meshes, and USD files into `robots/openmover/` and `robots/pioneer3dx/`; verify relative paths.
-4. **Stage 4 (Scenes & Sim)**: Migrate warehouse scene and meshes into `scenes/warehouse/`; test `caasi sim run` headless simulation.
-5. **Stage 5 (Lab & Tasks)**: Migrate Isaac Lab Gym environments and campaign runners into `lab/`; verify point-goal navigation rollout.
-6. **Stage 6 (Full Verification)**: Run full end-to-end verification (build $\rightarrow$ sim bridge $\rightarrow$ Nav2 closed loop $\rightarrow$ RL eval $\rightarrow$ provenance audit).
-7. **Stage 7 (Documentation & 0.4.0 Finalization)**: Author Phase 6 report, case studies, and finalize the `0.4.0` design specification.
+1. **`caasi build` (Workspace Build Orchestrator)**: Builds ROS 2 packages using `colcon` with automatic, RAM-safe thread scaling (`-j2` on 16 GB, `-j4` on 32 GB, `-j8` on 48 GB+) to prevent system freezes.
+2. **Automatic Local Overlay Sourcing**: Sourced ROS 2 commands (`caasi ros launch`, `caasi ros list`, `caasi run start`) automatically chain the project's `install/setup.bash` after `/opt/ros/jazzy/setup.bash`.
+3. **`CAASI_PROJECT_ROOT` Environment Injection**: Automatically injected into every process launched by `caasi`, enabling relocatable, deterministic asset loading.
+4. **Project Layout Declaration in `caasi.yaml`**: Allows declarative path mappings (`layout.ros_workspace`, `layout.robots`, `layout.scenes`, `layout.lab`).
+5. **Project Asset Validation (`caasi asset check`)**: Verifies that declared URDFs, meshes, and USD files exist on disk before simulation launch.
+6. **Provenance Diff (`caasi run diff <run1> <run2>`)**: Compares git commits, arguments, dependencies, and environment between two runs.
 
 ---
 
-## 10. Discussion Points for User Review
+### Question 8: Which capabilities should belong in `0.4.0`, and which should wait?
 
-Before proceeding with implementation, please review the following key decisions:
-1. **Project Directory Location**: Do you approve establishing `/home/zar/Documents/phd/robot/caasi-workspace/openmover/` as the canonical caasi-native project?
-2. **Component Directory Structure**: Does the layout (`packages/`, `robots/`, `scenes/`, `lab/`, `experiments/`, `config/`) meet your expectations for a clean, uv-inspired robotics project?
-3. **Scope for caasi Modifications**: Do you approve implementing **Candidate A (`caasi build`)**, **Candidate B (Auto-sourcing local overlay)**, and **Candidate C (`CAASI_PROJECT_ROOT` injection)** as part of Phase 6 / caasi 0.4.0?
+#### Required for caasi 0.4.0 (Phase 6 Core)
+- **Feature 1: `caasi build`**: Basic `colcon` wrapper with RAM-derived parallelism (`--parallel-workers`) and overlay registration.
+- **Feature 2: Auto-sourcing project overlay**: Update `caasi.core.rosenv` to detect and source `<project>/install/setup.bash`.
+- **Feature 3: `CAASI_PROJECT_ROOT` Injection**: In `caasi.core.runs._popen` and `caasi.core.experiment.build_command`.
+- **Feature 4: Project Layout Schema**: Extend `caasi.yaml` schema to recognize `layout` mappings.
+
+#### Strongly Useful (Candidate for 0.4.1 / Fast Follow)
+- **Feature 5: `caasi run diff`**: Provenance diff CLI.
+- **Feature 6: `caasi asset validate`**: Preflight verification of URDF/USD asset references.
+
+#### Future Work (Phase 7+ / Defer)
+- **`caasi project adopt / discover`**: Automatic heuristic scanning of arbitrary external repos (Phase 8).
+- **Remote Synchronization**: `caasi remote` workspace sync and cluster dispatch (Phase 7).
+- **Custom USD Asset Bundling**: Archiving scenes into self-contained zip packages.
+
+---
+
+### Question 9: What would the normal developer workflow look like from a fresh project through build → simulation → ROS2 → Isaac Lab → experiments → results?
+
+```bash
+# 1. Inspect and validate the environment
+caasi env inspect
+caasi check project
+
+# 2. Build the ROS 2 packages safely (auto-sizes -j to available RAM)
+caasi build
+
+# 3. Launch Isaac Sim warehouse simulation with ROS bridge as a tracked run
+caasi sim run experiments/sim_warehouse_bridge.yaml
+
+# 4. Concurrently launch Nav2 navigation stack (auto-sources local overlay)
+caasi ros launch packages/warehouse_simulation/launch/stack_b.launch.py -- nav:=true
+
+# 5. Monitor live graph and system resources
+caasi run list
+caasi monitor system
+
+# 6. Execute Isaac Lab RL evaluation campaign
+caasi run start experiments/campaign_bounded.yaml
+
+# 7. Check logs, inspect artifacts, and review provenance
+caasi logs latest -f
+caasi run inspect latest
+```
+
+---
+
+### Question 10: What should explicitly NOT be built because an established ecosystem already handles it?
+
+1. **Do NOT build a custom compiler or build tool**: `caasi` must invoke `colcon build`. Do not reinvent CMake, gcc, or ament.
+2. **Do NOT build a custom ROS middleware or DDS router**: ROS 2 Jazzy and Zenoh/FastDDS handle message routing.
+3. **Do NOT build a custom navigation planner**: Nav2 owns path planning, costmaps, and recoveries.
+4. **Do NOT build a custom physics or rendering engine**: Isaac Sim and PhysX own physics and raytracing.
+5. **Do NOT build a custom neural network or RL framework**: PyTorch and Gymnasium own tensors, policies, and environment rollouts.
+6. **Do NOT build a custom VCS or asset downloader**: Git, Git LFS, and Hugging Face CLI handle version control and large model checkpoints.
+
+---
+
+## 3. Stage C: Next Step & Discussion Gate
+
+This revised proposal provides a complete architectural blueprint.
+
+Before implementing Stage D (Canonical Project Materialization & caasi 0.4.0 Features), please review these 10 answers with ChatGPT. Once you give approval, we will proceed with the approved implementation plan.
