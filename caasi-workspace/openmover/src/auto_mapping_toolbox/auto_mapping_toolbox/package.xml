@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>auto_mapping_toolbox</name>
+  <version>0.0.0</version>
+  <description>Auto mapping toolbox (ROS 2 port)</description>
+  <maintainer email="zar@my.swjtu.edu.cn">zar</maintainer>
+  <author email="muhua.zhang@my.swjtu.edu.cn">ZHANG Muhua (original ROS 1 implementation)</author>
+  <author email="zar@my.swjtu.edu.cn">zar (ROS 2 Jazzy port)</author>
+  <license>GPL-3.0 License</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>angles</depend>
+  <depend>auto_mapping_toolbox_msgs</depend>
+  <depend>openmover_msgs</depend>
+  <depend>nav2_costmap_2d</depend>
+  <depend>nav2_util</depend>
+  <depend>libopencv-dev</depend>
+  <depend>octomap</depend>
+  <depend>libpcl-all</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

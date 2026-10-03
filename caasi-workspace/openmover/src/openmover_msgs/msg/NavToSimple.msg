@@ -1,0 +1,26 @@
+# 指令字（move：相对移动；nav_to：绝对导航；pause：暂停；cancel：取消；continue：从暂停继续）
+string cmd
+# 定位数据源（给字符串 odommap 即可）
+string localization_sources
+# 路点位姿
+float32 x
+float32 y
+float32 yaw
+# 过程速度指令
+float32 vxmax
+float32 vyawmax
+# 是否忽略障碍物指令
+bool ignore_obstacle
+# 是否使用全局规划指令
+bool use_global_planner
+# 是否使用先验路径指令
+bool use_planned_path
+# 是否需要按钮触发
+bool button_required
+# 先验路径
+float32[] planned_path_x
+float32[] planned_path_y
+float32[] planned_path_yaw
+# 容差
+float32 xy_tolerance
+float32 yaw_tolerance

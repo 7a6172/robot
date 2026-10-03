@@ -1,0 +1,40 @@
+schema: 1
+name: openmover
+version: 0.4.0
+components:
+  isaac_sim: true
+  isaac_lab: true
+  ros2: true
+  nav2: true
+requires:
+  ros2:
+    distro: jazzy
+  isaac_sim:
+    version: "4.5.0"
+  isaac_lab:
+    version: ">=2.0"
+project_layout:
+  src: src
+  assets: assets
+  lab: lab
+  sim: sim
+  config: config
+  experiments: experiments
+tested:
+  - os: linux
+    arch: x86_64
+    ros_distro: jazzy
+    isaac_sim: 4.5.0
+tools:
+  isaacsim:
+    default: "6.0"
+    versions:
+      "6.0":
+        path: /home/zar/isaacsim
+        python: /home/zar/isaacsim/python.sh
+  isaaclab:
+    default: "3.0.0"
+    versions:
+      "3.0.0":
+        path: /home/zar/isaaclab
+

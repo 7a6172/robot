@@ -79,7 +79,8 @@ def native_ros(ctx: typer.Context) -> None:
     if not binary:
         output.fail(_("native.no_ros2"))
         return
-    _exec([binary, *[str(a) for a in ctx.args]])
+    from ..core import rosenv
+    _exec(rosenv.wrap([binary, *[str(a) for a in ctx.args]]))
 
 
 @app.command("run", help=_("native.run_help"), context_settings=_EXTRA_SETTINGS)

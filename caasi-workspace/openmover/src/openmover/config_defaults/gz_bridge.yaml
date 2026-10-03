@@ -1,0 +1,38 @@
+# Gazebo Harmonic <-> ROS 2 bridge configuration (ros_gz_bridge)
+#
+# Simulation data flow (faithful to ROS 1 gazebo_ros plugins):
+#   gz DiffDrive  <- /model/robot_description/cmd_vel          (from simulation_handler)
+#   gz DiffDrive  -> /openmover/hardware/odom_sim              (to simulation_handler)
+#   gz gpu_lidar  -> /openmover/hardware/lidar_forward/scan
+#   gz gpu_lidar  -> /openmover/hardware/lidar_rear/scan
+# Note: ROS 1 was publishOdomTF=false, the odom->base_link TF is
+#       broadcast by localization_handler, so gz TF is not bridged.
+- ros_topic_name: "/openmover/control/cmd_vel_sim"
+  gz_topic_name: "/model/robot_description/cmd_vel"
+  ros_type_name: "geometry_msgs/msg/Twist"
+  gz_type_name: "gz.msgs.Twist"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/openmover/hardware/odom_sim"
+  gz_topic_name: "/openmover/hardware/odom_sim"
+  ros_type_name: "nav_msgs/msg/Odometry"
+  gz_type_name: "gz.msgs.Odometry"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/openmover/hardware/lidar_forward/scan"
+  gz_topic_name: "/openmover/hardware/lidar_forward/scan"
+  ros_type_name: "sensor_msgs/msg/LaserScan"
+  gz_type_name: "gz.msgs.LaserScan"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/openmover/hardware/lidar_rear/scan"
+  gz_topic_name: "/openmover/hardware/lidar_rear/scan"
+  ros_type_name: "sensor_msgs/msg/LaserScan"
+  gz_type_name: "gz.msgs.LaserScan"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/clock"
+  gz_topic_name: "/clock"
+  ros_type_name: "rosgraph_msgs/msg/Clock"
+  gz_type_name: "gz.msgs.Clock"
+  direction: GZ_TO_ROS

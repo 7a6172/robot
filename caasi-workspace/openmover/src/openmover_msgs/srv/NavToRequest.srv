@@ -1,0 +1,27 @@
+# 指令字
+string cmd
+# 定位数据源
+string localization_sources
+# 路点位姿
+geometry_msgs/Pose pose
+# 过程速度指令
+geometry_msgs/Twist twist
+# 是否忽略障碍物指令
+bool ignore_obstacle
+# 行驶避障停车距离
+float32 strighting_stop_distance
+# 旋转避障停车距离
+float32 turning_stop_distance
+# 是否使用全局规划指令
+bool use_global_planner
+# 是否使用先验路径指令
+bool use_planned_path
+# 是否需要按钮触发
+bool button_required
+# 先验路径
+geometry_msgs/PoseStamped[] planned_path
+# 容差
+float32 xy_tolerance
+float32 yaw_tolerance
+---
+string result

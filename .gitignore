@@ -60,6 +60,16 @@ caasi/runs/
 caasi/datasets/
 
 # ------------------------------------------------------------------------------
+# Caasi Workspace Runtime Outputs & Builds
+# ------------------------------------------------------------------------------
+caasi-workspace/**/build/
+caasi-workspace/**/install/
+caasi-workspace/**/log/
+caasi-workspace/**/logs/
+caasi-workspace/**/.caasi/
+
+
+# ------------------------------------------------------------------------------
 # openmover_robot (ROS 1 Reference) - Build, Devel, and Cloned Dependencies
 # ------------------------------------------------------------------------------
 openmover_robot/openmover_ws/build/

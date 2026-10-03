@@ -1,0 +1,80 @@
+#usda 1.0
+(
+    defaultPrim = "Room"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "Room"
+{
+    def Mesh "Floor" (
+        prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+    )
+    {
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 2, 3, 7, 6, 1, 2, 6, 5, 0, 4, 7, 3]
+        uniform token physics:approximation = "none"
+        point3f[] points = [(-15, -15, -0.1), (15, -15, -0.1), (15, 15, -0.1), (-15, 15, -0.1), (-15, -15, 0), (15, -15, 0), (15, 15, 0), (-15, 15, 0)]
+    }
+
+    def Mesh "WallFront" (
+        prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+    )
+    {
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 2, 3, 7, 6, 1, 2, 6, 5, 0, 4, 7, 3]
+        uniform token physics:approximation = "none"
+        point3f[] points = [(5, -4.2, 0), (5.2, -4.2, 0), (5.2, 4.2, 0), (5, 4.2, 0), (5, -4.2, 2), (5.2, -4.2, 2), (5.2, 4.2, 2), (5, 4.2, 2)]
+    }
+
+    def Mesh "WallRear" (
+        prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+    )
+    {
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 2, 3, 7, 6, 1, 2, 6, 5, 0, 4, 7, 3]
+        uniform token physics:approximation = "none"
+        point3f[] points = [(-5.2, -4.2, 0), (-5, -4.2, 0), (-5, 4.2, 0), (-5.2, 4.2, 0), (-5.2, -4.2, 2), (-5, -4.2, 2), (-5, 4.2, 2), (-5.2, 4.2, 2)]
+    }
+
+    def Mesh "WallLeft" (
+        prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+    )
+    {
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 2, 3, 7, 6, 1, 2, 6, 5, 0, 4, 7, 3]
+        uniform token physics:approximation = "none"
+        point3f[] points = [(-5, 4, 0), (5, 4, 0), (5, 4.2, 0), (-5, 4.2, 0), (-5, 4, 2), (5, 4, 2), (5, 4.2, 2), (-5, 4.2, 2)]
+    }
+
+    def Mesh "WallRight" (
+        prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+    )
+    {
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 2, 3, 7, 6, 1, 2, 6, 5, 0, 4, 7, 3]
+        uniform token physics:approximation = "none"
+        point3f[] points = [(-5, -4.2, 0), (5, -4.2, 0), (5, -4, 0), (-5, -4, 0), (-5, -4.2, 2), (5, -4.2, 2), (5, -4, 2), (-5, -4, 2)]
+    }
+
+    def Mesh "ObstacleBox" (
+        prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+    )
+    {
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 2, 3, 7, 6, 1, 2, 6, 5, 0, 4, 7, 3]
+        uniform token physics:approximation = "none"
+        point3f[] points = [(1.5, 1.5, 0), (2.5, 1.5, 0), (2.5, 2.5, 0), (1.5, 2.5, 0), (1.5, 1.5, 1), (2.5, 1.5, 1), (2.5, 2.5, 1), (1.5, 2.5, 1)]
+    }
+
+    def Mesh "ObstaclePillar" (
+        prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+    )
+    {
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 2, 3, 7, 6, 1, 2, 6, 5, 0, 4, 7, 3]
+        uniform token physics:approximation = "none"
+        point3f[] points = [(-2.25, -1.25, 0), (-1.75, -1.25, 0), (-1.75, -0.75, 0), (-2.25, -0.75, 0), (-2.25, -1.25, 1.5), (-1.75, -1.25, 1.5), (-1.75, -0.75, 1.5), (-2.25, -0.75, 1.5)]
+    }
+}
+

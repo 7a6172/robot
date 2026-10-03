@@ -65,9 +65,22 @@
     - Enforced strict safety boundaries: non-destructive inspection, zero motor motion commands, zero unconnected socket flooding.
     - Confirmed zero Category D gaps: existing `caasi` diagnostic, execution, and provenance capabilities cleanly support the physical hardware workflow without turning `caasi` into a hardware driver.
 - **Current State**: Phase 5 successfully closed. Read-only trees preserved untouched; working tree clean.
-  - **Phase 6: Full Project Adoption & Caasi-Native Architecture (Stage B Complete)**:
+  - **Phase 6: Full Project Adoption & Caasi-Native Isaac/ROS Workspace completed**:
     - [Phase 6 Architectural Proposal](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-06/phase-06-proposal.md)
-    - Completed exhaustive investigation across ROS 2 packages, Isaac Sim bridges, Isaac Lab tasks, USD scenes, and system tooling.
-    - Proposed canonical caasi-native workspace structure under `/home/zar/Documents/phd/robot/caasi-workspace/openmover/`.
-    - Identified three essential caasi 0.4.0 candidates: `caasi build` (RAM-safe build orchestrator), automatic workspace overlay sourcing in `rosenv.py`, and `CAASI_PROJECT_ROOT` process environment injection.
-- **Current State**: Phase 6 Stage B complete (Investigation & Architecture Proposal submitted). Standing by at Stage C for user review before proceeding with implementation.
+    - [Phase 6 Summary Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-06/phase-06-report.md)
+    - [Phase 6 Case Study Evidence](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-06/case_studies.md)
+    - Materialized the canonical caasi-native OpenMover project at `/home/zar/Documents/phd/robot/caasi-workspace/openmover/` with ROS 2 packages (`src/`), centralized assets (`assets/robots/`, `assets/scenes/`), Isaac Lab Gym tasks (`lab/`), simulation bridges (`sim/bridges/`), configurations (`config/`), and declarative experiments (`experiments/`).
+    - Implemented `caasi build`: resource-aware workspace build orchestrator wrapping `colcon build --symlink-install` with RAM-safe worker sizing ($\min(6, 20) = 6$ parallel workers on 46 GiB RAM), selective package building (`-p`, `-u`), clean builds, and output streaming.
+    - Implemented automatic project overlay chaining in `caasi.core.rosenv`: commands executed via caasi immediately discover and chain `<project_root>/install/setup.bash` after the ROS 2 underlay without manual shell sourcing.
+    - Added `project_layout` field to manifest dataclass and schema; verified round-trip preservation in `caasi.yaml` and generated `caasi.lock`.
+    - Injected `CAASI_PROJECT_ROOT` into child processes and refactored asset resolution in `sim/bridges/common.py` and `lab/openmover_lab/openmover_cfg.py` to eliminate hardcoded machine paths.
+    - Empirically validated end-to-end workflows:
+      * `caasi build -p openmover_msgs`: Built in 11.47s.
+      * `caasi build`: Compiled 9 ROS 2 packages across 6 parallel workers in 69.39s.
+      * `caasi native ros pkg prefix openmover_msgs`: Verified automatic overlay package resolution.
+      * `caasi sim run experiments/sim_warehouse_bridge.yaml`: Headless Isaac Sim warehouse simulation with pioneer3dx and ROS 2 RTX LiDAR bridge (run `20261003-202114-sim-warehouse-bridge`, status `succeeded`).
+      * `caasi lab run experiments/lab_smoke.yaml`: Bounded Isaac Lab RL task rollout (run `20261003-202234-lab-smoke`, 20 steps @ 37 env-steps/s on `cuda:0`, status `succeeded`).
+      * Complete Level 6 execution provenance captured for all runs.
+    - Verified full regression test suite: **870 passing tests** in 184.81s (11 new tests added in `tests/test_build.py`).
+    - Safety verified: `/openmover_robot` and `/openmover_ws` read-only trees remain 100% untouched.
+- **Current State**: Phase 6 successfully completed. Ready for Git commit and next phase direction.

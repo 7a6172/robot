@@ -1,0 +1,12 @@
+name: lab-smoke
+backend: lab
+script: ../lab/tasks/21_run_openmover_nav.py
+description: Bounded Isaac Lab navigation evaluation test (random policy)
+cwd: .
+args:
+  - --num_envs
+  - "1"
+  - --num_steps
+  - "20"
+  - --policy
+  - random

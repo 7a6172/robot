@@ -195,6 +195,16 @@ def start_run(
     work_dir = str(Path(cwd).expanduser()) if cwd else os.getcwd()
     merged_env = {**os.environ, **(env or {})}
 
+    from . import project, rosenv
+    proj_root = project.find_project_root(Path(work_dir)) or project.find_project_root()
+    if proj_root is not None:
+        merged_env.setdefault("CAASI_PROJECT_ROOT", str(proj_root))
+
+    if backend == "ros":
+        if not rosenv.is_sourced(project_root=proj_root):
+            ros_s_env = rosenv.sourced_env(project_root=proj_root)
+            merged_env = {**ros_s_env, **merged_env}
+
     stdout = open(run_dir / "stdout.log", "w", encoding="utf-8")
     stderr = open(run_dir / "stderr.log", "w", encoding="utf-8")
     try:

@@ -1,0 +1,22 @@
+# 机器人模块参数（ROS 2 参数文件格式）
+# 对应 ROS 1 ~/openmover_robot/config/modules/modules.yaml
+/**:
+  ros__parameters:
+    # 遥控
+    teleop:
+      # 遥控线速度
+      velocity_x: 0.3
+      # 遥控角速度
+      velocity_yaw: 0.4
+      # 遥控线加速度
+      max_x_acc: 1.0
+      # 遥控角加速度
+      max_yaw_acc: 3.14
+
+    # 障碍检测部分
+    obstacle:
+      laser_min_dist: 0.23
+      laser_max_dist: 10.0
+      obs_min_dist: 0.02
+      obstacle_grid_number: 5
+      ray_reversed: false

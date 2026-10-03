@@ -15,6 +15,7 @@ from . import (
     accelerated,
     audit_cmd,
     benchmark_cmd,
+    build_cmd,
     check_cmd,
     config_cmd,
     container_cmd,
@@ -58,6 +59,7 @@ HELP_PANELS: dict[str, tuple[str, ...]] = {
     _("help.panel.start"): ("audit", "check", "doctor", "help", "info", "init", "setup", "test", "version"),
     _("help.panel.environment"): ("config", "env", "gpu", "monitor", "sensor", "system", "vision"),
     _("help.panel.projects"): (
+        "build",
         "logs",
         "project",
         "replay",
@@ -197,6 +199,7 @@ app.command(
 )(run_cmd.run_start)
 app.command("init", help=_("init.help"))(init_command)
 app.command("setup", help=_("setup.help"))(setup_cmd.setup_command)
+app.command("build", help=_("build.help"))(build_cmd.build_command)
 app.add_typer(project_cmd.app, name="project", help=_("project.help"))
 app.command(
     "train",

@@ -129,7 +129,27 @@ def build_command(
     if experiment.config_path:
         env.setdefault("CAASI_EXPERIMENT", str(experiment.config_path))
 
+    from . import project, rosenv
+    proj_root = None
+    if experiment.config_path:
+        proj_root = project.find_project_root(experiment.config_path.parent)
+    if proj_root is None:
+        proj_root = project.find_project_root()
+    if proj_root is not None:
+        env.setdefault("CAASI_PROJECT_ROOT", str(proj_root))
+
     backend = experiment.backend
+    if backend in ("sim", "ros"):
+        ros_env = rosenv.sourced_env(project_root=proj_root)
+        for k in ("AMENT_PREFIX_PATH", "COLCON_PREFIX_PATH", "ROS_DISTRO", "ROS_VERSION", "RMW_IMPLEMENTATION", "LD_LIBRARY_PATH"):
+            if k in ros_env and k not in env:
+                env[k] = ros_env[k]
+        if "PYTHONPATH" in ros_env:
+            if "PYTHONPATH" not in env:
+                env["PYTHONPATH"] = ros_env["PYTHONPATH"]
+            else:
+                env["PYTHONPATH"] = f"{env['PYTHONPATH']}:{ros_env['PYTHONPATH']}"
+
     if backend == "python":
         python = experiment.python or sys.executable
         return [python, script, *args], env

@@ -1,0 +1,366 @@
+#usda 1.0
+(
+    customLayerData = {
+        string creator = "URDF USD Converter v0.1.3"
+    }
+    defaultPrim = "pioneer3dx"
+    doc = """Generated from Composed Stage of root layer /tmp/tmpfaykwkf9/pioneer3dx.usdc
+
+
+Generated from Composed Stage of root layer /tmp/urdf_import_pioneer3dx_h52iqoza/usdex_pioneer3dx/pioneer3dx.usdc
+
+
+Generated from Composed Stage of root layer /tmp/urdf_import_pioneer3dx_h52iqoza/temp_pioneer3dx/pioneer3dx.usd
+
+
+Generated from Composed Stage of root layer /home/zar/Documents/phd/robot/openmover_ws/isaac/assets/pioneer3dx/pioneer3dx/payloads/base.usd
+"""
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "pioneer3dx"
+{
+    over "Geometry"
+    {
+        over "base_link" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsArticulationRootAPI", "NewtonArticulationRootAPI", "PhysicsMassAPI"]
+        )
+        {
+            bool newton:selfCollisionEnabled = 0
+            point3f physics:centerOfMass = (-0.045, 0, 0.148)
+            float3 physics:diagonalInertia = (0.3338, 0.3338, 0.4783)
+            float physics:mass = 40
+            quatf physics:principalAxes = (0.70710677, 0.70710677, 0, 0)
+
+            over "top_plate" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                point3f physics:centerOfMass = (0, 0, 0)
+                float3 physics:diagonalInertia = (1, 1, 1)
+                float physics:mass = 0.01
+                quatf physics:principalAxes = (1, 0, 0, 0)
+            }
+
+            over "front_sonar" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                point3f physics:centerOfMass = (0, 0, 0)
+                float3 physics:diagonalInertia = (1, 1, 1)
+                float physics:mass = 0.0001
+                quatf physics:principalAxes = (1, 0, 0, 0)
+            }
+
+            over "back_sonar" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                point3f physics:centerOfMass = (0, 0, 0)
+                float3 physics:diagonalInertia = (1, 1, 1)
+                float physics:mass = 0.0001
+                quatf physics:principalAxes = (1, 0, 0, 0)
+            }
+
+            over "swivel" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                point3f physics:centerOfMass = (0, 0, 0)
+                float3 physics:diagonalInertia = (0.01, 0.01, 0.01)
+                float physics:mass = 0.1
+                quatf physics:principalAxes = (1, 0, 0, 0)
+
+                over "center_wheel" (
+                    prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+                )
+                {
+                    point3f physics:centerOfMass = (0, 0, 0)
+                    float3 physics:diagonalInertia = (0.011456841, 0.012544594, 0.015392469)
+                    float physics:mass = 0.1
+                    quatf physics:principalAxes = (0.40799046, 0.27167737, 0.6657471, 0.5625976)
+
+                    over "center_hubcap" (
+                        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+                    )
+                    {
+                        point3f physics:centerOfMass = (0, 0, 0)
+                        float3 physics:diagonalInertia = (0.011456841, 0.012544594, 0.015392469)
+                        float physics:mass = 0.01
+                        quatf physics:principalAxes = (0.40799046, 0.27167737, 0.6657471, 0.5625976)
+                    }
+
+                    over "cylinder" (
+                        prepend apiSchemas = ["NewtonCollisionAPI"]
+                    )
+                    {
+                    }
+                }
+            }
+
+            over "left_wheel" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                point3f physics:centerOfMass = (0, 0, 0)
+                float3 physics:diagonalInertia = (0.011763978, 0.012411766, 0.01521816)
+                float physics:mass = 0.5
+                quatf physics:principalAxes = (0.5, 0.5, 0.5, 0.5)
+
+                over "left_hub" (
+                    prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+                )
+                {
+                    point3f physics:centerOfMass = (0, 0, 0)
+                    float3 physics:diagonalInertia = (0.011763978, 0.012411766, 0.01521816)
+                    float physics:mass = 0.01
+                    quatf physics:principalAxes = (0.5, 0.5, 0.5, 0.5)
+                }
+
+                over "cylinder" (
+                    prepend apiSchemas = ["NewtonCollisionAPI"]
+                )
+                {
+                }
+            }
+
+            over "right_wheel" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                point3f physics:centerOfMass = (0, 0, 0)
+                float3 physics:diagonalInertia = (0.011763978, 0.012411766, 0.01521816)
+                float physics:mass = 0.5
+                quatf physics:principalAxes = (0.5, 0.5, 0.5, 0.5)
+
+                over "right_hub" (
+                    prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+                )
+                {
+                    point3f physics:centerOfMass = (0, 0, 0)
+                    float3 physics:diagonalInertia = (0.011763978, 0.012411766, 0.01521816)
+                    float physics:mass = 0.01
+                    quatf physics:principalAxes = (0.5, 0.5, 0.5, 0.5)
+                }
+
+                over "cylinder" (
+                    prepend apiSchemas = ["NewtonCollisionAPI"]
+                )
+                {
+                }
+            }
+
+            over "laser" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                point3f physics:centerOfMass = (0, 0, 0)
+                float3 physics:diagonalInertia = (0.001, 0.001, 0.001)
+                float physics:mass = 0.114
+                quatf physics:principalAxes = (1, 0, 0, 0)
+
+                over "cylinder" (
+                    prepend apiSchemas = ["NewtonCollisionAPI"]
+                )
+                {
+                }
+            }
+
+            over "box" (
+                prepend apiSchemas = ["NewtonCollisionAPI"]
+            )
+            {
+            }
+
+            over "imu_link" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            )
+            {
+                point3f physics:centerOfMass = (0, 0, 0)
+                float3 physics:diagonalInertia = (0.0001, 0.0001, 0.0001)
+                float physics:mass = 0.001
+                quatf physics:principalAxes = (1, 0, 0, 0)
+            }
+        }
+    }
+
+    over "Physics"
+    {
+        def PhysicsRevoluteJoint "base_swivel_joint" (
+            prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+            float drive:angular:physics:damping = 0
+            float drive:angular:physics:stiffness = 0
+            uniform token drive:angular:physics:type = "force"
+            uniform token physics:axis = "Z"
+            custom rel physics:body0
+            prepend rel physics:body0 = </pioneer3dx/Geometry/base_link>
+            custom rel physics:body1
+            prepend rel physics:body1 = </pioneer3dx/Geometry/base_link/swivel>
+            point3f physics:localPos0 = (-0.185, 0, 0.055)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+
+        def PhysicsRevoluteJoint "swivel_wheel_joint" (
+            prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+            float drive:angular:physics:damping = 0
+            float drive:angular:physics:stiffness = 0
+            uniform token drive:angular:physics:type = "force"
+            uniform token physics:axis = "Y"
+            custom rel physics:body0
+            prepend rel physics:body0 = </pioneer3dx/Geometry/base_link/swivel>
+            custom rel physics:body1
+            prepend rel physics:body1 = </pioneer3dx/Geometry/base_link/swivel/center_wheel>
+            point3f physics:localPos0 = (-0.026, 0, -0.016)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+
+        def PhysicsRevoluteJoint "base_left_wheel_joint" (
+            prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+            float drive:angular:physics:damping = 0
+            float drive:angular:physics:maxForce = 5
+            float drive:angular:physics:stiffness = 0
+            uniform token drive:angular:physics:type = "force"
+            uniform token physics:axis = "Y"
+            custom rel physics:body0
+            prepend rel physics:body0 = </pioneer3dx/Geometry/base_link>
+            custom rel physics:body1
+            prepend rel physics:body1 = </pioneer3dx/Geometry/base_link/left_wheel>
+            point3f physics:localPos0 = (0, 0.158, 0.091)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+            custom float urdf:limit:effort = 5
+            custom float urdf:limit:velocity = 100
+        }
+
+        def PhysicsRevoluteJoint "base_right_wheel_joint" (
+            prepend apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+            float drive:angular:physics:damping = 0
+            float drive:angular:physics:maxForce = 5
+            float drive:angular:physics:stiffness = 0
+            uniform token drive:angular:physics:type = "force"
+            uniform token physics:axis = "Y"
+            custom rel physics:body0
+            prepend rel physics:body0 = </pioneer3dx/Geometry/base_link>
+            custom rel physics:body1
+            prepend rel physics:body1 = </pioneer3dx/Geometry/base_link/right_wheel>
+            point3f physics:localPos0 = (0, -0.158, 0.091)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+            custom float urdf:limit:effort = 5
+            custom float urdf:limit:velocity = 100
+        }
+
+        def PhysicsFixedJoint "base_top_joint"
+        {
+            custom rel physics:body0
+            prepend rel physics:body0 = </pioneer3dx/Geometry/base_link>
+            custom rel physics:body1
+            prepend rel physics:body1 = </pioneer3dx/Geometry/base_link/top_plate>
+            point3f physics:localPos0 = (-0.045, 0, 0.24)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+
+        def PhysicsFixedJoint "base_front_joint"
+        {
+            custom rel physics:body0
+            prepend rel physics:body0 = </pioneer3dx/Geometry/base_link>
+            custom rel physics:body1
+            prepend rel physics:body1 = </pioneer3dx/Geometry/base_link/front_sonar>
+            point3f physics:localPos0 = (-0.198, 0, 0.208)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+
+        def PhysicsFixedJoint "base_back_joint"
+        {
+            custom rel physics:body0
+            prepend rel physics:body0 = </pioneer3dx/Geometry/base_link>
+            custom rel physics:body1
+            prepend rel physics:body1 = </pioneer3dx/Geometry/base_link/back_sonar>
+            point3f physics:localPos0 = (0.109, 0, 0.209)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+
+        def PhysicsFixedJoint "center_wheel_joint"
+        {
+            custom rel physics:body0
+            prepend rel physics:body0 = </pioneer3dx/Geometry/base_link/swivel/center_wheel>
+            custom rel physics:body1
+            prepend rel physics:body1 = </pioneer3dx/Geometry/base_link/swivel/center_wheel/center_hubcap>
+            point3f physics:localPos0 = (-0.0035, 0, -0.001)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+
+        def PhysicsFixedJoint "base_left_hubcap_joint"
+        {
+            custom rel physics:body0
+            prepend rel physics:body0 = </pioneer3dx/Geometry/base_link/left_wheel>
+            custom rel physics:body1
+            prepend rel physics:body1 = </pioneer3dx/Geometry/base_link/left_wheel/left_hub>
+            point3f physics:localPos0 = (0, 0, 0)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+
+        def PhysicsFixedJoint "base_right_hubcap_joint"
+        {
+            custom rel physics:body0
+            prepend rel physics:body0 = </pioneer3dx/Geometry/base_link/right_wheel>
+            custom rel physics:body1
+            prepend rel physics:body1 = </pioneer3dx/Geometry/base_link/right_wheel/right_hub>
+            point3f physics:localPos0 = (0, 0, 0)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+
+        def PhysicsFixedJoint "base_imu_joint"
+        {
+            custom rel physics:body0
+            prepend rel physics:body0 = </pioneer3dx/Geometry/base_link>
+            custom rel physics:body1
+            prepend rel physics:body1 = </pioneer3dx/Geometry/base_link/imu_link>
+            point3f physics:localPos0 = (0, 0, 0.2)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+
+        def PhysicsFixedJoint "base_scan_joint"
+        {
+            custom rel physics:body0
+            prepend rel physics:body0 = </pioneer3dx/Geometry/base_link>
+            custom rel physics:body1
+            prepend rel physics:body1 = </pioneer3dx/Geometry/base_link/laser>
+            point3f physics:localPos0 = (0, 0, 0.3)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+    }
+}
+

@@ -1,0 +1,24 @@
+schema: 1
+project:
+  name: openmover
+  version: 0.4.0
+required:
+  ros2:
+    distro: jazzy
+  isaac_sim:
+    version: 4.5.0
+  isaac_lab:
+    version: '>=2.0'
+resolved:
+  isaac_sim: installed
+  isaac_lab: installed
+  ros2: jazzy
+  python: 3.12.3
+  gcc: 13.3.0
+  cmake: 3.28.3
+verified:
+- os: linux
+  arch: x86_64
+  ros_distro: jazzy
+  isaac_sim: 4.5.0
+collected_at: '2026-10-03T12:15:19+00:00'

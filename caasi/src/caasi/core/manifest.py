@@ -32,7 +32,7 @@ SCHEMA = 1
 MANIFEST_FILE = "caasi.yaml"
 
 #: Manifest keys, in the order they are written.
-FIELD_ORDER = ("schema", "name", "version", "components", "requires", "tested")
+FIELD_ORDER = ("schema", "name", "version", "components", "requires", "tested", "project_layout")
 
 
 @dataclass
@@ -42,7 +42,12 @@ class Manifest:
     components: dict[str, Any] = field(default_factory=dict)
     requires: dict[str, Any] = field(default_factory=dict)
     tested: list[Any] = field(default_factory=list)
+    project_layout: dict[str, str] = field(default_factory=dict)
     schema: int = SCHEMA
+
+    @property
+    def layout(self) -> dict[str, str]:
+        return self.project_layout
 
     def registered(self) -> list[str]:
         """Component keys whose manifest value is truthy."""
@@ -56,6 +61,8 @@ class Manifest:
             data["requires"] = dict(self.requires)
         if self.tested:
             data["tested"] = list(self.tested)
+        if self.project_layout:
+            data["project_layout"] = dict(self.project_layout)
         return data
 
 
@@ -86,6 +93,10 @@ def read(root: Path) -> Manifest:
     components_field = data.get("components")
     requires = data.get("requires")
     tested = data.get("tested")
+    layout = data.get("project_layout")
+    if not isinstance(layout, dict):
+        raw_layout = data.get("layout")
+        layout = raw_layout if isinstance(raw_layout, dict) else {}
     schema = data.get("schema")
     return Manifest(
         name=str(data.get("name", "") or ""),
@@ -93,6 +104,7 @@ def read(root: Path) -> Manifest:
         components=dict(components_field) if isinstance(components_field, dict) else {},
         requires=dict(requires) if isinstance(requires, dict) else {},
         tested=list(tested) if isinstance(tested, list) else [],
+        project_layout=dict(layout) if isinstance(layout, dict) else {},
         schema=int(schema) if isinstance(schema, int) else SCHEMA,
     )
 

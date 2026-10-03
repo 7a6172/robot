@@ -1,0 +1,9 @@
+std_msgs/Header header
+float32 phase_current
+int16 rpm
+float32 position_deg
+bool over_temperature_fault
+bool stall_fault
+bool phase_overcurrent_fault
+bool overcurrent_fault
+bool sensor_fault

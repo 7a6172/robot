@@ -507,6 +507,18 @@ MESSAGES: dict[str, str] = {
     "lab.play_help": "Play a trained policy (isaaclab.sh -p <play script>).",
     "lab.evaluate_help": "Evaluate a trained policy checkpoint.",
     "lab.flag.checkpoint": "Checkpoint path passed to the script as --checkpoint.",
+    # -- build -------------------------------------------------------------------------
+    "build.help": "Build the project ROS 2 packages using colcon.",
+    "build.flag.packages_select": "Only build specified packages.",
+    "build.flag.packages_up_to": "Build packages up to the specified packages.",
+    "build.flag.jobs": "Override parallel workers count.",
+    "build.flag.symlink_install": "Use symlink install.",
+    "build.flag.cmake_args": "Arbitrary CMake arguments to pass through.",
+    "build.flag.clean": "Clean build/, install/, and log/ before building.",
+    "build.flag.continue_on_error": "Continue building other packages when one fails.",
+    "build.starting": "Building workspace at {root} ({workers} parallel workers)...",
+    "build.success": "Build completed successfully in {duration}s.",
+    "build.failed": "Build failed with exit code {code}.",
     # -- init / project -----------------------------------------------------------------
     "init.help": "Create a new Caasi project scaffold.",
     "init.arg.path": "Directory to create the project in (default: current directory).",

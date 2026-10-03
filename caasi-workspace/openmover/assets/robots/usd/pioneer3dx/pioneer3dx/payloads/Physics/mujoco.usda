@@ -1,0 +1,281 @@
+#usda 1.0
+(
+    customLayerData = {
+        string creator = "URDF USD Converter v0.1.3"
+    }
+    defaultPrim = "pioneer3dx"
+    doc = """Generated from Composed Stage of root layer /tmp/tmpfaykwkf9/pioneer3dx.usdc
+
+
+Generated from Composed Stage of root layer /tmp/urdf_import_pioneer3dx_h52iqoza/usdex_pioneer3dx/pioneer3dx.usdc
+
+
+Generated from Composed Stage of root layer /tmp/urdf_import_pioneer3dx_h52iqoza/temp_pioneer3dx/pioneer3dx.usd
+
+
+Generated from Composed Stage of root layer /home/zar/Documents/phd/robot/openmover_ws/isaac/assets/pioneer3dx/pioneer3dx/payloads/base.usd
+"""
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    subLayers = [
+        @./physics.usda@
+    ]
+    upAxis = "Z"
+)
+
+over "pioneer3dx"
+{
+    over "Physics"
+    {
+        def MjcActuator "base_swivel_joint_actuator"
+        {
+            uniform double mjc:forceRange:max = inf
+            uniform double mjc:forceRange:min = -inf
+            custom rel mjc:target
+            prepend rel mjc:target = </pioneer3dx/Physics/base_swivel_joint>
+        }
+
+        def MjcActuator "swivel_wheel_joint_actuator"
+        {
+            uniform double mjc:forceRange:max = inf
+            uniform double mjc:forceRange:min = -inf
+            custom rel mjc:target
+            prepend rel mjc:target = </pioneer3dx/Physics/swivel_wheel_joint>
+        }
+
+        def MjcActuator "base_left_wheel_joint_actuator"
+        {
+            uniform double mjc:forceRange:max = 5
+            uniform double mjc:forceRange:min = -5
+            custom rel mjc:target
+            prepend rel mjc:target = </pioneer3dx/Physics/base_left_wheel_joint>
+        }
+
+        def MjcActuator "base_right_wheel_joint_actuator"
+        {
+            uniform double mjc:forceRange:max = 5
+            uniform double mjc:forceRange:min = -5
+            custom rel mjc:target
+            prepend rel mjc:target = </pioneer3dx/Physics/base_right_wheel_joint>
+        }
+
+        over "base_top_joint"
+        {
+        }
+
+        over "base_front_joint"
+        {
+        }
+
+        over "base_back_joint"
+        {
+        }
+
+        over "base_swivel_joint" (
+            delete apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+        }
+
+        over "swivel_wheel_joint" (
+            delete apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+        }
+
+        over "center_wheel_joint"
+        {
+        }
+
+        over "base_left_hubcap_joint"
+        {
+        }
+
+        over "base_left_wheel_joint" (
+            delete apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+        }
+
+        over "base_right_hubcap_joint"
+        {
+        }
+
+        over "base_right_wheel_joint" (
+            delete apiSchemas = ["PhysicsDriveAPI:angular", "PhysicsJointStateAPI:angular"]
+        )
+        {
+        }
+
+        over "base_imu_joint"
+        {
+        }
+
+        over "base_scan_joint"
+        {
+        }
+    }
+
+    over "Geometry"
+    {
+        over "base_link"
+        {
+            over "chassis"
+            {
+            }
+
+            over "top_plate"
+            {
+                over "top"
+                {
+                }
+            }
+
+            over "front_sonar"
+            {
+                over "front_sonar"
+                {
+                }
+            }
+
+            over "back_sonar"
+            {
+                over "back_sonar"
+                {
+                }
+            }
+
+            over "swivel"
+            {
+                over "swivel"
+                {
+                }
+
+                over "center_wheel"
+                {
+                    over "center_wheel"
+                    {
+                    }
+
+                    over "center_hubcap"
+                    {
+                        over "center_hubcap"
+                        {
+                        }
+                    }
+
+                    over "cylinder"
+                    {
+                    }
+                }
+            }
+
+            over "left_wheel"
+            {
+                over "left_wheel"
+                {
+                }
+
+                over "left_hub"
+                {
+                    over "left_hubcap"
+                    {
+                    }
+                }
+
+                over "cylinder"
+                {
+                }
+            }
+
+            over "right_wheel"
+            {
+                over "right_wheel"
+                {
+                }
+
+                over "right_hub"
+                {
+                    over "right_hubcap"
+                    {
+                    }
+                }
+
+                over "cylinder"
+                {
+                }
+            }
+
+            over "laser"
+            {
+                over "lds"
+                {
+                }
+
+                over "cylinder"
+                {
+                }
+            }
+
+            over "imu_link"
+            {
+            }
+
+            over "box"
+            {
+            }
+        }
+    }
+
+    over "Materials"
+    {
+        over "material_1"
+        {
+        }
+
+        over "material_2"
+        {
+        }
+
+        over "material_3"
+        {
+        }
+
+        over "material_4"
+        {
+        }
+
+        over "material_5"
+        {
+        }
+
+        over "material_6"
+        {
+        }
+
+        over "material_7"
+        {
+        }
+
+        over "material_9"
+        {
+        }
+
+        over "material_8"
+        {
+        }
+
+        over "material_11"
+        {
+        }
+
+        over "material_10"
+        {
+        }
+
+        over "material_12"
+        {
+        }
+    }
+}
+
