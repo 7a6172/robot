@@ -215,8 +215,8 @@ Deployment identity is recorded with two-sided provenance:
 
 1. **Build Artifacts Must Never Cross Architectures**:
    - OpenMover contains C++ CMake nodes (`laserscan_multi_merger`, `relocalization_toolbox`) and Python packages. If `build/` or `install/` were synced to an aarch64 target (such as Jetson Orin), host x86_64 `.so` libraries would break target builds. Rigid exclusion of host build/install trees is a non-negotiable general rule.
-2. **Incremental Speed is Essential for Robotics**:
-   - With 833 files (40.4 MiB), initial sync took 0.63s. On the second run with zero changes, incremental sync took 0.60s and transferred **0 regular file bytes** (only updating the small metadata manifest). For real wireless robot links (Wi-Fi 6 or 5G), transferring only changed files is mandatory.
+2. **Incremental Synchronization Minimizes Transferred Content**:
+   - In the local dogfood test (833 files, 40.4 MiB), the initial local sync completed in 0.63s, while a subsequent sync of the unchanged project completed in 0.60s and transferred **0 regular file payload bytes** (updating only the deployment descriptor). Performance over wireless robot links was not measured.
 3. **Target Verification Must Be Structural, Not Just Network Status**:
    - Verifying that rsync succeeded is necessary but insufficient. The deployment engine must structurally verify that `caasi.yaml` and source trees exist and that deployment metadata is readable on the target.
 
@@ -225,10 +225,155 @@ Deployment identity is recorded with two-sided provenance:
 ### 7. What Should Become Stage C
 
 Stage B establishes safe, verified materialization of project content onto execution targets.
-**Stage C should focus on: Target-Native Build & Transparent Remote Execution**:
-1. **Target-Native Build (`caasi build --target <name>`)**:
-   - Orchestrate compilation on the target (via SSH invocation of `colcon build`) using target CPU and memory capacity.
-2. **Remote Run Execution (`caasi run start --target <name> <manifest>`)**:
-   - Launch and supervise processes on the target, streaming stdout/stderr back to the workstation.
-3. **Remote Run Tracking & Lifecycle (`caasi run list / stop / inspect --target <name>`)**:
-   - Manage remote processes using the existing caasi process group lifecycle without orphaned nodes.
+**Stage C is partitioned into two focused stages**:
+1. **Stage C1 (Target-Native Build)**: Orchestrate compilation natively on the execution target via `caasi build --target <name>`, sizing worker parallelism to target CPU/RAM capacity, ensuring host architectures never cross, and tracking build provenance.
+2. **Stage C2 (Target-Native Remote Run Execution)**: Launch and supervise processes on the target via `caasi run start --target <name> <manifest>`, streaming stdout/stderr back to the workstation with complete process group lifecycle control.
+
+---
+
+## Stage C1 Report: Target-Native Build
+
+### 1. Stage C1 Objectives & Core Accomplishments
+
+Stage C1 validates the architectural principle: **the workstation acts as the unified control and orchestration plane, while execution targets own their own architecture-specific build environment and native compilation resources.**
+
+Key accomplishments:
+1. **Target-Aware Build Interface**: Extended `caasi build` with `--target <name>` / `-t <name>`. Local workstation build behavior is preserved identically with zero regressions.
+2. **Target Resource Sizing (`derive_target_workers`)**: RAM-safe compilation parallelism is derived directly from target hardware capacity (`memory_total_kib` and `cpu_count` discovered in Stage A) using conservative default heuristic policies ($\text{RAM\_PER\_WORKER} = 6.0\text{ GiB}$, $\text{SYSTEM\_RESERVED} = 2.0\text{ GiB}$), preventing OOM killer invocations on resource-constrained robot computers.
+3. **Verified Deployment Preflight**: Builds on remote/deployed targets enforce prerequisite deployment verification via `deploy.get_deployment_status`. If no active deployment exists, the build fails fast with actionable guidance.
+4. **Target-Native Underlay & Colcon Wrapping**: Remote execution sources the target's native ROS 2 underlay (e.g. `/opt/ros/{distro}/setup.bash`), executes `colcon build` in the target's deployed root directory, and streams live output back to the workstation terminal.
+5. **Strict Artifact Retention on Target**: Architecture-specific binaries (`build/`, `install/`, `log/`) remain entirely on the target. They are never copied to the workstation, preventing architecture pollution between x86_64 and aarch64.
+6. **Two-Sided Build Provenance**: Build outcomes, timings, return codes, worker allocations, and error logs are saved both on the target (`<destination>/.caasi-build.json`) and in the workstation project repository (`.caasi/builds/<target>/<build_id>.json`).
+7. **Test Coverage**: Added 10 dedicated unit tests in `caasi/tests/test_target_build.py`. All 912 tests pass across the entire caasi suite.
+
+---
+
+### 2. Implementation Details
+
+#### Target Worker Parallelism Derivation
+In `caasi/src/caasi/core/build.py`:
+```python
+def derive_target_workers(
+    resources: TargetResources | None = None,
+    requested_jobs: int | None = None,
+) -> int:
+    if requested_jobs is not None and requested_jobs > 0:
+        return requested_jobs
+
+    if resources and resources.memory_total_kib and resources.cpu_count:
+        ram_gb = resources.memory_total_kib / (1024 * 1024)
+        usable_ram = max(0.0, ram_gb - SYSTEM_RESERVED_RAM_GB)
+        ram_workers = max(1, int(usable_ram / RAM_PER_WORKER_GB))
+        return max(1, min(resources.cpu_count, ram_workers))
+
+    return default_parallel_workers()
+```
+
+#### Remote Build Assembly
+When executing over SSH:
+```python
+steps = [f"cd {dest}"]
+if clean:
+    steps.append("rm -rf build install log")
+steps.append(f"test -f {ros_setup} && . {ros_setup}")
+steps.append(shlex.join(colcon_cmd))
+remote_sh = " && ".join(steps)
+remote_exec = ssh_prefix + [f"bash -c {shlex.quote(remote_sh)}"]
+```
+Output lines are captured via `subprocess.Popen` and streamed in real-time to the workstation console or JSON accumulator.
+
+#### Build Provenance Data Model
+`TargetBuildRecord` records:
+- `build_id`: Unique identifier (e.g. `build-test-sandbox-1791049711-805239`)
+- `project_name` & `git_revision`: Identifies exact source code revision built
+- `target_name` & `target_transport`: Execution destination
+- `destination_path`: Target workspace path where compilation occurred
+- `built_at`: UTC ISO timestamp
+- `status`: `"success"` or `"failed"`
+- `returncode`: Exit status from colcon
+- `duration_seconds`: Build execution wall-clock time
+- `workers`: Parallel compilation processes allocated
+- `command`: Arguments passed to colcon
+- `deployment_id`: Linked deployment identifier providing complete end-to-end traceability
+- `output`: Stderr/failure excerpt if build was unsuccessful
+
+---
+
+### 3. Empirical Dogfooding Results (Canonical OpenMover)
+
+Dogfooding was conducted from `/home/zar/Documents/phd/robot/caasi-workspace/openmover`:
+
+1. **Local Build Preservation**:
+   ```bash
+   caasi build --target local --packages-select openmover
+   ```
+   - Parallel workers: 7
+   - Duration: 0.70s
+   - Exit code: 0
+   - Provenance record saved: `.caasi/builds/local/build-local-1791049640-42db94.json`
+
+2. **Unregistered Target Rejection**:
+   ```bash
+   caasi build --target robot-orin
+   ```
+   - Result: Failed fast with `Error: No target matching 'robot-orin' (configured: local).`
+   - Exit code: 1
+
+3. **Undeployed Target Verification**:
+   - Configured target `test-sandbox` (`transport: local`, `deployment_root: /tmp/caasi-test-deploy`)
+   ```bash
+   caasi build --target test-sandbox
+   ```
+   - Result: Failed fast with `Error: No active deployment found on target 'test-sandbox' at '/tmp/caasi-test-deploy/openmover'. Run 'caasi deploy test-sandbox' first.`
+   - Exit code: 1
+
+4. **Target Materialization & Initial Build**:
+   - Deployed project: `caasi deploy test-sandbox` (838 files, 40.4 MiB synced in 0.64s).
+   - Attempted partial build without prerequisites:
+     ```bash
+     caasi build --target test-sandbox --packages-select openmover
+     ```
+     - Colcon failed as expected because CMake dependencies (`auto_mapping_toolbox_msgs`, `openmover_msgs`, `bluesea2`, etc.) had not yet been compiled on this target.
+     - Return code: 1. Failure was captured cleanly, and failure provenance was recorded in `.caasi/builds/test-sandbox/build-test-sandbox-1791049703-db5de2.json`.
+
+5. **Full Native Target Build**:
+   ```bash
+   caasi build --target test-sandbox --packages-up-to openmover
+   ```
+   - Packages built: 6 packages (`openmover_msgs`, `auto_mapping_toolbox_msgs`, `relocalization_toolbox_msgs`, `bluesea2`, `ira_laser_tools`, `openmover`)
+   - Parallel workers: 7
+   - Compilation duration: 61.4s
+   - Exit code: 0
+   - Output message: `Target-native build artifacts remain on test-sandbox: /tmp/caasi-test-deploy/openmover`
+   - Target inspection: Verified `build/`, `install/`, `log/`, and `.caasi-build.json` were created exclusively on the target workspace, with zero host workstation leakage.
+
+---
+
+### 4. What Failed or Was Awkward
+
+1. **Subprocess Quoting Redundancy**:
+   - Initially, remote shell paths were individually single-quoted (`cd '{dest}'`) before the full script was escaped with `shlex.quote`. This created nested `\'"\'"\'` escaping sequences. Resolved by cleaning up inner path interpolation and allowing `shlex.quote` to handle the outer command boundary cleanly.
+2. **Missing Builds Directory in Exclude Patterns**:
+   - During local deployment, `.caasi/builds/` was initially synchronized to the target because it was not listed in `DEFAULT_EXCLUDE_PATTERNS`. Resolved by adding `.caasi/builds` and `.caasi-build.json` to exclude patterns, ensuring host and target build histories remain decoupled.
+3. **Failure Provenance Truncation**:
+   - High-volume build logs during compilation failures could produce excessively large JSON records if unconstrained. Added a 2,000-character truncation budget for output captured in `TargetBuildRecord`.
+
+---
+
+### 5. What OpenMover Exposed as a General Caasi Requirement
+
+1. **Colcon Package Prerequisite Chains Must Be Respected on Fresh Targets**:
+   - Unlike the workstation where artifacts may have been previously compiled, fresh execution targets start from zero build state. Commands specifying `--packages-select` will fail if workspace dependencies are not already built on the target. Developers should use `--packages-up-to` or full workspace builds when deploying to fresh targets.
+2. **Deployment ID Binding is Mandatory for Build Provenance**:
+   - Linking each target build record to its corresponding `deployment_id` provides complete traceability: developers can inspect a built robot node and immediately identify which exact rsync transfer and Git commit materialized the source tree.
+
+---
+
+### 6. Next Step
+
+Stage C1 is complete and verified.
+**Proceed to Stage C2: Target-Native Remote Run Execution & Lifecycle Management**:
+1. Implement `caasi run start --target <name> <manifest>` to launch supervised processes on targets.
+2. Stream remote stdout/stderr to the workstation control plane.
+3. Manage target process groups via `caasi run stop / inspect / list --target <name>`.
+

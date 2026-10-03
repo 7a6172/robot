@@ -10,6 +10,7 @@ import typer
 
 from .. import state
 from ..core import build as build_core
+from ..core import targets as targets_core
 from ..i18n import _
 from ..utils import output
 
@@ -36,18 +37,34 @@ def build_command(
     continue_on_error: bool = typer.Option(
         False, "--continue-on-error", help=_("build.flag.continue_on_error")
     ),
+    target: Optional[str] = typer.Option(
+        None, "--target", "-t", help=_("build.flag.target")
+    ),
     json_output: bool = typer.Option(
         False, "--json", help=_("flag.json")
     ),
 ) -> None:
     """Resource-aware workspace build delegating to colcon."""
     root = build_core.find_build_root()
+
+    target_name = target or "local"
+    target_obj = targets_core.find_target(state.cfg(), target_name)
+    if target_obj is None:
+        valid = ", ".join(t.name for t in targets_core.list_targets(state.cfg())) or "-"
+        output.fail(_("target.not_found", query=target_name, valid=valid))
+        raise typer.Exit(1)
+
     workers = jobs if jobs is not None and jobs > 0 else build_core.default_parallel_workers()
 
     if not output.wants_json(json_output):
-        output.echo(
-            f"[bold]{_('build.starting', root=str(root), workers=workers)}[/bold]"
-        )
+        if target_obj.name == "local":
+            output.echo(
+                f"[bold]{_('build.starting', root=str(root), workers=workers)}[/bold]"
+            )
+        else:
+            output.echo(
+                f"[bold cyan]Target Build:[/bold cyan] [bold]{target_obj.name}[/bold] ({target_obj.transport})"
+            )
 
     def on_line(line: str) -> None:
         if not output.wants_json(json_output):
@@ -55,8 +72,10 @@ def build_command(
             sys.stdout.flush()
 
     try:
-        res = build_core.execute_build(
-            root=root,
+        res = build_core.execute_target_build(
+            target=target_obj,
+            project_root=root,
+            config=state.cfg(),
             packages_select=packages_select,
             packages_up_to=packages_up_to,
             jobs=jobs,
@@ -77,6 +96,10 @@ def build_command(
             output.echo(
                 f"[green]{_('build.success', duration=round(res.duration, 2))}[/green]"
             )
+            if res.target_name != "local":
+                output.echo(
+                    f"[dim]{_('build.target.artifacts', target=res.target_name, dest=str(res.root))}[/dim]"
+                )
         else:
             output.echo(
                 f"[red]{_('build.failed', code=res.returncode)}[/red]"

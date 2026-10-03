@@ -6,15 +6,22 @@ worker sizing, project root discovery, and ROS environment wrapping.
 
 from __future__ import annotations
 
+import datetime
+import json
 import os
+import shlex
 import shutil
 import subprocess
 import time
-from dataclasses import dataclass, field
+import uuid
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Any, Callable, Sequence
 
-from . import project, rosenv
+from ..utils import shell
+from . import deploy as deploy_core, manifest as manifests, project, provenance, rosenv, targets as targets_core
+from .config import Config
+from .targets import Target, TargetResources
 
 
 class BuildError(RuntimeError):
@@ -54,6 +61,29 @@ def default_parallel_workers() -> int:
     return max(1, min(cpus, ram_workers))
 
 
+def derive_target_workers(
+    resources: TargetResources | None = None,
+    requested_jobs: int | None = None,
+) -> int:
+    """Calculate RAM-safe parallel worker count for a target.
+
+    If requested_jobs is specified and positive, it overrides automatic calculation.
+    Otherwise, calculates workers from target physical RAM using the same conservative
+    heuristic budget (RAM_PER_WORKER_GB = 6.0 GiB, SYSTEM_RESERVED_RAM_GB = 2.0 GiB),
+    bounded by target CPU count.
+    """
+    if requested_jobs is not None and requested_jobs > 0:
+        return requested_jobs
+
+    if resources and resources.memory_total_kib and resources.cpu_count:
+        ram_gb = resources.memory_total_kib / (1024 * 1024)
+        usable_ram = max(0.0, ram_gb - SYSTEM_RESERVED_RAM_GB)
+        ram_workers = max(1, int(usable_ram / RAM_PER_WORKER_GB))
+        return max(1, min(resources.cpu_count, ram_workers))
+
+    return default_parallel_workers()
+
+
 def find_build_root(start: Path | None = None) -> Path:
     """Find the root directory of the ROS workspace to build.
 
@@ -81,21 +111,49 @@ def colcon_available(project_root: Path | None = None) -> bool:
 
 
 @dataclass
+class TargetBuildRecord:
+    """Recorded provenance and result of a workspace build on a target."""
+
+    build_id: str
+    project_name: str
+    git_revision: str
+    target_name: str
+    target_transport: str
+    destination_path: str
+    built_at: str
+    status: str  # "success" or "failed"
+    returncode: int
+    duration_seconds: float
+    workers: int
+    command: list[str]
+    deployment_id: str | None = None
+    packages: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    output: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
 class BuildResult:
     returncode: int
     command: list[str]
-    root: Path
+    root: Path | str
     workers: int
     duration: float
     output: str = ""
     packages: list[str] = field(default_factory=list)
+    target_name: str = "local"
+    build_id: str | None = None
+    deployment_id: str | None = None
 
     @property
     def ok(self) -> bool:
         return self.returncode == 0
 
     def to_dict(self) -> dict:
-        return {
+        data = {
             "ok": self.ok,
             "returncode": self.returncode,
             "command": self.command,
@@ -104,7 +162,13 @@ class BuildResult:
             "duration": round(self.duration, 2),
             "packages": self.packages,
             "output": self.output,
+            "target_name": self.target_name,
         }
+        if self.build_id:
+            data["build_id"] = self.build_id
+        if self.deployment_id:
+            data["deployment_id"] = self.deployment_id
+        return data
 
 
 def clean_workspace(root: Path) -> list[str]:
@@ -202,3 +266,313 @@ def execute_build(
         output="".join(lines),
         packages=list(packages_select or []),
     )
+
+
+def save_build_record(record: TargetBuildRecord, project_root: Path, target: Target) -> None:
+    """Save build provenance record locally on host and on target."""
+    rec_json = json.dumps(record.to_dict(), indent=2)
+
+    # 1. Save on host in project .caasi/builds/<target_name>/<build_id>.json
+    local_build_dir = project_root / ".caasi" / "builds" / target.name
+    try:
+        local_build_dir.mkdir(parents=True, exist_ok=True)
+        (local_build_dir / f"{record.build_id}.json").write_text(rec_json, encoding="utf-8")
+    except OSError:
+        pass
+
+    # 2. Save on target in destination_path/.caasi-build.json
+    if target.transport == "local":
+        meta_file = Path(record.destination_path).expanduser().resolve() / ".caasi-build.json"
+        try:
+            meta_file.write_text(rec_json, encoding="utf-8")
+        except OSError:
+            pass
+    elif target.transport == "ssh":
+        ssh_prefix = targets_core.target_ssh_prefix(target)
+        dest_meta = f"{record.destination_path.rstrip('/')}/.caasi-build.json"
+        write_cmd = ssh_prefix + [f"cat > '{dest_meta}'"]
+        try:
+            subprocess.run(write_cmd, input=rec_json, text=True, capture_output=True, timeout=10.0)
+        except Exception:
+            pass
+
+
+def list_build_records(project_root: Path, target_name: str | None = None) -> list[TargetBuildRecord]:
+    """List recorded builds from host project .caasi/builds/."""
+    build_root = project_root / ".caasi" / "builds"
+    if not build_root.is_dir():
+        return []
+
+    records: list[TargetBuildRecord] = []
+    target_dirs = [build_root / target_name] if target_name else list(build_root.iterdir())
+
+    for t_dir in sorted(target_dirs):
+        if not t_dir.is_dir():
+            continue
+        for f in sorted(t_dir.glob("*.json")):
+            try:
+                data = json.loads(f.read_text(encoding="utf-8"))
+                records.append(TargetBuildRecord(**data))
+            except Exception:
+                continue
+    return records
+
+
+def get_last_build_status(
+    target: Target,
+    destination_path: str | None = None,
+    config: Config | None = None,
+    project_root: Path | None = None,
+) -> TargetBuildRecord | None:
+    """Retrieve the most recent build record from target or host project."""
+    dest = destination_path or (target.deployment_root or "~")
+    if target.transport == "local":
+        meta_file = Path(dest).expanduser().resolve() / ".caasi-build.json"
+        if meta_file.is_file():
+            try:
+                data = json.loads(meta_file.read_text(encoding="utf-8"))
+                return TargetBuildRecord(**data)
+            except Exception:
+                pass
+    elif target.transport == "ssh":
+        ssh_prefix = targets_core.target_ssh_prefix(target)
+        cmd = ssh_prefix + [f"cat '{dest.rstrip('/')}/.caasi-build.json' 2>/dev/null"]
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=10.0)
+            if res.returncode == 0 and res.stdout.strip():
+                data = json.loads(res.stdout)
+                return TargetBuildRecord(**data)
+        except Exception:
+            pass
+
+    if project_root:
+        records = list_build_records(project_root, target.name)
+        if records:
+            return records[-1]
+
+    return None
+
+
+def execute_target_build(
+    target: Target,
+    project_root: Path,
+    config: Config | None = None,
+    packages_select: Sequence[str] | None = None,
+    packages_up_to: Sequence[str] | None = None,
+    jobs: int | None = None,
+    symlink_install: bool = True,
+    cmake_args: Sequence[str] | None = None,
+    clean: bool = False,
+    continue_on_error: bool = False,
+    line_callback: Callable[[str], None] | None = None,
+) -> BuildResult:
+    """Execute a target-native workspace build.
+
+    For local workstation target (name == 'local' or local transport with default root),
+    delegates directly to execute_build on the workstation workspace.
+
+    For remote targets (SSH or local deployed testbeds), verifies target reachability,
+    requires an active verified deployment at the destination, calculates target-safe
+    worker count, executes colcon in the target's native environment, and records
+    build provenance.
+    """
+    cfg = config or Config({}, [])
+    manifest = manifests.read(project_root)
+    proj_name = manifest.name or project_root.name
+    git_stat = provenance.git_info(project_root)
+    git_rev = git_stat.get("head") or "unversioned"
+    if git_stat.get("dirty"):
+        git_rev = f"{git_rev}-dirty"
+
+    is_local_workspace = (target.name == "local") or (
+        target.transport == "local" and (not target.deployment_root or target.deployment_root == ".")
+    )
+
+    if is_local_workspace:
+        res = execute_build(
+            root=project_root,
+            packages_select=packages_select,
+            packages_up_to=packages_up_to,
+            jobs=jobs,
+            symlink_install=symlink_install,
+            cmake_args=cmake_args,
+            clean=clean,
+            continue_on_error=continue_on_error,
+            line_callback=line_callback,
+        )
+        build_id = f"build-local-{int(time.time())}-{uuid.uuid4().hex[:6]}"
+        res.target_name = "local"
+        res.build_id = build_id
+
+        record = TargetBuildRecord(
+            build_id=build_id,
+            project_name=proj_name,
+            git_revision=git_rev,
+            target_name="local",
+            target_transport="local",
+            destination_path=str(project_root),
+            built_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            status="success" if res.ok else "failed",
+            returncode=res.returncode,
+            duration_seconds=round(res.duration, 2),
+            workers=res.workers,
+            command=res.command,
+            deployment_id=None,
+            packages=res.packages,
+            output=res.output[:2000] if not res.ok else "",
+        )
+        save_build_record(record, project_root, target)
+        return res
+
+    # 1. Discover target and check reachability
+    inspection = targets_core.discover_target(target, config=cfg)
+    if not inspection.reachable:
+        raise BuildError(
+            f"Target '{target.name}' is unreachable: {inspection.error or 'connection failed'}"
+        )
+
+    # 2. Check active deployment on target
+    dest = deploy_core.resolve_deployment_destination(target, proj_name)
+    deployment = deploy_core.get_deployment_status(target, dest, cfg)
+    if not deployment:
+        raise BuildError(
+            f"No active deployment found on target '{target.name}' at '{dest}'. "
+            f"Run 'caasi deploy {target.name}' first."
+        )
+
+    # 3. Determine worker count from target resources
+    workers = derive_target_workers(inspection.resources, requested_jobs=jobs)
+
+    # 4. Construct colcon command
+    colcon_cmd = [
+        "colcon",
+        "build",
+        "--parallel-workers",
+        str(workers),
+    ]
+    if symlink_install:
+        colcon_cmd.append("--symlink-install")
+    if packages_select:
+        colcon_cmd.extend(["--packages-select", *packages_select])
+    if packages_up_to:
+        colcon_cmd.extend(["--packages-up-to", *packages_up_to])
+    if continue_on_error:
+        colcon_cmd.append("--continue-on-error")
+    if cmake_args:
+        colcon_cmd.extend(["--cmake-args", *cmake_args])
+
+    # 5. Determine target ROS underlay setup
+    if inspection.environment and inspection.environment.ros_root:
+        ros_setup = f"{inspection.environment.ros_root}/setup.bash"
+    elif inspection.environment and inspection.environment.ros_distro:
+        ros_setup = f"/opt/ros/{inspection.environment.ros_distro}/setup.bash"
+    else:
+        ros_setup = "/opt/ros/jazzy/setup.bash"
+
+    build_id = f"build-{target.name}-{int(time.time())}-{uuid.uuid4().hex[:6]}"
+    timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    if target.transport == "local":
+        dest_path = Path(dest).expanduser().resolve()
+        if not (dest_path / "src").is_dir():
+            raise BuildError(f"Directory '{dest_path}/src' not found on target. Cannot build without 'src/'.")
+        res = execute_build(
+            root=dest_path,
+            packages_select=packages_select,
+            packages_up_to=packages_up_to,
+            jobs=workers,
+            symlink_install=symlink_install,
+            cmake_args=cmake_args,
+            clean=clean,
+            continue_on_error=continue_on_error,
+            line_callback=line_callback,
+        )
+        res.target_name = target.name
+        res.build_id = build_id
+        res.deployment_id = deployment.deployment_id
+
+        record = TargetBuildRecord(
+            build_id=build_id,
+            project_name=proj_name,
+            git_revision=git_rev,
+            target_name=target.name,
+            target_transport=target.transport,
+            destination_path=str(dest_path),
+            built_at=timestamp,
+            status="success" if res.ok else "failed",
+            returncode=res.returncode,
+            duration_seconds=round(res.duration, 2),
+            workers=workers,
+            command=res.command,
+            deployment_id=deployment.deployment_id,
+            packages=res.packages,
+            output=res.output[:2000] if not res.ok else "",
+        )
+        save_build_record(record, project_root, target)
+        return res
+
+    # 6. Remote SSH build
+    steps = [f"cd {dest}"]
+    if clean:
+        steps.append("rm -rf build install log")
+    steps.append(f"test -f {ros_setup} && . {ros_setup}")
+    steps.append(shlex.join(colcon_cmd))
+    remote_sh = " && ".join(steps)
+
+    ssh_prefix = targets_core.target_ssh_prefix(target)
+    remote_exec = ssh_prefix + [f"bash -c {shlex.quote(remote_sh)}"]
+
+    t0 = time.perf_counter()
+    lines: list[str] = []
+
+    proc = subprocess.Popen(
+        remote_exec,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+
+    if proc.stdout:
+        for line in proc.stdout:
+            lines.append(line)
+            if line_callback:
+                line_callback(line)
+
+    proc.wait()
+    duration = time.perf_counter() - t0
+
+    result = BuildResult(
+        returncode=proc.returncode,
+        command=colcon_cmd,
+        root=dest,
+        workers=workers,
+        duration=duration,
+        output="".join(lines),
+        packages=list(packages_select or []),
+        target_name=target.name,
+        build_id=build_id,
+        deployment_id=deployment.deployment_id,
+    )
+
+    record = TargetBuildRecord(
+        build_id=build_id,
+        project_name=proj_name,
+        git_revision=git_rev,
+        target_name=target.name,
+        target_transport=target.transport,
+        destination_path=dest,
+        built_at=timestamp,
+        status="success" if result.ok else "failed",
+        returncode=result.returncode,
+        duration_seconds=round(duration, 2),
+        workers=workers,
+        command=colcon_cmd,
+        deployment_id=deployment.deployment_id,
+        packages=list(packages_select or []),
+        output="".join(lines)[:2000] if not result.ok else "",
+    )
+    save_build_record(record, project_root, target)
+
+    return result
+

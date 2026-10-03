@@ -516,7 +516,10 @@ MESSAGES: dict[str, str] = {
     "build.flag.cmake_args": "Arbitrary CMake arguments to pass through.",
     "build.flag.clean": "Clean build/, install/, and log/ before building.",
     "build.flag.continue_on_error": "Continue building other packages when one fails.",
+    "build.flag.target": "Execution target for build (defaults to local).",
     "build.starting": "Building workspace at {root} ({workers} parallel workers)...",
+    "build.target.starting": "Building workspace on target '{target}' at {dest} ({workers} parallel workers)...",
+    "build.target.artifacts": "Target-native build artifacts remain on {target}: {dest}",
     "build.success": "Build completed successfully in {duration}s.",
     "build.failed": "Build failed with exit code {code}.",
     # -- init / project -----------------------------------------------------------------

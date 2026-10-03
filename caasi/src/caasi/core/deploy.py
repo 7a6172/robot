@@ -43,6 +43,8 @@ DEFAULT_EXCLUDE_PATTERNS = [
     ".caasi/runs",
     ".caasi/datasets",
     ".caasi/deployments",
+    ".caasi/builds",
+    ".caasi-build.json",
     "*~",
     "*.swp",
     "*.swo",

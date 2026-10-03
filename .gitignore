@@ -67,6 +67,8 @@ caasi-workspace/**/install/
 caasi-workspace/**/log/
 caasi-workspace/**/logs/
 caasi-workspace/**/.caasi/
+caasi-workspace/**/.caasi-build.json
+caasi-workspace/**/.caasi-deployment.json
 
 
 # ------------------------------------------------------------------------------

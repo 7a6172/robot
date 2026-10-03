@@ -108,5 +108,15 @@
       * CLI interface: `caasi deploy <target> [--dry-run] [--force] [--dest <path>] [--status] [--list] [--json]`.
       * Added 13 dedicated unit tests in `caasi/tests/test_deploy.py` (total 902 tests passing across suite).
       * Empirically validated on canonical OpenMover: 833 files (40.4 MiB) synchronized in 0.63s; subsequent unchanged synchronization transferred 0 regular file bytes in 0.60s. Tested offline targets, incompatible targets, and permission failures.
-    - **Next Step**: Phase 7 Stage C (Target-Native Build & Transparent Remote Run Execution).
+    - **Stage C1 completed & verified (Target-Native Build)**:
+      * [Phase 7 Stage C1 Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/phase-07-report.md#stage-c1-report-target-native-build)
+      * Implemented generalized target-native build interface: `caasi build --target <name>` / `-t <name>`. Local workstation build behavior is preserved identically.
+      * RAM-safe parallel worker count derivation (`derive_target_workers`) based on target physical RAM and CPU cores ($\text{RAM\_PER\_WORKER} = 6.0\text{ GiB}$, $\text{SYSTEM\_RESERVED} = 2.0\text{ GiB}$).
+      * Verified deployment preflight enforcing active materialization via `get_deployment_status`; fails fast if project is undeployed.
+      * Remote colcon build orchestration over SSH with target-native ROS 2 underlay sourcing and live console streaming.
+      * Architecture-specific compilation outputs (`build/`, `install/`, `log/`) strictly retained on the target without workstation leakage.
+      * Two-sided build provenance recorded in `<dest>/.caasi-build.json` and host `.caasi/builds/<target>/<build_id>.json`.
+      * Added 10 dedicated unit tests in `caasi/tests/test_target_build.py` (total 912 tests passing across suite).
+      * Empirically validated on canonical OpenMover: verified local build, nonexistent target rejection, undeployed target rejection, prerequisite build failure capture, and complete 6-package native build on target sandbox in 61.4s.
+    - **Next Step**: Phase 7 Stage C2 (Target-Native Remote Run Execution & Process Lifecycle Management).
 
