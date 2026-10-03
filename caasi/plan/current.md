@@ -26,5 +26,6 @@
     - [Capability Mapping & Gaps](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-01/mapping_and_gaps.md)
     - [Phase 1 Summary Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-01/phase-01-report.md)
     - [Packaging & Testing Audit](file:///home/zar/Documents/phd/robot/caasi/plan/audits/packaging_and_testing_audit.md)
-- **Current State**: Phase 1 & Packaging/Testing audit finished; paused awaiting user approval.
-- **Next Concrete Step**: Review packaging & testing audit; agree on test suite invocation and Phase 2 workspace setup.
+    - [Testing Strategy & Proposals](file:///home/zar/Documents/phd/robot/caasi/plan/audits/testing_strategy_and_proposals.md)
+- **Current State**: T1 applied and verified (842/842 tests pass); T2, T3, T4 investigated and documented; paused awaiting user approval.
+- **Next Concrete Step**: Review T2 (`caasi test`), T3 (real subprocess smoke test), and T4 (`pytest-cov`) proposals before moving to Phase 2.

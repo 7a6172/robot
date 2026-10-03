@@ -51,3 +51,4 @@ packages = ["src/caasi"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-p no:launch_ros -p no:launch_testing"
