@@ -25,5 +25,6 @@
     - [OpenMover Architecture Reference](file:///home/zar/Documents/phd/robot/caasi/plan/reference/openmover_architecture.md)
     - [Capability Mapping & Gaps](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-01/mapping_and_gaps.md)
     - [Phase 1 Summary Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-01/phase-01-report.md)
-- **Current State**: Phase 1 finished; stopped awaiting user review and approval to proceed.
-- **Next Concrete Step**: Phase 2: Project Model & Workspace Setup (scaffolding `caasi-workspace/openmover_ws/` and formalizing gap designs).
+    - [Packaging & Testing Audit](file:///home/zar/Documents/phd/robot/caasi/plan/audits/packaging_and_testing_audit.md)
+- **Current State**: Phase 1 & Packaging/Testing audit finished; paused awaiting user approval.
+- **Next Concrete Step**: Review packaging & testing audit; agree on test suite invocation and Phase 2 workspace setup.
