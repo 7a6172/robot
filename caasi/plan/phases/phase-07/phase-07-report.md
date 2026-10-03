@@ -239,7 +239,7 @@ Stage C1 validates the architectural principle: **the workstation acts as the un
 
 Key accomplishments:
 1. **Target-Aware Build Interface**: Extended `caasi build` with `--target <name>` / `-t <name>`. Local workstation build behavior is preserved identically with zero regressions.
-2. **Target Resource Sizing (`derive_target_workers`)**: RAM-safe compilation parallelism is derived directly from target hardware capacity (`memory_total_kib` and `cpu_count` discovered in Stage A) using conservative default heuristic policies ($\text{RAM\_PER\_WORKER} = 6.0\text{ GiB}$, $\text{SYSTEM\_RESERVED} = 2.0\text{ GiB}$), preventing OOM killer invocations on resource-constrained robot computers.
+2. **Target Resource Sizing (`derive_target_workers`)**: RAM-safe compilation parallelism is derived directly from target hardware capacity (`memory_total_kib` and `cpu_count` discovered in Stage A) using conservative default heuristic policies ($\text{RAM\_PER\_WORKER} = 6.0\text{ GiB}$, $\text{SYSTEM\_RESERVED} = 2.0\text{ GiB}$), providing a conservative worker limit derived from the target's discovered CPU and RAM capacity.
 3. **Verified Deployment Preflight**: Builds on remote/deployed targets enforce prerequisite deployment verification via `deploy.get_deployment_status`. If no active deployment exists, the build fails fast with actionable guidance.
 4. **Target-Native Underlay & Colcon Wrapping**: Remote execution sources the target's native ROS 2 underlay (e.g. `/opt/ros/{distro}/setup.bash`), executes `colcon build` in the target's deployed root directory, and streams live output back to the workstation terminal.
 5. **Strict Artifact Retention on Target**: Architecture-specific binaries (`build/`, `install/`, `log/`) remain entirely on the target. They are never copied to the workstation, preventing architecture pollution between x86_64 and aarch64.
@@ -327,14 +327,14 @@ Dogfooding was conducted from `/home/zar/Documents/phd/robot/caasi-workspace/ope
    - Result: Failed fast with `Error: No active deployment found on target 'test-sandbox' at '/tmp/caasi-test-deploy/openmover'. Run 'caasi deploy test-sandbox' first.`
    - Exit code: 1
 
-4. **Target Materialization & Initial Build**:
+4. **Target Materialization & Intentional Failure Handling Validation**:
    - Deployed project: `caasi deploy test-sandbox` (838 files, 40.4 MiB synced in 0.64s).
-   - Attempted partial build without prerequisites:
+   - Intentionally tested partial build without prerequisites to validate failure handling and non-zero exit code capture:
      ```bash
      caasi build --target test-sandbox --packages-select openmover
      ```
-     - Colcon failed as expected because CMake dependencies (`auto_mapping_toolbox_msgs`, `openmover_msgs`, `bluesea2`, etc.) had not yet been compiled on this target.
-     - Return code: 1. Failure was captured cleanly, and failure provenance was recorded in `.caasi/builds/test-sandbox/build-test-sandbox-1791049703-db5de2.json`.
+     - Colcon exited with code 1 as expected because CMake dependencies (`auto_mapping_toolbox_msgs`, `openmover_msgs`, `bluesea2`, etc.) had not yet been compiled on this fresh target.
+     - Failure was captured cleanly, exit code 1 was preserved, and detailed failure stderr was written to provenance record `.caasi/builds/test-sandbox/build-test-sandbox-1791049703-db5de2.json`.
 
 5. **Full Native Target Build**:
    ```bash
