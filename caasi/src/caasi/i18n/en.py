@@ -704,6 +704,23 @@ MESSAGES: dict[str, str] = {
     "audit.repro.no_lock": "No caasi.lock — run 'caasi env lock'",
     "audit.repro.bundle_complete": "Provenance bundle complete",
     "audit.repro.incomplete_bundle": "Provenance bundle missing: {missing}",
+    # -- test -------------------------------------------------------------------------
+    "test.help": "Run caasi's self-test and verification suite.",
+    "test.flag.suite": "Test tier to run: 'full' (default), 'unit', or 'smoke'.",
+    "test.flag.filter": "Pytest expression to filter tests by name.",
+    "test.flag.verbose": "Run pytest with verbose output.",
+    "test.flag.coverage": "Measure test coverage via pytest-cov (opt-in).",
+    "test.running_suite": "Running caasi test suite '{suite}' against checkout:",
+    "test.coverage_notice": "Coverage reporting enabled for caasi package.",
+    "test.not_local_checkout": (
+        "Tests directory not found at {path}. caasi test requires running from a "
+        "local checkout repository (package located at: {package})."
+    ),
+    "test.pipx_detected": (
+        "caasi test was invoked from a pipx installation ({package}). "
+        "Please run from the local development virtual environment: "
+        "/home/zar/Documents/phd/robot/caasi/.venv/bin/caasi test"
+    ),
     # -- setup ------------------------------------------------------------------------
     "setup.help": "Detect missing ecosystem components and guide their installation.",
     "setup.arg.component": (

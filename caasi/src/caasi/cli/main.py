@@ -38,6 +38,7 @@ from . import (
     shell_cmd,
     sim,
     teleop_cmd,
+    test_cmd,
     train_cmd,
     view_cmd,
     vision_cmd,
@@ -54,7 +55,7 @@ if TYPE_CHECKING:  # pragma: no cover
 # Root help taxonomy: panel title -> commands, alphabetical within each panel.
 # Mirrors the group table in README.md and the command map in docs/.
 HELP_PANELS: dict[str, tuple[str, ...]] = {
-    _("help.panel.start"): ("audit", "check", "doctor", "help", "info", "init", "setup", "version"),
+    _("help.panel.start"): ("audit", "check", "doctor", "help", "info", "init", "setup", "test", "version"),
     _("help.panel.environment"): ("config", "env", "gpu", "monitor", "sensor", "system", "vision"),
     _("help.panel.projects"): (
         "logs",
@@ -179,6 +180,7 @@ app.command("help", help=_("help.help"))(misc.help_command)
 app.command("doctor", help=_("doctor.help"))(doctor_command)
 app.command("check", help=_("check.help"))(check_cmd.check_command)
 app.command("audit", help=_("audit.help"))(audit_cmd.audit_command)
+app.command("test", help=_("test.help"))(test_cmd.test_command)
 app.add_typer(gpu.app, name="gpu", help=_("gpu.help"))
 app.add_typer(system_cmd.app, name="system", help=_("system.help"))
 app.add_typer(config_cmd.app, name="config", help=_("config.help"))

@@ -63,13 +63,30 @@
 
 ---
 
-## 3. Refined T2 Design Proposal: Generalized `caasi test` CLI Command
+## 3. T2 Implementation: Generalized `caasi test` CLI Command (Completed)
 
-### 3.1 Design Principles & Constraints
-1. **Meaningful Default Suite**: Default `caasi test` must run a substantial, confidence-giving test suite (the full test suite or comprehensive unit+smoke suite), not merely a minimal 2-second smoke check.
-2. **Deterministic Local Checkout Binding**: `caasi test` must inspect its own package location (`caasi.__file__`) and locate the repository root `tests/` directory. It must refuse to run if executed from an installed site-packages without tests or must clearly report which checkout is being verified, guaranteeing it never tests global `pipx` code by mistake.
-3. **No Premature Project Subcommands**: Does not assume or introduce `caasi test project`. Keeps `caasi test` strictly as a generalized `caasi` self-verification toolkit. Project-level testing will be integrated only when the project model is developed.
-4. **Clean Typer Integration**: Fits standard `caasi` CLI conventions in `src/caasi/cli/test_cmd.py`, registered under the `Setup & diagnosis` taxonomy panel in `src/caasi/cli/main.py`.
+### 3.1 Design Principles & Requirements Implemented
+1. **Meaningful Default Suite**: Default `caasi test` executes the complete test suite (all 55 test modules, 859 tests) to guarantee full regression confidence.
+2. **Tiers Supported**:
+   - `caasi test` (default: full suite)
+   - `caasi test --suite full`
+   - `caasi test --suite unit` (`-m "not smoke"`)
+   - `caasi test --suite smoke` (`-m smoke`)
+3. **Deterministic Local Checkout Binding**:
+   - Inspects `caasi.__file__` and resolves `tests/` and `pyproject.toml` at `parents[2]`.
+   - Never relies on `os.getcwd()`.
+   - Fails clearly with exit code 1 if invoked in a pipx installation or an environment lacking local tests.
+4. **pytest Integration & Passthrough**:
+   - Uses `pyproject.toml` configuration and isolates ROS plugins (`-p no:launch_ros -p no:launch_testing`).
+   - Supports `--filter / -k <expr>`, `--verbose / -v`.
+5. **Opt-In Coverage**:
+   - `--coverage` passes `--cov=caasi --cov-report=term-missing`.
+   - Normal runs do not calculate coverage.
+6. **Machine-Readable JSON Output**:
+   - `--json` emits clean, structured JSON containing suite name, pass/fail status, exit code, checkout path, duration, and summary.
+7. **Test Command Verification**:
+   - Created `tests/test_test_cmd.py` with 12 unit tests verifying registration, defaults, tier markers, filtering, opt-in coverage, checkout guards, JSON output, and exit codes.
+   - All 12 tests pass in 0.42s.
 
 ### 3.2 Command Signature & Options
 ```text
@@ -83,28 +100,6 @@ Options:
   --json                      Emit structured machine-readable test summary
   --help                      Show this message and exit
 ```
-
-### 3.3 Test Tiers
-- **`full` (Default)**: Executes all 54 test modules (847 tests). Provides complete confidence that the active checkout is fully healthy and regression-free (~3 minutes).
-- **`smoke`**: Executes only `@pytest.mark.smoke` tests (`test_real_subprocess.py`). Verifies core OS-level process management, logging, exit codes, and cancellation in < 1 second.
-- **`unit`**: Executes mock-based unit tests, skipping slow or external integrations.
-
-### 3.4 Execution Mechanics
-- **Checkout Locator**:
-  ```python
-  import caasi
-  caasi_root = Path(caasi.__file__).resolve().parents[2]
-  test_dir = caasi_root / "tests"
-  if not test_dir.is_dir():
-      output.fail(f"Tests directory not found at {test_dir}. Ensure caasi is running from a local checkout.")
-      raise typer.Exit(1)
-  ```
-- **Virtualenv Python Resolution**:
-  Uses `sys.executable` to run `pytest` directly in the active Python environment, ensuring identical dependency isolation.
-- **Subprocess Invocation**:
-  Invokes `[sys.executable, "-m", "pytest", str(test_dir), ...]` with inherited or controlled environment. Passes `-p no:launch_ros -p no:launch_testing` automatically.
-- **Output Rendering**:
-  In human mode, streams output or renders a Rich summary table with pass/fail counts, duration, and test suite path. In `--json` mode, emits structured JSON for CI and audit pipelines.
 
 ---
 

@@ -31,6 +31,7 @@
     - **T1**: Sourced ROS 2 pytest plugin conflict resolved in `pyproject.toml`.
     - **T4**: Added `pytest-cov>=5.0` to optional dev dependencies; verified opt-in.
     - **T3**: Implemented un-mocked real-subprocess smoke tests in `caasi/tests/test_real_subprocess.py` (5 tests passing in 0.84s).
-    - Verified full test suite: **54 test modules, 847 passing tests** in ~184s.
-- **Current State**: T1, T3, T4 implemented and fully verified; T2 design refined with meaningful default suite, deterministic checkout binding, and no premature `project` subcommand. Paused awaiting user review.
-- **Next Concrete Step**: User review of T2 proposal and authorization to proceed to Phase 2.
+    - **T2**: Implemented `caasi test` command with default full suite, tiers (`full`, `unit`, `smoke`), deterministic checkout binding, opt-in coverage, filtering (`-k`), verbose mode, machine-readable `--json`, and dedicated CLI tests in `tests/test_test_cmd.py` (12 tests passing in 0.42s).
+    - Verified full test suite executed via native `caasi test`: **55 test modules, 859 passing tests** in 183.32s.
+- **Current State**: T1, T2, T3, T4 implemented and fully verified; zero regressions across the entire 859-test baseline; deterministic local checkout workflow established.
+- **Next Concrete Step**: User authorization to proceed to Phase 2 (caasi-Managed OpenMover Workspace).
