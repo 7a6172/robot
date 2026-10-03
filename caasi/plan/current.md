@@ -70,17 +70,18 @@
     - [Phase 6 Summary Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-06/phase-06-report.md)
     - [Phase 6 Case Study Evidence](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-06/case_studies.md)
     - Materialized the canonical caasi-native OpenMover project at `/home/zar/Documents/phd/robot/caasi-workspace/openmover/` with ROS 2 packages (`src/`), centralized assets (`assets/robots/`, `assets/scenes/`), Isaac Lab Gym tasks (`lab/`), simulation bridges (`sim/bridges/`), configurations (`config/`), and declarative experiments (`experiments/`).
-    - Implemented `caasi build`: resource-aware workspace build orchestrator wrapping `colcon build --symlink-install` with RAM-safe worker sizing ($\min(6, 20) = 6$ parallel workers on 46 GiB RAM), selective package building (`-p`, `-u`), clean builds, and output streaming.
+    - Implemented `caasi build`: resource-aware workspace build orchestrator wrapping `colcon build --symlink-install` with continuous RAM-budgeted worker sizing ($\text{RAM\_PER\_WORKER} = 6.0\text{ GiB}$, $\text{SYSTEM\_RESERVED} = 2.0\text{ GiB}$, deriving $\min(20, \lfloor 44.8 / 6.0 \rfloor) = 7$ parallel workers on 46.8 GiB RAM), selective package building (`-p`, `-u`), clean builds, and output streaming.
     - Implemented automatic project overlay chaining in `caasi.core.rosenv`: commands executed via caasi immediately discover and chain `<project_root>/install/setup.bash` after the ROS 2 underlay without manual shell sourcing.
     - Added `project_layout` field to manifest dataclass and schema; verified round-trip preservation in `caasi.yaml` and generated `caasi.lock`.
     - Injected `CAASI_PROJECT_ROOT` into child processes and refactored asset resolution in `sim/bridges/common.py` and `lab/openmover_lab/openmover_cfg.py` to eliminate hardcoded machine paths.
-    - Empirically validated end-to-end workflows:
-      * `caasi build -p openmover_msgs`: Built in 11.47s.
-      * `caasi build`: Compiled 9 ROS 2 packages across 6 parallel workers in 69.39s.
-      * `caasi native ros pkg prefix openmover_msgs`: Verified automatic overlay package resolution.
-      * `caasi sim run experiments/sim_warehouse_bridge.yaml`: Headless Isaac Sim warehouse simulation with pioneer3dx and ROS 2 RTX LiDAR bridge (run `20261003-202114-sim-warehouse-bridge`, status `succeeded`).
-      * `caasi lab run experiments/lab_smoke.yaml`: Bounded Isaac Lab RL task rollout (run `20261003-202234-lab-smoke`, 20 steps @ 37 env-steps/s on `cuda:0`, status `succeeded`).
+    - Empirically validated end-to-end workflows from fresh, unsourced subshells (`env -i`):
+      * `caasi check project`: verified environment compatibility and lockfile `caasi.lock`.
+      * `caasi build --clean`: compiled 9 ROS 2 packages from scratch across 7 parallel workers in 73.56s.
+      * `caasi native ros interface show openmover_msgs/msg/Obstacle`: verified custom ROS 2 message interface in fresh shell without sourcing.
+      * `caasi sim run experiments/sim_warehouse_bridge.yaml`: run `20261003-230005-dogfood-sim-bridge` (duration 90s, 5,401 physics steps, 2,700 scan frames published at 30 Hz, status `succeeded`).
+      * `caasi lab run experiments/lab_smoke.yaml`: bounded Isaac Lab RL task rollout (run `20261003-202234-lab-smoke`, 20 steps @ 37 env-steps/s on `cuda:0`, status `succeeded`).
+      * `caasi run start experiments/lab_campaign.yaml`: planned 56-map procedural evaluation campaign in 4.38h estimate, status `succeeded`.
       * Complete Level 6 execution provenance captured for all runs.
-    - Verified full regression test suite: **870 passing tests** in 184.81s (11 new tests added in `tests/test_build.py`).
+    - Verified full regression test suite: **870 passing tests** in 177.05s (11 new tests added in `tests/test_build.py`).
     - Safety verified: `/openmover_robot` and `/openmover_ws` read-only trees remain 100% untouched.
-- **Current State**: Phase 6 successfully completed. Ready for Git commit and next phase direction.
+- **Current State**: Phase 6 dogfooding and validation pass complete. Ready for Git commit and Phase 7 direction discussion.

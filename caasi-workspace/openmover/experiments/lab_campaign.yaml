@@ -1,0 +1,7 @@
+name: lab-campaign
+backend: python
+script: ../lab/tasks/33_run_campaign.py
+description: Multi-map procedural evaluation campaign
+cwd: .
+args:
+  - --dry_run

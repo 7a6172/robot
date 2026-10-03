@@ -8,11 +8,12 @@ components:
   nav2: true
 requires:
   ros2:
-    distro: jazzy
+    version: jazzy
   isaac_sim:
-    version: "4.5.0"
+    version: ">=5.0"
   isaac_lab:
     version: ">=2.0"
+  nav2: {}
 project_layout:
   src: src
   assets: assets

@@ -23,17 +23,26 @@ def test_system_ram_gb():
 
 
 def test_default_parallel_workers(monkeypatch):
+    # 8 GB RAM, 16 CPUs -> (8 - 2) / 6 = 1 worker
     monkeypatch.setattr(build_core, "system_ram_gb", lambda: 8.0)
     monkeypatch.setattr(os, "cpu_count", lambda: 16)
+    assert build_core.default_parallel_workers() == 1
+
+    # 16 GB RAM, 16 CPUs -> (16 - 2) / 6 = 2 workers
+    monkeypatch.setattr(build_core, "system_ram_gb", lambda: 16.0)
     assert build_core.default_parallel_workers() == 2
 
-    monkeypatch.setattr(build_core, "system_ram_gb", lambda: 24.0)
-    assert build_core.default_parallel_workers() == 4
+    # 32 GB RAM, 16 CPUs -> (32 - 2) / 6 = 5 workers
+    monkeypatch.setattr(build_core, "system_ram_gb", lambda: 32.0)
+    assert build_core.default_parallel_workers() == 5
 
-    monkeypatch.setattr(build_core, "system_ram_gb", lambda: 40.0)
-    assert build_core.default_parallel_workers() == 6
+    # 48 GB RAM, 16 CPUs -> (48 - 2) / 6 = 7 workers
+    monkeypatch.setattr(build_core, "system_ram_gb", lambda: 48.0)
+    assert build_core.default_parallel_workers() == 7
 
-    monkeypatch.setattr(build_core, "system_ram_gb", lambda: 64.0)
+    # 128 GB RAM, 8 CPUs -> bounded by CPUs (8)
+    monkeypatch.setattr(build_core, "system_ram_gb", lambda: 128.0)
+    monkeypatch.setattr(os, "cpu_count", lambda: 8)
     assert build_core.default_parallel_workers() == 8
 
 

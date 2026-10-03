@@ -30,18 +30,25 @@ def system_ram_gb() -> float:
         return 8.0
 
 
+#: Minimum RAM reserved for OS and background processes (GiB).
+SYSTEM_RESERVED_RAM_GB = 2.0
+#: Estimated peak memory budget allocated per parallel compilation job (GiB).
+RAM_PER_WORKER_GB = 6.0
+
+
 def default_parallel_workers() -> int:
-    """RAM-safe parallel worker count for colcon/CMake builds."""
+    """RAM-safe parallel worker count for colcon/CMake builds.
+
+    Derives parallelism from physical RAM by allocating a memory budget
+    (RAM_PER_WORKER_GB = 6.0 GiB) per parallel compilation process after
+    reserving SYSTEM_RESERVED_RAM_GB (2.0 GiB) for system overhead,
+    bounded by total CPU cores.
+    """
     ram = system_ram_gb()
     cpus = os.cpu_count() or 2
-    if ram < 16.0:
-        return min(2, cpus)
-    elif ram < 32.0:
-        return min(4, cpus)
-    elif ram < 48.0:
-        return min(6, cpus)
-    else:
-        return min(8, cpus)
+    usable_ram = max(0.0, ram - SYSTEM_RESERVED_RAM_GB)
+    ram_workers = max(1, int(usable_ram / RAM_PER_WORKER_GB))
+    return max(1, min(cpus, ram_workers))
 
 
 def find_build_root(start: Path | None = None) -> Path:

@@ -4,21 +4,23 @@ project:
   version: 0.4.0
 required:
   ros2:
-    distro: jazzy
+    version: jazzy
   isaac_sim:
-    version: 4.5.0
+    version: '>=5.0'
   isaac_lab:
     version: '>=2.0'
+  nav2: {}
 resolved:
-  isaac_sim: installed
-  isaac_lab: installed
+  isaac_sim: '6.0'
+  isaac_lab: 3.0.0
   ros2: jazzy
   python: 3.12.3
   gcc: 13.3.0
   cmake: 3.28.3
+  nav2: /opt/ros/jazzy
 verified:
 - os: linux
   arch: x86_64
   ros_distro: jazzy
   isaac_sim: 4.5.0
-collected_at: '2026-10-03T12:15:19+00:00'
+collected_at: '2026-10-03T14:51:42+00:00'

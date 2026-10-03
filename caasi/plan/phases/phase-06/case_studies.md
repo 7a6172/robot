@@ -2,7 +2,7 @@
 
 **Date**: 2026-10-03  
 **Project**: OpenMover Canonical Workspace (`caasi-workspace/openmover`)  
-**Baseline**: `1512c3f` $\rightarrow$ Phase 6
+**Baseline**: `1512c3f` $\rightarrow$ Phase 6 (`8711aa3`)
 
 ---
 
@@ -14,27 +14,29 @@ In standard ROS 2 robotics projects, developers manually invoke `colcon build --
 ### Caasi Solution
 We introduced `caasi build` as a first-class project orchestrator in `caasi.core.build`.
 1. It automatically discovers the project root from the current working directory or any subdirectory.
-2. It detects total system physical RAM (46.8 GiB) and CPU cores (20 cores) and selects a RAM-safe worker count:
-   $$\text{Workers} = \min(6, 20) = 6$$
-3. It executes `colcon build --parallel-workers 6 --symlink-install` within the project root under the properly wrapped ROS environment.
+2. It detects total system physical RAM (46.8 GiB) and CPU cores (20 cores) and applies a continuous RAM-budget allocation:
+   $$\text{usable\_ram} = \max(0, 46.8 - 2.0) = 44.8\text{ GiB}$$
+   $$\text{workers} = \min(20, \lfloor 44.8 / 6.0 \rfloor) = 7\text{ parallel workers}$$
+   allocating a 6.0 GiB peak memory budget per concurrent compilation process after reserving 2.0 GiB for system overhead.
+3. It executes `colcon build --parallel-workers 7 --symlink-install` within the project root under the properly wrapped ROS environment.
 
 ### Empirical Evidence
 - **Single Package Build**:
   ```bash
   caasi build -p openmover_msgs
   ```
-  - Result: 1 package completed in 11.2s (total 11.47s).
-- **Full Workspace Build**:
+  - Result: 1 package completed in 0.35s (total 0.85s).
+- **Full Clean Workspace Build (Fresh, Unsourced Subshell)**:
   ```bash
-  caasi build
+  env -i HOME="$HOME" USER="$USER" PATH="/usr/local/bin:/usr/bin:/bin" caasi build --clean
   ```
-  - Result: 9 packages compiled across 6 parallel workers in 69.39s.
+  - Result: Cleaned `build/`, `install/`, `log/`, and compiled all 9 packages from scratch across 7 parallel workers in 73.56s.
   - Packages: `auto_mapping_toolbox`, `auto_mapping_toolbox_msgs`, `bluesea2`, `ira_laser_tools`, `openmover`, `openmover_msgs`, `relocalization_toolbox`, `relocalization_toolbox_msgs`, `warehouse_simulation`.
   - Exit code: 0.
 
 ---
 
-## Case Study 6.2: Automatic Project ROS Overlay Chaining
+## Case Study 6.2: Automatic Project ROS Overlay Chaining in Fresh Shells
 
 ### Context & Problem
 After running `colcon build`, developers must remember to manually run `source install/setup.bash` in every shell session. If a command is launched from a new terminal, IDE, or script without sourcing, ROS 2 fails to find the newly built packages, launch files, or custom messages (`openmover_msgs`), leading to frustrating `Package not found` errors.
@@ -46,21 +48,25 @@ After running `colcon build`, developers must remember to manually run `source i
 3. Whenever `caasi build` completes, `rosenv.clear_cache()` invalidates memoized environment snapshots so newly built targets are instantly recognized.
 
 ### Empirical Evidence
-In a completely fresh terminal where `install/setup.bash` was **never** manually sourced:
+In a completely fresh, stripped subshell where `install/setup.bash` was **never** manually sourced:
 ```bash
-caasi native ros pkg prefix openmover_msgs
+env -i HOME="$HOME" USER="$USER" PATH="/usr/local/bin:/usr/bin:/bin" caasi native ros interface show openmover_msgs/msg/Obstacle
 ```
-- Standard ROS without caasi: `Package not found` (exit code 1).
-- Executed via caasi:
+- Output:
   ```text
-  /home/zar/Documents/phd/robot/caasi-workspace/openmover/install/openmover_msgs
+  std_msgs/Header header
+  int32 size
+  float32[] obstacle_forward
+  float32[] obstacle_backward
+  float32[] obstacle_left
+  float32[] obstacle_right
   ```
   (exit code 0).
 - Project package query:
   ```bash
-  caasi native ros pkg list | grep openmover
+  caasi native ros pkg list | grep -E "openmover|warehouse|bluesea"
   ```
-  Outputs `openmover`, `openmover_msgs` immediately.
+  Outputs `auto_mapping_toolbox`, `bluesea2`, `openmover`, `openmover_msgs`, `relocalization_toolbox`, `warehouse_simulation` immediately.
 
 ---
 
@@ -81,16 +87,18 @@ The OpenMover simulation stack requires coordinating NVIDIA Isaac Sim with proje
    cwd: .
    args:
      - --duration
-     - "10"
+     - "90"
    ```
 5. Launched via `caasi sim run experiments/sim_warehouse_bridge.yaml`.
 
 ### Empirical Evidence
-- **Run ID**: `20261003-202114-sim-warehouse-bridge`
+- **Run ID**: `20261003-230005-dogfood-sim-bridge`
 - **Execution Telemetry**:
-  - Application startup: 11.0s (warm Omniverse shader cache).
+  - Application startup: 6.5s (warm Omniverse shader cache).
   - Isaac Sim loaded pioneer3dx articulation and warehouse workcell.
-  - ROS 2 bridge initialized `rclpy` and registered publishers:
+  - Stepped 5,401 physics iterations ($dt = 0.0167\text{ s}$).
+  - Published 2,700 scan frames at 30 Hz ($TICK = 0.067\text{ s}$) from dual RTX LiDARs.
+  - ROS 2 topics active:
     - `/clock`
     - `/odom`
     - `/tf`
@@ -98,7 +106,7 @@ The OpenMover simulation stack requires coordinating NVIDIA Isaac Sim with proje
     - `/openmover/hardware/lidar_rear/scan`
     - `/cmd_vel` (subscriber)
 - **Status**: `succeeded` (exit code 0).
-- **Provenance**: Generated complete Level 6 provenance bundle in `~/.caasi/runs/20261003-202114-sim-warehouse-bridge/`.
+- **Provenance**: Generated complete Level 6 provenance bundle in `~/.caasi/runs/20261003-230005-dogfood-sim-bridge/`.
 
 ---
 

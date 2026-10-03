@@ -27,6 +27,8 @@ import time
 
 parser = argparse.ArgumentParser(description="Isaac-side ROS 2 bridge.")
 parser.add_argument("--duration", type=float, default=None, help="Optional duration in seconds")
+args_cli, _ = parser.parse_known_args()
+
 import sys
 _bridge_dir = os.path.dirname(os.path.abspath(__file__))
 if _bridge_dir not in sys.path:
