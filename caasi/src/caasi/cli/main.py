@@ -38,6 +38,7 @@ from . import (
     setup_cmd,
     shell_cmd,
     sim,
+    target_cmd,
     teleop_cmd,
     test_cmd,
     train_cmd,
@@ -85,8 +86,10 @@ HELP_PANELS: dict[str, tuple[str, ...]] = {
         "cosmos",
         "groot",
         "native",
+        "node",
         "remote",
         "shell",
+        "target",
     ),
 }
 
@@ -232,6 +235,8 @@ app.add_typer(platform_cmd.groot_app, name="groot", help=_("groot.help"))
 app.add_typer(platform_cmd.cosmos_app, name="cosmos", help=_("cosmos.help"))
 app.add_typer(remote_cmd.app, name="remote", help=_("remote.help"))
 app.add_typer(container_cmd.app, name="container", help=_("container.help"))
+app.add_typer(target_cmd.app, name="target", help=_("target.help"))
+app.add_typer(target_cmd.app, name="node", help=_("target.help"))
 
 
 def run() -> None:

@@ -1511,4 +1511,14 @@ MESSAGES: dict[str, str] = {
         "Forward a dataset command to the resolved Cosmos CLI as a tracked run."
     ),
     "cosmos.no_args": "Nothing to forward — pass the arguments for the Cosmos CLI, e.g. `{command} <args>`.",
+    # -- caasi target -------------------------------------------------------
+    "target.help": "Inspect, discover, and validate execution targets (workstation, robots, edge, servers).",
+    "target.list_help": "List configured execution targets.",
+    "target.inspect_help": "Discover hardware, environment, and capabilities of an execution target.",
+    "target.check_help": "Validate target reachability, environment, and capability compatibility.",
+    "target.arg.name": "Target name (e.g. 'local' or configured target name).",
+    "target.flag.check": "Probe reachability and latency of all listed targets.",
+    "target.not_found": "No target matching '{query}' (configured: {valid}).",
+    "target.title": "Execution Targets",
 }
+

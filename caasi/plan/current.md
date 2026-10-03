@@ -83,5 +83,19 @@
       * `caasi run start experiments/lab_campaign.yaml`: planned 56-map procedural evaluation campaign (`final-lab-campaign`, run `20261004-000642-final-lab-campaign`, 4.38h estimate, status `succeeded`).
       * Complete Level 6 execution provenance and process lifecycle (`caasi run stop`) verified.
     - Verified full regression test suite: **870 passing tests** in 185.94s (11 new tests in `tests/test_build.py`).
-- **Current State**: Phase 6 closed. Migration and equivalence audit completed ([Migration Audit Report](file:///home/zar/Documents/phd/robot/caasi/plan/audits/migration_and_equivalence_audit.md)). Phase 7 architectural proposal created ([Phase 7 Proposal](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/phase-07-proposal.md)) covering Multi-Node Lifecycle, Target-Aware Deployment, Transparent Remote Execution, and Artifact Routing across generalized robotics projects. Awaiting user review and approval before Phase 7 implementation.
+- **Current State**: Phase 6 closed. Migration and equivalence audit completed ([Migration Audit Report](file:///home/zar/Documents/phd/robot/caasi/plan/audits/migration_and_equivalence_audit.md)).
+  - **Phase 7: Execution Targets, Remote Deployment & Fleet Orchestration**:
+    - [Phase 7 Architectural Proposal](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/phase-07-proposal.md)
+    - [Phase 7 Stage A Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/phase-07-report.md)
+    - **Stage A completed & verified (Target Model & Capability Discovery)**:
+      * Implemented project-agnostic execution target model in `caasi.core.targets` (`Target`, `TargetResources`, `TargetEnvironment`, `TargetInspection`).
+      * First-class local workstation target model with automatic injection and zero configuration required.
+      * Backward-compatible import of legacy `remotes:` configurations into the target registry.
+      * Discovered target facts: hardware specs (CPU model/cores, total/available memory, GPU accelerators) and software environment (OS, kernel, architecture, Python, ROS 2 distro, CUDA, Docker, Isaac Sim, Isaac Lab).
+      * Bounded non-blocking remote discovery via TCP socket preflight and compact remote Python probes over SSH without preinstall dependencies.
+      * Declarative vs discovered compatibility and mismatch engine (detects architecture mismatches, missing GPU/CUDA, ROS distro divergence, missing domain capabilities).
+      * Implemented CLI commands: `caasi target list [--check] [--json]`, `caasi target inspect <name> [--json]`, `caasi target check <name> [--json]`, with `caasi node` alias.
+      * Added 19 comprehensive unit tests in `caasi/tests/test_targets.py` (total 889 passing tests).
+      * Empirically validated on local workstation, custom config profiles, simulated edge nodes, offline nodes, and mismatch scenarios.
+    - **Next Step**: Phase 7 Stage B (Deployment Engine & Target-Native Workspaces).
 
