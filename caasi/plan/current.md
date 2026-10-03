@@ -3,7 +3,7 @@
 ## Repository Baseline
 - **Root Repository Location**: `/home/zar/Documents/phd/robot/`
 - **Baseline Commit**: `79dc52f80f156b36c1383a5cb19315dc87eb858e`
-- **Latest Checkpoint**: `91415c1` (Phase 3 completion)
+- **Latest Checkpoint**: `8a14c54` (Phase 4 completion)
 - **Branch**: `master`
 - **Scope Tracked**:
   - `caasi/`: Caasi package, CLI tools, documentation, tests, and persistent `/plan`
@@ -56,4 +56,12 @@
     - Verified deterministic resumption via `caasi run restart` (Run ID: `20261003-190733-isaac-lab-campaign-interrupted`, PID 265486), confirming domain runner skipped completed maps and recorded lineage `restarted_from`.
     - Verified domain aggregation (`34_aggregate_campaign.py`) and artifact inspection (`caasi run inspect`).
     - Confirmed zero Category D gaps: existing `caasi` capabilities fully manage robotics campaign workflows.
-- **Current State**: Phase 4 successfully closed. Read-only trees preserved untouched; working tree clean.
+  - **Phase 5: Physical Robot Hardware Transition, Discovery, and Non-Motion Preflight Validation completed**:
+    - [Phase 5 Summary Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-05/phase-05-report.md)
+    - [Phase 5 Case Study Evidence](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-05/case_studies.md)
+    - Audited OpenMover's real hardware architecture: industrial Ethernet UDP transport for differential-drive motors (`192.168.100.100:23`), IO board (`192.168.100.100:26`), dual 2D LiDARs (`192.168.100.101/102:502`), and V4L2 USB camera.
+    - Evaluated `caasi sensor list / inspect` for non-intrusive peripheral discovery, detecting active V4L2 cameras (HIK 2K Camera) and serial interface states.
+    - Evaluated `caasi env inspect`, `caasi check project`, and `caasi doctor` for preflight hardware environment compatibility and permission verification.
+    - Enforced strict safety boundaries: non-destructive inspection, zero motor motion commands, zero unconnected socket flooding.
+    - Confirmed zero Category D gaps: existing `caasi` diagnostic, execution, and provenance capabilities cleanly support the physical hardware workflow without turning `caasi` into a hardware driver.
+- **Current State**: Phase 5 successfully closed. Read-only trees preserved untouched; working tree clean.
