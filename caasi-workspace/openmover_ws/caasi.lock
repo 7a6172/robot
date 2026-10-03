@@ -1,0 +1,33 @@
+schema: 1
+project:
+  name: openmover
+  version: 0.1.0
+required:
+  isaac_sim:
+    version: '>=5.0'
+  isaac_lab:
+    version: '>=2.0'
+  ros2:
+    version: jazzy
+  nav2: {}
+resolved:
+  isaac_sim: '6.0'
+  isaac_lab: 3.0.0
+  ros2: jazzy
+  python: 3.12.3
+  gcc: 13.3.0
+  cmake: 3.28.3
+  nav2: /opt/ros/jazzy
+verified:
+- component: ros2
+  version: jazzy
+  status: verified
+- component: nav2
+  status: verified
+- component: isaac_sim
+  version: '6.0'
+  status: verified
+- component: isaac_lab
+  version: 3.0.0
+  status: verified
+collected_at: '2026-10-03T07:47:06+00:00'

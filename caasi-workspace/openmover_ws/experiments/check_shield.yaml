@@ -1,0 +1,4 @@
+name: check-shield-v7
+backend: lab
+script: ../isaac/lab/tasks/32_check_shield_v7.py
+cwd: .

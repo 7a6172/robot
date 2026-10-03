@@ -1,0 +1,4 @@
+kind: scene
+name: simple_room
+description: Simple enclosed room environment
+usd: isaac/sim/scenes/simple_room.usda

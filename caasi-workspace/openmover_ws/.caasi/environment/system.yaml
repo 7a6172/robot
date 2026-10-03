@@ -1,0 +1,4 @@
+os: Ubuntu 24.04.5 LTS
+kernel: 6.8.0-142-generic
+arch: x86_64
+hostname: u24-z690p

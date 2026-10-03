@@ -1,0 +1,4 @@
+kind: scene
+name: warehouse
+description: Warehouse environment with shelving and obstacles
+usd: isaac/sim/scenes/warehouse.usda

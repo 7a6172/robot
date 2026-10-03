@@ -1,0 +1,5 @@
+devices:
+- name: NVIDIA GeForce RTX 3080
+  uuid: GPU-e376245d-b1c7-93d5-4d0e-bcd871a59209
+  memory_total_mib: 10240.0
+  driver_version: 580.178.04

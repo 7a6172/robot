@@ -1,0 +1,6 @@
+sim:
+  status: ok
+  detail: Isaac Sim 6.0 at /home/zar/isaacsim
+lab:
+  status: ok
+  detail: Isaac Lab current at /home/zar/isaaclab

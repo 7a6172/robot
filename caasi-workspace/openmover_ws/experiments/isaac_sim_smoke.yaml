@@ -1,0 +1,5 @@
+name: isaac-sim-smoke
+backend: sim
+script: ../isaac/sim/scripts/00_smoke_test.py
+cwd: .
+headless: true

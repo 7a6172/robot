@@ -1,0 +1,3 @@
+kind: task
+name: openmover_nav
+description: Autonomous navigation and obstacle avoidance for OpenMover mobile robot

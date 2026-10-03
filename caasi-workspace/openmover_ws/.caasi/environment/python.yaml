@@ -1,0 +1,7 @@
+version: 3.12.3
+implementation: CPython
+executable: /home/zar/Documents/phd/robot/caasi/.venv/bin/python3
+venv: true
+packages:
+  torch: null
+  tensorrt: null

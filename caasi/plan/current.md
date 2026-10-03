@@ -33,5 +33,12 @@
     - **T3**: Implemented un-mocked real-subprocess smoke tests in `caasi/tests/test_real_subprocess.py` (5 tests passing in 0.84s).
     - **T2**: Implemented `caasi test` command with default full suite, tiers (`full`, `unit`, `smoke`), deterministic checkout binding, opt-in coverage, filtering (`-k`), verbose mode, machine-readable `--json`, and dedicated CLI tests in `tests/test_test_cmd.py` (12 tests passing in 0.42s).
     - Verified full test suite executed via native `caasi test`: **55 test modules, 859 passing tests** in 183.32s.
-- **Current State**: T1, T2, T3, T4 implemented and fully verified; zero regressions across the entire 859-test baseline; deterministic local checkout workflow established.
-- **Next Concrete Step**: User authorization to proceed to Phase 2 (caasi-Managed OpenMover Workspace).
+  - **Phase 2: caasi-Managed OpenMover Workspace completed**:
+    - [Phase 2 Summary Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-02/phase-02-report.md)
+    - Fully represented OpenMover in `/home/zar/Documents/phd/robot/caasi-workspace/openmover_ws/` (`caasi.yaml`, `caasi.lock`, `robots/`, `scenes/`, `tasks/`, `ros/`, `nav/`, `experiments/`).
+    - Preflight checks verified: `caasi check project` (READY), `caasi sim check` (READY), `caasi audit` (PASSED).
+    - Executed live headless Isaac Sim run via `caasi sim run` (Run ID: `20261003-154048-isaac-sim-smoke`, PID 110981, 60 physics frames stepped at 2432 steps/s, exit code 0, 11 provenance artifacts captured).
+    - Re-evaluated Phase 1 candidate gaps (none are blockers; existing tools and patterns handle all requirements).
+    - Identified two minor friction points (`cwd` relative resolution and Isaac Lab launcher override flag).
+- **Current State**: Phase 2 workspace initialized, fully verified, and live simulation run completed with zero modifications to `caasi` core and zero modifications to read-only trees (`openmover_robot`, `openmover_ws`).
+- **Next Concrete Step**: Review Phase 2 report with user and decide on next integration milestone (Phase 3: Live ROS 2 + Isaac Sim + Nav2 integration).

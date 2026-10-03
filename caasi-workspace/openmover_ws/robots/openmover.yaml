@@ -1,0 +1,11 @@
+kind: robot
+name: openmover
+description: OpenMover differential drive robot
+urdf: robot/urdf/robot_description.urdf
+usd: robot/usd/robot_description/robot_description.usda
+dof: 2
+sensors:
+  - lidar_forward
+  - lidar_rear
+tasks:
+  - openmover_nav

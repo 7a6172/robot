@@ -1,0 +1,7 @@
+distro: jazzy
+root: /opt/ros/jazzy
+packages: 402
+rmw: null
+domain_id: null
+overlays:
+- /opt/ros/jazzy
