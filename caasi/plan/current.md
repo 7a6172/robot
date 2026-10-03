@@ -65,3 +65,9 @@
     - Enforced strict safety boundaries: non-destructive inspection, zero motor motion commands, zero unconnected socket flooding.
     - Confirmed zero Category D gaps: existing `caasi` diagnostic, execution, and provenance capabilities cleanly support the physical hardware workflow without turning `caasi` into a hardware driver.
 - **Current State**: Phase 5 successfully closed. Read-only trees preserved untouched; working tree clean.
+  - **Phase 6: Full Project Adoption & Caasi-Native Architecture (Stage B Complete)**:
+    - [Phase 6 Architectural Proposal](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-06/phase-06-proposal.md)
+    - Completed exhaustive investigation across ROS 2 packages, Isaac Sim bridges, Isaac Lab tasks, USD scenes, and system tooling.
+    - Proposed canonical caasi-native workspace structure under `/home/zar/Documents/phd/robot/caasi-workspace/openmover/`.
+    - Identified three essential caasi 0.4.0 candidates: `caasi build` (RAM-safe build orchestrator), automatic workspace overlay sourcing in `rosenv.py`, and `CAASI_PROJECT_ROOT` process environment injection.
+- **Current State**: Phase 6 Stage B complete (Investigation & Architecture Proposal submitted). Standing by at Stage C for user review before proceeding with implementation.
