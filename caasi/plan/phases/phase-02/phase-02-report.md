@@ -21,6 +21,7 @@ $$\text{Project Init} \longrightarrow \text{Component Registration} \longrightar
 3. **Phase 1 Candidate Gaps Re-evaluated**: All three candidate gaps identified during Phase 1 audit were re-evaluated against real operational needs. **None of them are blocking gaps**; existing caasi patterns and native tools already solve them cleanly.
 4. **Real Friction Points Documented**: Identified two minor, concrete friction points in caasi's path resolution and tool registry handling.
 5. **Zero Mod-Bleed**: Read-only source trees remained 100% untouched. No changes were made to caasi's core codebase.
+6. **Empirical Case Study Evidence Preserved**: Detailed usage narratives, empirical observations, benefits, counterfactuals, and limitations are documented in [Phase 2 Case Study Evidence](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-02/case_studies.md).
 
 ---
 
