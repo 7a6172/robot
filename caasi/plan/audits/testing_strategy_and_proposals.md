@@ -20,13 +20,13 @@
 
 ---
 
-## 2. Test Baseline & T1 Implementation
+## 2. Test Baseline & Verified Status
 
-### 2.1 Existing Test Suite Baseline
-- `caasi` includes **53 test modules** in `tests/`, encompassing **842 individual unit and integration tests**.
-- All core models, check ladders, run managers, provenance builders, and CLI commands are covered using `typer.testing.CliRunner` and isolated environment fixtures in `conftest.py`.
+### 2.1 Verified Test Suite Baseline
+- `caasi` includes **54 test modules** in `tests/`, encompassing **847 individual unit, integration, and real-subprocess tests**.
+- All 847 tests pass cleanly in ~184s without warnings or errors.
 
-### 2.2 T1 Implementation: ROS 2 Pytest Plugin Conflict Resolution
+### 2.2 T1 Implementation: ROS 2 Pytest Plugin Conflict Resolution (Completed)
 - **Problem**: When pytest ran in a shell where ROS 2 was sourced, ROS 2 entry points (`launch_testing`, `launch_ros`) registered incompatible hooks with pytest 9, crashing collection with `PluginValidationError`.
 - **Implementation**:
   Updated [caasi/pyproject.toml](file:///home/zar/Documents/phd/robot/caasi/pyproject.toml):
@@ -36,105 +36,86 @@
   addopts = "-p no:launch_ros -p no:launch_testing"
   ```
 - **Validation**:
-  Executed the complete test suite using plain `.venv/bin/pytest -q`:
-  ```text
-  842 passed in 183.78s (0:03:03)
+  All tests run cleanly in any sourced environment without requiring manual CLI flags.
+
+### 2.3 T4 Implementation: `pytest-cov` Optional Dependency (Completed)
+- **Implementation**:
+  Added `"pytest-cov>=5.0"` to `[project.optional-dependencies] dev` in [caasi/pyproject.toml](file:///home/zar/Documents/phd/robot/caasi/pyproject.toml) and synced via `uv sync --extra dev`.
+- **Policy**:
+  Coverage is strictly **opt-in** (not present in default `addopts`).
+- **Validation**:
+  Verified coverage on `caasi.core.runs`:
+  ```bash
+  .venv/bin/pytest tests/test_real_subprocess.py --cov=caasi.core.runs --cov-report=term-missing
   ```
-  All 842 tests pass cleanly without requiring any manual flags.
+  Reports statement coverage cleanly without impacting normal test speed.
+
+### 2.4 T3 Implementation: Real Subprocess Smoke Tests (Completed)
+- **Implementation**:
+  Created [caasi/tests/test_real_subprocess.py](file:///home/zar/Documents/phd/robot/caasi/tests/test_real_subprocess.py) covering 5 un-mocked OS lifecycle mechanics:
+  1. `test_real_subprocess_success_lifecycle`: Verified detached bash wrapper `run.sh` execution, generation of `manifest.yaml`, `stdout.log`, `stderr.log`, exit code recording `0`, state transition (`running` -> `succeeded`), PID tracking, and process reaping.
+  2. `test_real_subprocess_failure_lifecycle`: Verified runtime failure exit code capture (`42`), stderr log writing, state transition (`running` -> `failed`), and PID reaping.
+  3. `test_real_subprocess_cancellation_sigterm`: Verified active running process termination via `runs.stop_run` (SIGTERM group signaling), state transition (`running` -> `stopped`), manifest update, and dead PID verification.
+  4. `test_real_subprocess_process_tree_termination`: Verified process group termination when parent process spawns a child subprocess; stopping the run terminates both parent and child with zero orphan/zombie processes.
+  5. `test_real_subprocess_cli_integration`: Verified real CLI commands (`caasi run list`, `caasi run status`, `caasi run logs`, `caasi run logs --stream stderr`) against real running and completed processes.
+- **Validation**:
+  All 5 tests pass in 0.84 seconds.
 
 ---
 
-## 3. T2 Design Proposal: Generalized `caasi test` CLI Command
+## 3. Refined T2 Design Proposal: Generalized `caasi test` CLI Command
 
-### 3.1 Architectural Context in `caasi`
-Existing diagnostic and verification commands in `src/caasi/cli/`:
-- `doctor`: Diagnoses machine readiness and ecosystem tools.
-- `check`: Evaluates preflight compatibility against requirements.
-- `audit`: Verifies project structure, reproducibility, and provenance integrity.
+### 3.1 Design Principles & Constraints
+1. **Meaningful Default Suite**: Default `caasi test` must run a substantial, confidence-giving test suite (the full test suite or comprehensive unit+smoke suite), not merely a minimal 2-second smoke check.
+2. **Deterministic Local Checkout Binding**: `caasi test` must inspect its own package location (`caasi.__file__`) and locate the repository root `tests/` directory. It must refuse to run if executed from an installed site-packages without tests or must clearly report which checkout is being verified, guaranteeing it never tests global `pipx` code by mistake.
+3. **No Premature Project Subcommands**: Does not assume or introduce `caasi test project`. Keeps `caasi test` strictly as a generalized `caasi` self-verification toolkit. Project-level testing will be integrated only when the project model is developed.
+4. **Clean Typer Integration**: Fits standard `caasi` CLI conventions in `src/caasi/cli/test_cmd.py`, registered under the `Setup & diagnosis` taxonomy panel in `src/caasi/cli/main.py`.
 
-A `caasi test` command naturally fits in the **Setup & diagnosis** group alongside `doctor`, `check`, and `audit`.
-
-### 3.2 Proposed Command Capabilities & Scope
-Rather than an OpenMover-specific test runner, `caasi test` should provide a **generalized self-test and verification facility**:
-
+### 3.2 Command Signature & Options
 ```text
-caasi test [OPTIONS] [COMMAND]
-
-Commands:
-  self        Run caasi's own test suite (unit, smoke, full)
-  project     Run the active project's tests (if declared in caasi.yaml)
+caasi test [OPTIONS]
 
 Options:
-  --suite [smoke|unit|full]   Select test tier (default: smoke)
-  --coverage                  Produce test coverage report
-  --json                      Emit structured machine-readable test results
+  --suite [full|smoke|unit]   Test tier to execute (default: full)
+  --coverage                  Run with pytest-cov report enabled (opt-in)
+  --filter, -k TEXT           Filter test names matching expression
+  --verbose, -v               Verbose test output
+  --json                      Emit structured machine-readable test summary
+  --help                      Show this message and exit
 ```
 
 ### 3.3 Test Tiers
-1. **`smoke`** (default, ~2s): Fast verification of real background process spawning, tracking, exit code recording, and status polling.
-2. **`unit`** (~10s): High-speed mock-based unit tests for core libraries and CLI parsers.
-3. **`full`** (~60–180s): Complete 842+ test suite.
+- **`full` (Default)**: Executes all 54 test modules (847 tests). Provides complete confidence that the active checkout is fully healthy and regression-free (~3 minutes).
+- **`smoke`**: Executes only `@pytest.mark.smoke` tests (`test_real_subprocess.py`). Verifies core OS-level process management, logging, exit codes, and cancellation in < 1 second.
+- **`unit`**: Executes mock-based unit tests, skipping slow or external integrations.
 
-### 3.4 Integration
-- Located in `src/caasi/cli/test_cmd.py`, registered in `src/caasi/cli/main.py`.
-- Invokes pytest in a clean subprocess with isolated environment parameters, eliminating ROS plugin pollution automatically.
-
----
-
-## 4. T3 Investigation: Smallest Useful Real Subprocess Smoke Test
-
-### 4.1 The Current Gap in Existing Tests
-In `tests/test_runs.py` and `tests/test_run_cmd.py`, subprocess execution is mocked via `unittest.mock` or `monkeypatch`. While this validates internal logic, it **does not verify actual OS-level mechanics**:
-- Writing the bash wrapper `run.sh` with executable permissions (`0o755`).
-- Detached process creation via `os.setsid` and `subprocess.Popen`.
-- Output streaming and redirection into `stdout.log` and `stderr.log`.
-- Writing the exit code file on exit (`echo "$ec" > exit_code`).
-- Real asynchronous PID liveness polling via `os.kill(pid, 0)`.
-- Real process group termination via `os.killpg(pid, signal.SIGTERM)`.
-
-### 4.2 Proposed Minimal Smoke Test Design
-A dedicated test module: `tests/test_real_subprocess.py` (marked `@pytest.mark.smoke`):
-- **Test 1: Normal Completion**:
-  Spawn `python3 -c "import time; print('start'); time.sleep(0.3); print('done')"` as a tracked run.
-  - Assert status transitions: `running` → `succeeded`.
-  - Assert `exit_code` file exists and equals `0`.
-  - Assert `stdout.log` contains `"start\ndone\n"`.
-  - Assert `manifest.yaml` contains real valid PID.
-- **Test 2: Failure Recording**:
-  Spawn `python3 -c "import sys; print('error', file=sys.stderr); sys.exit(42)"`.
-  - Assert status is `failed`.
-  - Assert `exit_code` is `42`.
-  - Assert `stderr.log` contains `"error\n"`.
-- **Test 3: Process Cancellation (SIGTERM / SIGKILL)**:
-  Spawn `python3 -c "import time; time.sleep(60)"`.
-  - Assert initial status is `running`.
-  - Call `runs.stop_run(record)`.
-  - Assert status becomes `stopped` and PID is no longer alive.
-
-*Total execution time*: ~1.5 seconds. Zero external dependencies. 100% deterministic.
+### 3.4 Execution Mechanics
+- **Checkout Locator**:
+  ```python
+  import caasi
+  caasi_root = Path(caasi.__file__).resolve().parents[2]
+  test_dir = caasi_root / "tests"
+  if not test_dir.is_dir():
+      output.fail(f"Tests directory not found at {test_dir}. Ensure caasi is running from a local checkout.")
+      raise typer.Exit(1)
+  ```
+- **Virtualenv Python Resolution**:
+  Uses `sys.executable` to run `pytest` directly in the active Python environment, ensuring identical dependency isolation.
+- **Subprocess Invocation**:
+  Invokes `[sys.executable, "-m", "pytest", str(test_dir), ...]` with inherited or controlled environment. Passes `-p no:launch_ros -p no:launch_testing` automatically.
+- **Output Rendering**:
+  In human mode, streams output or renders a Rich summary table with pass/fail counts, duration, and test suite path. In `--json` mode, emits structured JSON for CI and audit pipelines.
 
 ---
 
-## 5. T4 Investigation: `pytest-cov` Evaluation
-
-- **What it provides**: Measures statement and branch coverage across `src/caasi/`, generating terminal summary tables and HTML reports highlighting untested branches.
-- **Evaluation**:
-  - `pytest-cov` is a standard, lightweight tool for Python packages.
-  - Adding `pytest-cov>=5.0` to `[project.optional-dependencies] dev` in `pyproject.toml` is recommended.
-  - It should **not** be enabled by default in `addopts` to avoid slowing down rapid test runs, but rather invoked explicitly via `pytest --cov=caasi` or `caasi test --coverage`.
-
----
-
-## 6. Comprehensive Testing Strategy
-
-To ensure absolute reliability, `caasi` development will follow a strict 4-stage pipeline:
+## 4. Comprehensive 4-Stage Development Strategy
 
 ```text
-1. caasi Source Changes
+1. caasi Source Changes (in /home/zar/Documents/phd/robot/caasi)
        │
        ▼
-2. caasi's Own Tests (Unit + Real Subprocess Smoke)
-       │ (Ensures caasi's core machinery is regression-free)
+2. caasi's Own Tests (Unit + Real Subprocess Smoke, via caasi test / pytest)
+       │ (Guarantees caasi core machinery remains 100% regression-free)
        ▼
 3. caasi ↔ OpenMover Integration Validation
        │ (Validates experiment manifests, launch files, and definitions in caasi-workspace)
@@ -142,5 +123,3 @@ To ensure absolute reliability, `caasi` development will follow a strict 4-stage
 4. Actual OpenMover Execution
          (Executes Isaac Sim bridges and ROS 2 controllers under caasi tracking)
 ```
-
-No implementation of T2, T3, or T4 will proceed until explicitly approved.

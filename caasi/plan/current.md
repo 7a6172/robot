@@ -20,12 +20,17 @@
 - **Completed**:
   - Baseline Git Checkpoint established (`79dc52f80f156b36c1383a5cb19315dc87eb858e`).
   - **Phase 1: Discovery & Inventory completed**:
-    - [Caasi v0.3.0 Capability Audit](file:///home/zar/Documents/phd/robot/caasi/plan/audits/caasi_v0.3.0_audit.md)
+    - [caasi v0.3.0 Capability Audit](file:///home/zar/Documents/phd/robot/caasi/plan/audits/caasi_v0.3.0_audit.md)
     - [OpenMover Inventory](file:///home/zar/Documents/phd/robot/caasi/plan/audits/openmover_inventory.md)
     - [OpenMover Architecture Reference](file:///home/zar/Documents/phd/robot/caasi/plan/reference/openmover_architecture.md)
     - [Capability Mapping & Gaps](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-01/mapping_and_gaps.md)
     - [Phase 1 Summary Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-01/phase-01-report.md)
     - [Packaging & Testing Audit](file:///home/zar/Documents/phd/robot/caasi/plan/audits/packaging_and_testing_audit.md)
     - [Testing Strategy & Proposals](file:///home/zar/Documents/phd/robot/caasi/plan/audits/testing_strategy_and_proposals.md)
-- **Current State**: T1 applied and verified (842/842 tests pass); T2, T3, T4 investigated and documented; paused awaiting user approval.
-- **Next Concrete Step**: Review T2 (`caasi test`), T3 (real subprocess smoke test), and T4 (`pytest-cov`) proposals before moving to Phase 2.
+  - **caasi Testing Infrastructure Baseline**:
+    - **T1**: Sourced ROS 2 pytest plugin conflict resolved in `pyproject.toml`.
+    - **T4**: Added `pytest-cov>=5.0` to optional dev dependencies; verified opt-in.
+    - **T3**: Implemented un-mocked real-subprocess smoke tests in `caasi/tests/test_real_subprocess.py` (5 tests passing in 0.84s).
+    - Verified full test suite: **54 test modules, 847 passing tests** in ~184s.
+- **Current State**: T1, T3, T4 implemented and fully verified; T2 design refined with meaningful default suite, deterministic checkout binding, and no premature `project` subcommand. Paused awaiting user review.
+- **Next Concrete Step**: User review of T2 proposal and authorization to proceed to Phase 2.

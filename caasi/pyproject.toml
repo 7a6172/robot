@@ -31,7 +31,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "pytest-cov>=5.0"]
 
 [project.urls]
 Homepage = "https://github.com/7a6172/caasi"
@@ -52,3 +52,6 @@ packages = ["src/caasi"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-p no:launch_ros -p no:launch_testing"
+markers = [
+    "smoke: smoke tests for real process and execution machinery",
+]
