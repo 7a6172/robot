@@ -30,19 +30,22 @@ def system_ram_gb() -> float:
         return 8.0
 
 
-#: Minimum RAM reserved for OS and background processes (GiB).
+#: Conservative default heuristic for RAM reserved for OS and background processes (GiB).
+#: This is an empirical policy assumption, not a universal physical constant.
 SYSTEM_RESERVED_RAM_GB = 2.0
-#: Estimated peak memory budget allocated per parallel compilation job (GiB).
+#: Conservative default heuristic for estimated peak memory budget allocated per parallel compilation job (GiB).
+#: C++/CUDA heavy compilation units can spike up to several gigabytes; this heuristic protects against OOM killer.
 RAM_PER_WORKER_GB = 6.0
 
 
 def default_parallel_workers() -> int:
     """RAM-safe parallel worker count for colcon/CMake builds.
 
-    Derives parallelism from physical RAM by allocating a memory budget
+    Derives parallelism from physical RAM using a conservative heuristic memory budget
     (RAM_PER_WORKER_GB = 6.0 GiB) per parallel compilation process after
     reserving SYSTEM_RESERVED_RAM_GB (2.0 GiB) for system overhead,
-    bounded by total CPU cores.
+    bounded by total CPU cores. These values represent sensible default policy assumptions
+    rather than strict universal constants.
     """
     ram = system_ram_gb()
     cpus = os.cpu_count() or 2

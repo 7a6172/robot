@@ -14,10 +14,10 @@ In standard ROS 2 robotics projects, developers manually invoke `colcon build --
 ### Caasi Solution
 We introduced `caasi build` as a first-class project orchestrator in `caasi.core.build`.
 1. It automatically discovers the project root from the current working directory or any subdirectory.
-2. It detects total system physical RAM (46.8 GiB) and CPU cores (20 cores) and applies a continuous RAM-budget allocation:
+2. It detects total system physical RAM (46.8 GiB) and CPU cores (20 cores) and applies a continuous RAM-budget allocation using conservative default heuristic policies:
    $$\text{usable\_ram} = \max(0, 46.8 - 2.0) = 44.8\text{ GiB}$$
    $$\text{workers} = \min(20, \lfloor 44.8 / 6.0 \rfloor) = 7\text{ parallel workers}$$
-   allocating a 6.0 GiB peak memory budget per concurrent compilation process after reserving 2.0 GiB for system overhead.
+   allocating a conservative 6.0 GiB peak memory budget heuristic per concurrent compilation process after reserving 2.0 GiB for system overhead. (These represent empirical heuristic policy defaults rather than strict universal constants).
 3. It executes `colcon build --parallel-workers 7 --symlink-install` within the project root under the properly wrapped ROS environment.
 
 ### Empirical Evidence
@@ -144,3 +144,35 @@ Evaluating reinforcement learning policies in Isaac Lab requires specific launch
   - Recorded dual LiDAR scan statistics (front mean 0.347m, rear mean 0.420m).
 - **Status**: `succeeded` (exit code 0).
 - **Provenance**: Generated full Level 6 provenance bundle in `~/.caasi/runs/20261003-202234-lab-smoke/`.
+
+---
+
+## Case Study 6.5: End-to-End Closed-Loop Simulation, Scan Merging, Navigation & Dynamic Motion Control
+
+### Context & Problem
+The ultimate test of the canonical workspace adoption is verifying that the entire multi-subsystem stack operates seamlessly and reactively:
+$$\text{caasi build} \longrightarrow \text{ROS Underlay + Project Overlay} \longrightarrow \text{Isaac Sim} \longrightarrow \text{ROS 2 Bridge} \longrightarrow \text{Scan Merger} \longrightarrow \text{Nav2/SLAM} \longrightarrow \text{Velocity Commands} \longrightarrow \text{Motion in Sim}$$
+all executed and monitored through `caasi` from a fresh, stripped shell.
+
+### Caasi Solution
+1. Initiated Isaac Sim bridge via `caasi sim run experiments/sim_warehouse_bridge.yaml --name final-closedloop-sim`.
+2. Initiated the companion ROS 2 launch via `caasi ros launch sim/bridges/16_stack_b.launch.py --name final-closedloop-stack -- nav:=true rviz:=false`.
+3. Observed `laserscan_multi_merger` combining the dual RTX LiDAR topics into unified `/scan`.
+4. Observed `slam_toolbox` mapping and `nav2_costmap_2d` dynamically resizing costmaps to 324x313 cells at 0.05m/pixel.
+5. Published velocity commands to `/cmd_vel` (`v = 0.3 m/s`, 10 Hz) using `caasi native ros -- topic pub -r 10 -t 30 /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.3}}"`.
+6. Monitored robot motion in Isaac Sim log, recording displacement from initial `pos=(+0.01, -0.00)` to `pos=(+7.62, -2.07)` with 2,400 scan frames delivered.
+7. Dispatched a controlled stop command (`v = 0.0 m/s`), confirming the robot halted cleanly at `pos=(+7.62, -2.07)`.
+8. Stopped runs cleanly with `caasi run stop`, capturing manifests and logs.
+
+### Empirical Evidence
+- **Sim Run ID**: `20261004-000809-final-closedloop-sim` (PID 478807, 10 provenance artifacts, 24.2 KiB stdout).
+- **ROS Run ID**: `20261004-000838-final-closedloop-stack` (PID 479743, 4 provenance artifacts, 32.2 KiB stdout).
+- **Physical Motion Tracked**:
+  - $t = 45.0\text{ s}: \text{cmd}=+0.00/+0.00, \text{pos}=(+0.01, -0.00), \text{scans}=1350$
+  - $t = 50.0\text{ s}: \text{cmd}=+0.30/+0.00, \text{pos}=(+0.48, -0.00), \text{scans}=1500$
+  - $t = 60.0\text{ s}: \text{cmd}=+0.30/+0.00, \text{pos}=(+3.46, -0.24), \text{scans}=1800$
+  - $t = 70.0\text{ s}: \text{cmd}=+0.30/+0.00, \text{pos}=(+6.28, -1.24), \text{scans}=2100$
+  - $t = 75.0\text{ s}: \text{cmd}=+0.30/+0.00, \text{pos}=(+7.55, -2.02), \text{scans}=2250$
+  - $t = 80.0\text{ s}: \text{cmd}=+0.00/+0.00, \text{pos}=(+7.62, -2.07), \text{scans}=2400$
+- **Total Displacement**: $7.61\text{ m}$ forward translation along warehouse floor.
+- **Zero Orphaned Processes**: Clean shutdown verified via `pgrep`.

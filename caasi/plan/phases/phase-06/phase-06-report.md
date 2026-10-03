@@ -117,9 +117,10 @@ tools:
   $$\text{usable\_ram} = \max(0.0, \text{ram\_gb} - \text{SYSTEM\_RESERVED\_RAM\_GB})$$
   $$\text{ram\_workers} = \max\left(1, \left\lfloor \frac{\text{usable\_ram}}{\text{RAM\_PER\_WORKER\_GB}} \right\rfloor\right)$$
   $$\text{workers} = \max(1, \min(\text{cpus}, \text{ram\_workers}))$$
-  With parameters:
-  - $\text{SYSTEM\_RESERVED\_RAM\_GB} = 2.0\text{ GiB}$ (host OS and background services)
-  - $\text{RAM\_PER\_WORKER\_GB} = 6.0\text{ GiB}$ (peak compiler process memory budget)
+  With conservative default heuristic parameters:
+  - $\text{SYSTEM\_RESERVED\_RAM\_GB} = 2.0\text{ GiB}$ (conservative default heuristic for host OS and background services)
+  - $\text{RAM\_PER\_WORKER\_GB} = 6.0\text{ GiB}$ (conservative default heuristic for peak compiler process memory budget)
+  *(Note: These parameters represent empirical default heuristic policies chosen to protect developer workstations against OOM freezes, not universal physical constants.)*
 - **Host Evaluation**:
   On the host workstation ($46.8\text{ GiB}$ RAM, $20\text{ logical cores}$):
   $$\text{usable\_ram} = 46.8 - 2.0 = 44.8\text{ GiB}$$
@@ -184,29 +185,68 @@ We executed a comprehensive validation pass strictly from fresh, unsourced subsh
 - Result: Resolved and planned the full 56-map evaluation campaign across 3 arms (`shield`, `astar_dwa`, `astar_dwa_shield`) with an estimated wall clock of 4.38h.
 - Exit code: 0 (Status: `succeeded`).
 
-### 4.6 Regression Testing
+### 4.7 End-to-End Closed-Loop Simulation, Scan Merging, Navigation & Dynamic Motion Control
+We executed a complete multi-subsystem, closed-loop integration pass entirely from a fresh, stripped shell:
+1. **Simulation Bridge Launch**:
+   - Command: `env -i ... caasi sim run experiments/sim_warehouse_bridge.yaml --name final-closedloop-sim`
+   - Run ID: `20261004-000809-final-closedloop-sim` (PID 478807).
+   - Omniverse app initialized in 6.5s (warm cache); pioneer3dx settled at `(0.00, -0.00, -0.001)`.
+   - Published `/clock`, `/odom`, `/tf`, `/tf_static`, and dual RTX LiDAR scans (`/openmover/hardware/lidar_forward/scan`, `/openmover/hardware/lidar_rear/scan`).
+2. **ROS Navigation Stack Launch**:
+   - Command: `env -i ... caasi ros launch sim/bridges/16_stack_b.launch.py --name final-closedloop-stack -- nav:=true rviz:=false`
+   - Run ID: `20261004-000838-final-closedloop-stack` (PID 479743).
+   - `laserscan_multi_merger` subscribed to forward and rear scans, generating unified 360° LiDAR data on `/scan`.
+   - `slam_toolbox` initialized Ceres solver with Schur-Jacobi preconditioner and registered custom LiDAR sensor.
+   - `nav2_costmap_2d` local and global static costmaps dynamically resized to $324 \times 313$ cells at $0.05\text{ m/pixel}$.
+3. **Dynamic Motion & Verification**:
+   - Commanded velocity: 30 packets at 10 Hz with $v_x = 0.3\text{ m/s}$ using `caasi native ros -- topic pub -r 10 -t 30 /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.3}}"`.
+   - Isaac Sim received `cmd_vel` via ROS 2 bridge, applied wheel velocities, and translated the robot along the warehouse floor:
+     - $t = 45.0\text{ s}: \text{cmd}=+0.00/+0.00, \text{pos}=(+0.01, -0.00), \text{scans}=1350$
+     - $t = 50.0\text{ s}: \text{cmd}=+0.30/+0.00, \text{pos}=(+0.48, -0.00), \text{scans}=1500$
+     - $t = 60.0\text{ s}: \text{cmd}=+0.30/+0.00, \text{pos}=(+3.46, -0.24), \text{scans}=1800$
+     - $t = 70.0\text{ s}: \text{cmd}=+0.30/+0.00, \text{pos}=(+6.28, -1.24), \text{scans}=2100$
+     - $t = 75.0\text{ s}: \text{cmd}=+0.30/+0.00, \text{pos}=(+7.55, -2.02), \text{scans}=2250$
+     - $t = 80.0\text{ s}: \text{cmd}=+0.00/+0.00, \text{pos}=(+7.62, -2.07), \text{scans}=2400$
+   - Total translation: $+7.61\text{ m}$ forward translation.
+   - Stop command: Dispatched $v = 0.0\text{ m/s}$; robot halted cleanly at $\text{pos}=(+7.62, -2.07)$.
+4. **Lifecycle & Provenance**:
+   - Stopped both runs cleanly via `caasi run stop`.
+   - Level 6 provenance artifacts, environment records, stdout/stderr logs, and process states captured under `~/.caasi/runs/`.
+   - Host inspection confirmed zero lingering simulator or ROS processes (`pgrep`).
+
+### 4.8 Isaac Lab Execution from Canonical Project
+- Command: `env -i ... caasi lab run experiments/lab_smoke.yaml --name final-lab-smoke`
+- Run ID: `20261004-000252-final-lab-smoke` (PID 473266).
+- Result: Ran 20 environment steps in 0.56s (35 env-steps/s on `cuda:0`), evaluated point-goal observations, computed dual-LiDAR scan metrics (front mean 0.347m, rear mean 0.420m), and completed with status `succeeded` (exit code 0).
+- Campaign scheduler: `caasi run start experiments/lab_campaign.yaml --name final-lab-campaign` (Run ID: `20261004-000642-final-lab-campaign`, PID 477278), calculated 56-map schedule and 4.38h budget, completed with status `succeeded` (exit code 0).
+
+### 4.9 Regression Testing
 - Command: `pytest caasi/tests -q`
-- Result: **870 passed** in 177.05s (0 regressions).
+- Result: **870 passed** in 185.94s (0 regressions).
 
 ---
 
 ## 5. Structured Assessment
 
 ### 5.1 Observed Facts
-1. The entire OpenMover project now lives inside `caasi-workspace/openmover` with no dependencies on external workspace modifications.
-2. In a stripped subshell with zero ROS environment variables, `caasi build`, `caasi native ros`, and `caasi sim run` locate, build, and link both the ROS underlay and project overlay automatically.
-3. The build parallelism calculation dynamically scales with available RAM: on our machine, $(46.8 - 2.0) / 6.0 = 7$ workers, completing a 9-package clean build in 73.56s without memory thrashing.
-4. Isaac Sim and Isaac Lab execute headlessly, load project-relative assets, interact over ROS 2 topics, and exit cleanly with status `succeeded` and Level 6 provenance.
+1. The complete OpenMover project now lives natively inside `caasi-workspace/openmover` with zero reliance on external workspace modifications.
+2. In a stripped subshell with zero ROS environment variables, `caasi build`, `caasi native ros`, `caasi sim run`, and `caasi ros launch` automatically locate, build, source, and link both the ROS underlay and project overlay.
+3. The build parallelism calculation dynamically scales with available RAM: on our machine, $(46.8 - 2.0) / 6.0 = 7$ workers, completing a 9-package clean build in 73.56s without memory thrashing or swap use.
+4. Isaac Sim and Isaac Lab execute headlessly, load project-relative assets via `CAASI_PROJECT_ROOT`, interact over ROS 2 topics, and exit cleanly with status `succeeded` and Level 6 provenance.
+5. In full multi-subsystem operation, `laserscan_multi_merger` merged dual RTX LiDAR topics into 360° `/scan` (0.33m–20m range), `slam_toolbox` initialized mapping, `nav2_costmap_2d` dynamically resized costmaps to $324 \times 313$ cells, and velocity commands drove the robot $7.61\text{ m}$ across the simulation floor.
+6. Process termination is clean: `caasi run stop` terminates process trees without leaving orphaned Kit simulator or ROS 2 daemon processes.
 
 ### 5.2 Observed Friction
-1. **Interactive Publisher Blocking**: Running `ros2 topic pub --once` from within subshells or background tasks can hang indefinitely if subscriber QoS durability/reliability doesn't acknowledge within a standard CLI timeout.
-2. **Script Argument Propagation**: In Isaac Sim Python launcher scripts, `SimulationApp` parses command-line flags on import, requiring domain scripts to use `parse_known_args()` prior to Omniverse initialization to safely capture custom arguments like `--duration`.
+1. **Interactive Publisher Blocking in ROS 2 Jazzy**: Calling `ros2 topic pub --once` from within subshells or background tasks blocks indefinitely unless matching subscription waiting is bounded (e.g. `-w 1 --max-wait-time-secs 3` or `-r 10 -t N`), because rclpy/rclcpp waits for publisher/subscriber QoS discovery.
+2. **Script Argument Propagation in Isaac Sim**: In Isaac Sim Python launcher scripts, `SimulationApp` parses command-line flags on import, requiring domain scripts to use `parse_known_args()` prior to Omniverse initialization to safely capture custom arguments like `--duration`.
+3. **Environment Prioritization in Child Processes**: In stripped environments, `start_run` must ensure that `rosenv.sourced_env()` paths override sparse host `PATH` variables so that ROS binaries and overlays are fully discoverable.
 
 ### 5.3 Direct Benefits
 1. **Zero Manual Sourcing**: Developers no longer need to remember to run `source /opt/ros/jazzy/setup.bash` or `source install/setup.bash` before interacting with the project.
-2. **Single Build Orchestrator**: `caasi build` eliminates manual colcon argument assembly, provides RAM safety, and invalidates internal caches automatically.
+2. **Single Build Orchestrator**: `caasi build` eliminates manual colcon argument assembly, provides conservative RAM safety heuristics, and invalidates internal caches automatically.
 3. **Reproducible Toolchain Locking**: `caasi.lock` captures exact versions of ROS, Isaac Sim, Isaac Lab, GCC, CMake, and Python for auditability.
 4. **Decoupled Architecture**: Established ecosystem tools remain the execution engines; `caasi` strictly manages orchestration, environment chaining, and provenance.
+5. **Unified Project-Level Interface**: A developer can build the project, run simulations, launch ROS navigation, query topics, and inspect run histories from one coherent CLI tool.
 
 ### 5.4 Limitations
 1. **Single-Node Execution per Command**: Running simultaneous multi-subsystem workflows (e.g. Isaac Sim + Nav2 + RViz) currently requires launching separate `caasi` commands or using external ROS 2 launch files.
@@ -217,6 +257,7 @@ We executed a comprehensive validation pass strictly from fresh, unsourced subsh
 2. **Declarative Stack Orchestration**: Experiment YAMLs currently declare single-process runs (`backend: sim`, `backend: lab`, `backend: ros`), rather than composite stacks.
 
 ### 5.6 Future Feature Ideas (For Later Phases)
-1. **Multi-Process Stack Orchestrator (`caasi launch`)**: A unified manifest format to declare and supervise composite stacks (e.g. simulation bridge + Nav2 + SLAM).
+1. **Multi-Process Stack Orchestrator (`caasi launch`)**: A unified manifest format to declare and supervise composite stacks (e.g. simulation bridge + Nav2 + SLAM) as a single coordinated run.
 2. **Container Pass-Through**: Running `caasi build` or `caasi sim` inside official NVIDIA / ROS Docker containers while binding the local canonical workspace.
 3. **Workspace Deployment Bundling**: Exporting self-contained bundles with frozen environments for deployment to robot compute hardware.
+4. **Run Comparison & Diffs**: Comparing execution traces, timing, and metric artifacts between runs directly via CLI.

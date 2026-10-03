@@ -203,7 +203,7 @@ def start_run(
     if backend == "ros":
         if not rosenv.is_sourced(project_root=proj_root):
             ros_s_env = rosenv.sourced_env(project_root=proj_root)
-            merged_env = {**ros_s_env, **merged_env}
+            merged_env = {**merged_env, **ros_s_env, **(env or {})}
 
     stdout = open(run_dir / "stdout.log", "w", encoding="utf-8")
     stderr = open(run_dir / "stderr.log", "w", encoding="utf-8")

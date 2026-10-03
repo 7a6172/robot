@@ -5,4 +5,4 @@ description: Headless Isaac Sim warehouse simulation with ROS 2 bridge (/clock, 
 cwd: .
 args:
   - --duration
-  - "90"
+  - "240"
