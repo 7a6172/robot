@@ -377,3 +377,332 @@ Stage C1 is complete and verified.
 2. Stream remote stdout/stderr to the workstation control plane.
 3. Manage target process groups via `caasi run stop / inspect / list --target <name>`.
 
+
+---
+
+# Stage C2 Report: Target-Native Remote Run Execution & Lifecycle Management
+
+**Status**: Completed & Verified  
+**Date**: October 4, 2026  
+**Scope**: Target-Native Remote Run Execution & Lifecycle Management (`caasi run start --target`, `caasi run status`, `caasi run logs`, `caasi run inspect`, `caasi run stop`, `caasi run list`)  
+
+---
+
+### 1. Executive Summary
+
+Phase 7 Stage C2 establishes target-native remote execution and process lifecycle management across the Caasi control plane. Prior to Stage C2, running simulation or robotic tasks required direct local workstation execution or manual SSH sessions into target machines. With Stage C2:
+
+1. **Target-Aware Run Execution**: Developers launch tracked runs on configured targets via `caasi run start --target <name> <manifest>` directly from the workstation control plane without manual SSH coordination.
+2. **Deterministic Preflight Verification**: Enforces target reachability, active deployment verification (`get_deployment_status`), and target-native build verification (`get_last_build_status`) before executing remote processes.
+3. **Detached Process Supervision**: Wraps remote target execution in detached sessions (`setsid`) that survive SSH connection drops and client terminations, recording both process PID and session PGID.
+4. **Complete Process Group Termination**: Eliminates orphaned processes by addressing process group trees (`kill -TERM -<pgid>`, falling back to `kill -KILL -<pgid>`), ensuring multi-node ROS 2 and simulator child processes are thoroughly reaped.
+5. **Remote Log Streaming & Inspection**: Enables retrieving trailing log lines (`caasi run logs`), live remote streaming (`caasi run logs -f`), and target run directory inventory auditing (`caasi run inspect`).
+6. **Two-Sided Run Provenance**: Connects the complete provenance chain on both host and target (`project -> deployment_id -> build_id -> target -> git_revision -> run_id`).
+
+---
+
+### 2. Core Model & Target-Aware Run Architecture
+
+Caasi's run architecture treats target runs as first-class citizens alongside local runs, maintaining a unified data model:
+
+```text
+Workstation Control Plane (Host)
+  caasi run start --target <name> <manifest>
+          ↓
+  [Preflight Checks]
+    ├─ Target Reachability Probe
+    ├─ Deployment Verification (destination, status: active)
+    └─ Build Verification (.caasi-build.json on target, status: success)
+          ↓
+  [Path Translation & Script Synthesis]
+    ├─ Translate host paths to target-relative paths rooted at destination
+    ├─ Generate target execution wrapper: <destination>/.caasi/runs/<run_id>/run.sh
+    │   ├─ Sourcing: /opt/ros/<distro>/setup.bash
+    │   ├─ Sourcing: <destination>/install/setup.bash
+    │   ├─ Environment: CAASI_PROJECT_ROOT, CAASI_EXPERIMENT, manifest env vars
+    │   └─ Exit code capture: echo "$ec" > "$RUN_DIR/exit_code"
+    └─ Launch detached session via nohup setsid
+          ↓
+  [Two-Sided Provenance Materialization]
+    ├─ Target: <destination>/.caasi/runs/<run_id>/manifest.yaml
+    └─ Host: ~/.caasi/runs/<run_id>/manifest.yaml + Level 6 Provenance Bundle
+```
+
+#### RunRecord Model Extensions (`caasi.core.runs`)
+
+`RunRecord` was augmented with target-native execution metadata:
+* `target: str` — Execution target name (`"local"` or configured target name).
+* `target_transport: str` — Transport protocol (`"local"` or `"ssh"`).
+* `pgid: int | None` — Process Group ID assigned on target.
+* `destination: str | None` — Target-side deployment path.
+* `deployment_id: str | None` — Lineage ID of deployment that materialized the code.
+* `build_id: str | None` — Lineage ID of target-native build.
+* `git_revision: str | None` — Git commit SHA and dirty status.
+* `project: str | None` — Project name.
+* `remote_run_dir: str | None` — Directory on target holding run assets and logs.
+
+---
+
+### 3. CLI Interface & Flags
+
+Caasi's run CLI commands were generalized to support target-native execution while preserving local behavior identically:
+
+* `caasi run start --target <name> [-t <name>] <config>`:
+  Launches the experiment on the specified target. Validates backend, preflight checks, resolves target paths, and initiates execution.
+* `caasi run list [--target <name>]`:
+  Displays running and historical runs, adding a dedicated `Target` column showing target name and transport.
+* `caasi run status <query>`:
+  Shows real-time status of local or remote runs, querying target-side exit code or process group liveness over SSH or local sandbox.
+* `caasi run logs <query> [-n <lines>] [-f] [-s stdout|stderr]`:
+  Reads trailing logs or streams live stdout/stderr from the target over SSH tail or local sandbox file handles.
+* `caasi run inspect <query>`:
+  Audits target run artifacts (`run.sh`, `pid`, `pgid`, `stdout.log`, `stderr.log`, `exit_code`, `manifest.yaml`) and displays file sizes.
+* `caasi run stop <query>`:
+  Signals the target process group (`SIGTERM` followed by `SIGKILL` on timeout), ensuring complete termination of parent and child processes.
+
+---
+
+### 4. Target Preflight & Verification Engine
+
+Before issuing execution commands on the target, `start_target_run` performs deterministic preflight verification:
+
+1. **Reachability Check**:
+   Invokes `targets_core.discover_target(target)`. If the target is offline or SSH handshake fails, execution halts immediately with a clear diagnostics error.
+2. **Project Resolution**:
+   Resolves root Caasi project from caller directory or path ancestry, ensuring project manifest (`caasi.yaml`) and lockfile exist.
+3. **Deployment Verification**:
+   Resolves deployment destination path via `deploy_core.resolve_deployment_destination(target, proj_name)` and queries `get_deployment_status(target, dest, config)`. Halts with actionable advice (`Run 'caasi deploy <target>' first.`) if no active deployment is found.
+4. **Target-Native Build Verification**:
+   For projects containing ROS 2 components or `src/` packages, queries `build_core.get_last_build_status(target, dest, config)`. Verifies that `.caasi-build.json` exists on the target itself at `dest`, and verifies `status == "success"`. Halts if unbuilt or if the previous compilation failed.
+
+---
+
+### 5. Remote Process Lifecycle & Detached Supervision
+
+Processes executed on remote targets must not terminate if the developer's workstation drops SSH connection:
+
+1. **Detached Invocation**:
+   Remote runs are launched using:
+   ```bash
+   nohup setsid '<run_dir>/run.sh' "$@" > '<run_dir>/stdout.log' 2> '<run_dir>/stderr.log' </dev/null &
+   PID=$!
+   echo $PID > '<run_dir>/pid'
+   ps -o pgid= -p $PID | tr -d ' ' > '<run_dir>/pgid'
+   ```
+2. **Session Decoupling**:
+   `setsid` allocates a new session and process group where `PGID == PID`, detaching stdin from any controlling terminal. The process survives workstation disconnects, terminal closures, and SSH network drops.
+3. **Exit Code Persistence**:
+   The wrapper traps or captures command exit status:
+   ```bash
+   "$@"
+   ec=$?
+   echo "$ec" > "$RUN_DIR/exit_code"
+   exit "$ec"
+   ```
+4. **Status Probe Engine**:
+   Remote status checks query the target with a single atomic probe:
+   - If `<run_dir>/exit_code` exists: exit code 0 maps to `succeeded`, non-zero to `failed`.
+   - If PID is alive (`kill -0 <pid>`): maps to `running`.
+   - If dead without exit code: maps to `stopped` if user stopped it, or `lost`.
+   - If SSH connection drops: maps to `unreachable` rather than falsely reporting dead.
+
+---
+
+### 6. Process Group Signaling & Orphan Prevention
+
+Robotics applications routinely spawn complex multi-process trees (ROS 2 daemon, launch wrappers, Python nodes, sensor drivers, simulator processes). Terminating only the root PID leaves orphaned child processes running.
+
+Stage C2 implements process-group-level lifecycle control:
+1. **Target-Side Process Group ID Tracking**:
+   The wrapper records `pgid` at launch time.
+2. **Negative PGID Signaling**:
+   `stop_run` dispatches `SIGTERM` to the entire process group:
+   - SSH targets: `kill -TERM -<pgid> 2>/dev/null || kill -TERM <pid>`
+   - Local sandbox targets: `os.killpg(pgid, signal.SIGTERM)`
+3. **Bounded Wait & SIGKILL Escalation**:
+   Monitors process group liveness for a configurable timeout (default 5.0s). If processes remain active, delivers `SIGKILL` to `-<pgid>`.
+4. **Reaping & Zombie Prevention**:
+   In local test sandboxes, invokes `os.waitpid(pid, os.WNOHANG)` across polling loops, preventing defunct zombie processes from skewing liveness checks.
+
+---
+
+### 7. Workstation Log Retrieval & Streaming
+
+1. **Log Ingestion**:
+   `runs.read_run_log(record, config, stream, lines)` retrieves trailing lines over SSH (`tail -n <lines>`) or local file handles.
+2. **Filtering & Severity Attribution**:
+   Reuses Caasi's standard log parser convention (`[HH:MM:SS] [component] message`) to support `--component`, `--since`, and `--errors` filtering on target runs.
+3. **Live Streaming (`-f / --follow`)**:
+   - For SSH targets: executes a non-blocking `tail -n 0 -f` over SSH subprocess pipe, streaming incoming lines directly to the workstation terminal until interrupted via Ctrl+C.
+   - For local sandboxes: uses direct file handle polling, terminating automatically when the run reaches a terminal state.
+
+---
+
+### 8. Target Run Inspection & File Accounting
+
+`caasi run inspect <run_id>` performs remote run inventory auditing:
+* Local sandbox runs: recursively traverses `<remote_run_dir>` collecting relative paths and byte sizes.
+* Remote SSH runs: executes `find '<run_dir>' -maxdepth 2 -type f -exec stat -c '%n %s' {} +` over SSH in a single call.
+* Audited artifacts include: `run.sh` (synthesized wrapper), `pid`, `pgid`, `stdout.log`, `stderr.log`, `exit_code`, and `manifest.yaml`.
+
+---
+
+### 9. Two-Sided Run Provenance & Metadata Schema
+
+Every target run records full lineage linking workstation and target state:
+
+```yaml
+id: 20261004-021616-target-smoke
+name: target-smoke
+backend: python
+kind: experiment
+command:
+  - python3
+  - /tmp/caasi-test-deploy/openmover/experiments/target_smoke_test.py
+cwd: /tmp/caasi-test-deploy/openmover
+created: '2026-10-04T02:16:16+08:00'
+pid: 645497
+pgid: 645497
+target: test-sandbox
+target_transport: local
+destination: /tmp/caasi-test-deploy/openmover
+deployment_id: deploy-openmover-20261003-181609-1818b63f
+build_id: build-test-sandbox-1791051254-396f85
+git_revision: 1818b63f01
+project: openmover
+remote_run_dir: /tmp/caasi-test-deploy/openmover/.caasi/runs/20261004-021616-target-smoke
+paused: false
+stopped: true
+extra:
+  experiment: experiments/target_smoke.yaml
+  headless: true
+```
+
+* **Workstation Host**: Written to `~/.caasi/runs/<run_id>/manifest.yaml` accompanied by the standard Level 6 provenance bundle (`configuration.yaml`, `dependencies.yaml`, `environment.yaml`, `hardware.yaml`, `git.json`, `processes.json`).
+* **Execution Target**: Written to `<remote_run_dir>/manifest.yaml` alongside runtime execution artifacts.
+
+---
+
+### 10. Empirical Dogfooding Results (Canonical OpenMover)
+
+Dogfooding was executed from `/home/zar/Documents/phd/robot/caasi-workspace/openmover` against a deployed target sandbox (`test-sandbox`, `deployment_root: /tmp/caasi-test-deploy`):
+
+1. **Preflight Rejection of Undeployed Target**:
+   ```bash
+   caasi run start --target test-sandbox experiments/smoke_test.yaml
+   ```
+   - Result: Failed fast with:
+     `Error: No active deployment found on target 'test-sandbox' at '/tmp/caasi-test-deploy/openmover'. Run 'caasi deploy test-sandbox' first.`
+   - Exit code: 1.
+
+2. **Preflight Rejection of Unbuilt Target**:
+   - Deployed fresh workspace: `caasi deploy test-sandbox` (833 files, 40.4 MiB synced in 0.64s).
+   - Attempted run before compiling:
+     ```bash
+     caasi run start --target test-sandbox experiments/sim_warehouse_bridge.yaml
+     ```
+   - Result: Failed fast with:
+     `Error: No completed build found on target 'test-sandbox' at '/tmp/caasi-test-deploy/openmover'. Run 'caasi build --target test-sandbox' first.`
+   - Exit code: 1.
+
+3. **Target Compilation**:
+   ```bash
+   caasi build --target test-sandbox --packages-up-to openmover
+   ```
+   - Result: Successfully compiled 6 packages (`openmover_msgs`, `auto_mapping_toolbox_msgs`, `relocalization_toolbox_msgs`, `bluesea2`, `ira_laser_tools`, `openmover`) in 60.61s. Native build metadata recorded in `/tmp/caasi-test-deploy/openmover/.caasi-build.json`.
+
+4. **Remote Run Launch & Sourcing Verification**:
+   - Synchronized safe smoke experiment (`experiments/target_smoke.yaml`, `experiments/target_smoke_test.py`).
+   ```bash
+   caasi run start --target test-sandbox experiments/target_smoke.yaml
+   ```
+   - Result:
+     `Run 20261004-021616-target-smoke started in background on target 'test-sandbox'.`
+   - Verified process group: PID 645497, PGID 645497.
+
+5. **Log Retrieval & Sourcing Verification**:
+   ```bash
+   caasi run logs 20261004-021616-target-smoke
+   ```
+   - Log output captured:
+     ```text
+     [SMOKE] Starting target smoke test...
+     [SMOKE] PID: 645578, PGID: 645497
+     [SMOKE] CAASI_PROJECT_ROOT: /tmp/caasi-test-deploy/openmover
+     [SMOKE] ROS_DISTRO: jazzy
+     [SMOKE] rclpy import successful
+     [SMOKE] openmover_msgs import successful
+     [SMOKE] CHILD_PID: 645588
+     [SMOKE] Heartbeat step 0/120 (PID 645578, child 645588)
+     [SMOKE] Heartbeat step 5/120 (PID 645578, child 645588)
+     ```
+   - Verified that `/opt/ros/jazzy` and `/tmp/caasi-test-deploy/openmover/install` were sourced automatically, enabling target-native `openmover_msgs` import.
+
+6. **Target Run Inspection**:
+   ```bash
+   caasi run inspect 20261004-021616-target-smoke
+   ```
+   - Output displayed target remote directory, target name (`test-sandbox (local)`), status (`running`), and complete inventory of run files:
+     * `manifest.yaml` (734 B)
+     * `pgid` (6 B)
+     * `pid` (6 B)
+     * `run.sh` (519 B)
+     * `stderr.log` (0 B)
+     * `stdout.log` (484 B)
+
+7. **Process Tree & Zero-Orphan Stop Verification**:
+   - Inspected OS process tree prior to stop:
+     ```text
+         PID    PGID CMD
+      645497  645497 bash /tmp/caasi-test-deploy/openmover/.caasi/runs/20261004-021616-target-smoke/run.sh
+      645578  645497  \_ python3 /tmp/caasi-test-deploy/openmover/experiments/target_smoke_test.py
+      645588  645497      \_ sleep 120
+     ```
+   - Issued stop command:
+     ```bash
+     caasi run stop 20261004-021616-target-smoke
+     ```
+     `Run 20261004-021616-target-smoke stopped.`
+   - Checked OS process table for all 3 PIDs (`ps -fp 645497,645578,645588`):
+     Returned empty — all 3 processes (bash launcher, python node, and background child process) were terminated cleanly with **strictly zero orphaned processes**.
+   - Verified `caasi run status 20261004-021616-target-smoke` transitioned to `stopped`.
+
+---
+
+### 11. What Failed, What Was Awkward, and How It Was Resolved
+
+1. **Host Build Record Fallback Masking Unbuilt Target State**:
+   - *Issue*: `get_last_build_status` fell back to `project_root` host build records when querying target build status. If a target had been built previously in an older directory, redeploying to a fresh destination bypassed the build preflight check even though `install/` was absent.
+   - *Resolution*: Updated `start_target_run` to query `get_last_build_status(target, dest, config)` strictly against the target destination without host project fallback. The target destination must contain its own `.caasi-build.json`.
+2. **Zombie Process Reaping in Local Test Sandboxes**:
+   - *Issue*: In local sandboxes running under the same parent process during tests, terminated processes remained as zombie entries (`<defunct>`), causing `pid_alive(pid)` (`os.kill(pid, 0)`) to return `True` and `sandbox_stop_run` to time out.
+   - *Resolution*: Integrated `_reap(pid)` (`os.waitpid(pid, os.WNOHANG)`) into `sandbox_stop_run` and `sandbox_effective_status` loops, properly reaping child processes without affecting detached non-child processes.
+3. **Experiment Script Path Translation Anchoring**:
+   - *Issue*: Experiment configs specifying relative script paths (e.g. `script: ../scripts/test.py` relative to `experiments/`) resolved relative to the experiment directory on the host. Passing unnormalized paths caused `dest / rel_script` misalignments.
+   - *Resolution*: Normalized `exp.script_path` and `exp.work_dir` against `proj_root` before prepending target destination root, ensuring portable execution regardless of directory nesting.
+
+---
+
+### 12. What OpenMover Exposed as a General Caasi Requirement
+
+1. **Overlay Sourcing in Target Launch Wrappers is Mandatory**:
+   - Robotics targets do not inherit the developer's interactive `.bashrc`. Sourcing `/opt/ros/<distro>/setup.bash` alone is insufficient when projects rely on custom message definitions or workspace packages. Automatically injecting `[ -f "<dest>/install/setup.bash" ] && . "<dest>/install/setup.bash"` into target execution wrappers guarantees custom interfaces (`openmover_msgs`) are available to all launched nodes without manual environment configuration.
+2. **Session PGID Decoupling is Crucial for Multi-Node Tasks**:
+   - In distributed robotics, stopping an experiment must never leave background nodes (e.g. LiDAR drivers, camera pipelines, navigation servers) spinning and locking hardware ports or GPU memory. Tracking PGID and delivering signals to `-pgid` is a fundamental requirement for reliable robotics supervision.
+
+---
+
+### 13. Test Suite Status
+
+* 8 dedicated unit tests added in `caasi/tests/test_target_run.py`:
+  - `test_target_run_unreachable_target`
+  - `test_target_run_missing_deployment`
+  - `test_target_run_missing_or_failed_build`
+  - `test_target_run_ssh_launch_and_provenance`
+  - `test_remote_effective_status_and_ssh_probe`
+  - `test_remote_stop_run_process_group`
+  - `test_local_sandbox_lifecycle_and_process_group_cleanup`
+  - `test_cli_run_target_commands`
+* Full target suite passing: **50 target tests** (`test_target_run.py`, `test_target_build.py`, `test_targets.py`, `test_deploy.py`).
+* Full regression test suite passing: **912 tests** across the entire Caasi repository.
+

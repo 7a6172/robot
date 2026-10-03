@@ -39,6 +39,7 @@ def start_with_provenance(config: Config, **kwargs) -> runs.RunRecord:
 def launch_experiment(
     config_path: Path,
     *,
+    target: Optional[str] = None,
     backend: Optional[str] = None,
     expect_backend: Optional[str] = None,
     name: Optional[str] = None,
@@ -59,6 +60,38 @@ def launch_experiment(
     dry runs; failures exit via :func:`output.fail`.
     """
     cfg = state.cfg()
+    if target is not None and target != "local":
+        from ..core import targets as targets_core
+        target_obj = targets_core.find_target(cfg, target)
+        if not target_obj:
+            output.fail(_("target.not_found", name=target))
+            return None
+        if dry_run:
+            output.echo(f"[bold]{_('sim.run.dry_title')}[/bold]")
+            output.echo(f"  target:  {target_obj.name} ({target_obj.transport})")
+            output.echo(f"  config:  {config_path}")
+            return None
+        try:
+            record = runs.start_target_run(
+                target=target_obj,
+                config=cfg,
+                config_path=config_path,
+                name=name,
+                backend=backend,
+                kind=kind,
+                extra_args=extra_args,
+                extra=extra,
+                force_headless=force_headless,
+            )
+        except Exception as exc:
+            output.fail(str(exc))
+            return None
+        if output.wants_json(json_output):
+            output.echo_json(record.to_dict(cfg))
+            return record
+        output.echo(f"[green]{_('run.started.target', id=record.run_id, target=record.target)}[/green]")
+        output.echo(f"  [dim]{_('sim.run.watch', id=record.run_id)}[/dim]")
+        return record
     try:
         exp = experiment.load_experiment(config_path)
     except experiment.ExperimentError as exc:
@@ -148,6 +181,7 @@ def _status_style(status: str) -> str:
 def run_start(
     ctx: typer.Context,
     config_path: Path = typer.Argument(..., help=_("sim.run.config_help")),
+    target: Optional[str] = typer.Option(None, "--target", "-t", help=_("run.start.flag.target")),
     backend: Optional[str] = typer.Option(None, "--backend", help=_("run.start.flag.backend")),
     name: Optional[str] = typer.Option(None, "--name", help=_("sim.run.name_help")),
     dry_run: bool = typer.Option(False, "--dry-run", help=_("sim.run.dry_run_help")),
@@ -159,6 +193,7 @@ def run_start(
         )
     launch_experiment(
         config_path,
+        target=target,
         backend=backend,
         name=name,
         extra_args=list(ctx.args),
@@ -173,13 +208,14 @@ def run_restart(
     backend: Optional[str] = typer.Option(None, "--backend", help=_("run.flag.backend")),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
+    cfg = state.cfg()
     record = _require_run(query, backend)
-    if runs.effective_status(record) in (runs.RUNNING, runs.PAUSED):
-        runs.stop_run(record)
-    if record.cwd and not Path(record.cwd).is_dir():
+    if runs.effective_status(record, cfg) in (runs.RUNNING, runs.PAUSED):
+        runs.stop_run(record, config=cfg)
+    if record.cwd and not Path(record.cwd).is_dir() and record.target == "local":
         output.fail(_("run.restart.cwd_missing", cwd=record.cwd))
     new = start_with_provenance(
-        state.cfg(),
+        cfg,
         name=record.name,
         command=record.command,
         cwd=record.cwd,
@@ -188,7 +224,7 @@ def run_restart(
         extra={**(record.extra or {}), "restarted_from": record.run_id},
     )
     if output.wants_json(json_output):
-        output.echo_json(new.to_dict())
+        output.echo_json(new.to_dict(cfg))
         return
     output.echo(f"[green]{_('run.restarted', old=record.run_id, id=new.run_id)}[/green]")
     output.echo(f"  [dim]{_('sim.run.watch', id=new.run_id)}[/dim]")
@@ -198,27 +234,32 @@ def run_restart(
 def run_list(
     limit: int = typer.Option(20, "--limit", "-n", help=_("run.flag.limit")),
     backend: Optional[str] = typer.Option(None, "--backend", help=_("run.flag.backend")),
+    target: Optional[str] = typer.Option(None, "--target", "-t", help=_("run.start.flag.target")),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
-    records = runs.list_runs(state.cfg())
+    cfg = state.cfg()
+    records = runs.list_runs(cfg)
     if backend is not None:
         records = [r for r in records if r.backend == backend]
+    if target is not None:
+        records = [r for r in records if r.target == target]
     records = records[: max(limit, 0)]
     if output.wants_json(json_output):
-        output.echo_json([r.to_dict() for r in records])
+        output.echo_json([r.to_dict(cfg) for r in records])
         return
     if not records:
         output.echo(f"[yellow]{_('run.no_runs')}[/yellow]")
         return
     table = Table(header_style="bold", **output.table_styles())
-    for column in ("ID", _("run.col.name"), _("run.col.backend"), _("run.col.status"), _("run.col.created"), "PID"):
+    for column in ("ID", _("run.col.name"), _("run.col.backend"), _("run.col.target"), _("run.col.status"), _("run.col.created"), "PID"):
         table.add_column(column)
     for record in records:
-        status = runs.effective_status(record)
+        status = runs.effective_status(record, cfg)
         table.add_row(
             record.run_id,
             record.name,
             record.backend,
+            record.target or "local",
             f"[{_status_style(status)}]{status}[/]",
             record.created,
             str(record.pid) if record.pid else "—",
@@ -232,22 +273,37 @@ def run_status(
     backend: Optional[str] = typer.Option(None, "--backend", help=_("run.flag.backend")),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
+    cfg = state.cfg()
     record = _require_run(query, backend)
-    data = record.to_dict()
+    data = record.to_dict(cfg)
     if output.wants_json(json_output):
         output.echo_json(data)
         return
     output.echo(f"[bold]{record.name}[/bold] [dim]({record.run_id})[/dim]")
-    for label, value in (
-        (_("run.col.status"), data["status"]),
-        (_("run.col.backend"), record.backend),
-        ("Kind", record.kind),
-        (_("run.col.created"), record.created),
+    items: list[tuple[str, str]] = [
+        (_("run.col.status"), str(data["status"])),
+        (_("run.col.backend"), str(record.backend)),
+        ("Target", f"{record.target} ({record.target_transport})"),
+        ("Kind", str(record.kind)),
+        (_("run.col.created"), str(record.created)),
         ("PID", str(record.pid) if record.pid else "—"),
+    ]
+    if record.pgid is not None:
+        items.append(("PGID", str(record.pgid)))
+    if record.deployment_id:
+        items.append(("Deployment", str(record.deployment_id)))
+    if record.build_id:
+        items.append(("Build", str(record.build_id)))
+    if record.destination:
+        items.append(("Destination", str(record.destination)))
+    if record.remote_run_dir:
+        items.append(("Remote Run Dir", str(record.remote_run_dir)))
+    items.extend([
         ("Directory", str(record.directory)),
         ("Command", " ".join(record.command)),
-    ):
-        output.echo(f"  {label:<12} {value}")
+    ])
+    for label, value in items:
+        output.echo(f"  {label:<16} {value}")
 
 
 _SINCE_RE = re.compile(r"^(\d+)\s*([smhd])$")
@@ -338,18 +394,23 @@ def run_logs(
             output.fail(_("run.bad_since", since=since))
             return
         cutoff = datetime.now().astimezone() - timedelta(seconds=seconds)
+    cfg = state.cfg()
     path = runs.log_path(record, stream)
-    if path is None:
+    content = ""
+    if path is not None and path.is_file():
+        try:
+            content = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            content = ""
+    elif record.target != "local":
+        content = runs.read_run_log(record, cfg, stream=stream, lines=max(lines, 200))
+    else:
         output.fail(_("run.no_log", stream=stream))
         return
 
     def matches(parsed: dict) -> bool:
         return _line_matches(parsed, component, errors, cutoff)
 
-    try:
-        content = path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        content = ""
     selected = [
         parsed
         for parsed in (parse_log_line(line) for line in content.splitlines())
@@ -379,24 +440,45 @@ def run_logs(
 
     if not follow:
         return
-    try:
-        with path.open("r", encoding="utf-8", errors="replace") as handle:
-            handle.seek(0, 2)
-            while True:
-                line = handle.readline()
-                if line:
+    if path is not None and path.is_file():
+        try:
+            with path.open("r", encoding="utf-8", errors="replace") as handle:
+                handle.seek(0, 2)
+                while True:
+                    line = handle.readline()
+                    if line:
+                        if matches(parse_log_line(line.rstrip("\n"))):
+                            output.echo(line.rstrip("\n"), markup=False)
+                    else:
+                        if runs.effective_status(record, cfg) in (
+                            runs.TERMINAL_OK,
+                            runs.TERMINAL_FAIL,
+                            runs.STOPPED,
+                        ):
+                            break
+                        time.sleep(0.5)
+        except KeyboardInterrupt:  # pragma: no cover
+            pass
+    elif record.target != "local" and record.target_transport == "ssh":
+        from ..core import targets as targets_core
+        import subprocess
+        t = targets_core.find_target(cfg, record.target)
+        if t and record.remote_run_dir:
+            ssh_prefix = targets_core.target_ssh_prefix(t)
+            log_file = f"{record.remote_run_dir.rstrip('/')}/{stream}.log"
+            cmd = ssh_prefix + [f"tail -n 0 -f '{log_file}' 2>/dev/null"]
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            try:
+                while True:
+                    line = proc.stdout.readline()
+                    if not line:
+                        break
                     if matches(parse_log_line(line.rstrip("\n"))):
                         output.echo(line.rstrip("\n"), markup=False)
-                else:
-                    if runs.effective_status(record) in (
-                        runs.TERMINAL_OK,
-                        runs.TERMINAL_FAIL,
-                        runs.STOPPED,
-                    ):
-                        break
-                    time.sleep(0.5)
-    except KeyboardInterrupt:  # pragma: no cover
-        pass
+            except KeyboardInterrupt:
+                pass
+            finally:
+                proc.terminate()
 
 
 @app.command("attach", help=_("run.attach_help"))
@@ -423,7 +505,7 @@ def run_attach(query: str = typer.Argument(..., help=_("run.arg.query"))) -> Non
                     output.echo(f"[{stream}] {line.rstrip()}", markup=False)
             if got_line:
                 continue
-            if runs.effective_status(record) in (
+            if runs.effective_status(record, state.cfg()) in (
                 runs.TERMINAL_OK,
                 runs.TERMINAL_FAIL,
                 runs.STOPPED,
@@ -442,8 +524,9 @@ def run_stop(
     query: str = typer.Argument(..., help=_("run.arg.query")),
     backend: Optional[str] = typer.Option(None, "--backend", help=_("run.flag.backend")),
 ) -> None:
+    cfg = state.cfg()
     record = _require_run(query, backend)
-    if runs.stop_run(record):
+    if runs.stop_run(record, config=cfg):
         output.echo(_("run.stopped", id=record.run_id))
         return
     output.fail(_("run.stop_failed", id=record.run_id))
@@ -458,7 +541,7 @@ def run_pause(
     if runs.pause_run(record):
         output.echo(_("run.paused", id=record.run_id))
         return
-    output.fail(_("run.not_running", id=record.run_id, status=runs.effective_status(record)))
+    output.fail(_("run.not_running", id=record.run_id, status=runs.effective_status(record, state.cfg())))
 
 
 @app.command("resume", help=_("run.resume_help"))
@@ -470,7 +553,7 @@ def run_resume(
     if runs.resume_run(record):
         output.echo(_("run.resumed", id=record.run_id))
         return
-    output.fail(_("run.not_paused", id=record.run_id, status=runs.effective_status(record)))
+    output.fail(_("run.not_paused", id=record.run_id, status=runs.effective_status(record, state.cfg())))
 
 
 @app.command("delete", help=_("run.delete_help"))
@@ -478,10 +561,11 @@ def run_delete(
     query: str = typer.Argument(..., help=_("run.arg.query")),
     force: bool = typer.Option(False, "--force", help=_("run.flag.force")),
 ) -> None:
+    cfg = state.cfg()
     record = _require_run(query)
-    if force and runs.effective_status(record) in (runs.RUNNING, runs.PAUSED):
-        runs.stop_run(record)
-        record = runs.load_run(state.cfg(), record.run_id) or record
+    if force and runs.effective_status(record, cfg) in (runs.RUNNING, runs.PAUSED):
+        runs.stop_run(record, config=cfg)
+        record = runs.load_run(cfg, record.run_id) or record
     if runs.delete_run(record):
         output.echo(_("run.deleted", id=record.run_id))
         return
@@ -493,20 +577,18 @@ def run_inspect(
     query: str = typer.Argument(..., help=_("run.arg.query")),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
+    cfg = state.cfg()
     record = _require_run(query)
-    files = []
-    if record.directory and record.directory.is_dir():
-        for item in sorted(record.directory.rglob("*")):
-            if item.is_file():
-                files.append(
-                    {"path": str(item.relative_to(record.directory)), "size": item.stat().st_size}
-                )
-    payload = {**record.to_dict(), "files": files}
+    files = runs.inspect_run_files(record, cfg)
+    payload = {**record.to_dict(cfg), "files": files}
     if output.wants_json(json_output):
         output.echo_json(payload)
         return
     output.echo(f"[bold]{record.name}[/bold] [dim]({record.run_id})[/dim]")
-    output.echo(f"  Directory: {record.directory}")
+    dir_label = "Remote Directory" if record.target != "local" and record.remote_run_dir else "Directory"
+    dir_val = record.remote_run_dir if record.target != "local" and record.remote_run_dir else str(record.directory)
+    output.echo(f"  {dir_label}: {dir_val}")
+    output.echo(f"  Target:    {record.target} ({record.target_transport})")
     output.echo(f"  Status:    {payload['status']}")
     if not files:
         output.echo(f"  [dim]{_('run.no_files')}[/dim]")

@@ -15,8 +15,10 @@ from __future__ import annotations
 import datetime as _dt
 import os
 import re
+import shlex
 import shutil
 import signal
+import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -25,6 +27,7 @@ from typing import Any
 import yaml
 
 from ..core.config import Config
+from . import targets as targets_core
 
 TERMINAL_OK = "succeeded"
 TERMINAL_FAIL = "failed"
@@ -48,9 +51,18 @@ class RunRecord:
     stopped: bool = False
     extra: dict[str, Any] = field(default_factory=dict)
     directory: Path | None = None
+    target: str = "local"
+    target_transport: str = "local"
+    pgid: int | None = None
+    destination: str | None = None
+    deployment_id: str | None = None
+    build_id: str | None = None
+    git_revision: str | None = None
+    project: str | None = None
+    remote_run_dir: str | None = None
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
+    def to_dict(self, config: Config | None = None) -> dict[str, Any]:
+        data = {
             "id": self.run_id,
             "name": self.name,
             "backend": self.backend,
@@ -62,8 +74,26 @@ class RunRecord:
             "paused": self.paused,
             "stopped": self.stopped,
             "directory": str(self.directory) if self.directory else None,
-            "status": effective_status(self),
+            "status": effective_status(self, config),
+            "target": self.target,
         }
+        if self.pgid is not None:
+            data["pgid"] = self.pgid
+        if self.target_transport != "local":
+            data["target_transport"] = self.target_transport
+        if self.destination:
+            data["destination"] = self.destination
+        if self.deployment_id:
+            data["deployment_id"] = self.deployment_id
+        if self.build_id:
+            data["build_id"] = self.build_id
+        if self.git_revision:
+            data["git_revision"] = self.git_revision
+        if self.project:
+            data["project"] = self.project
+        if self.remote_run_dir:
+            data["remote_run_dir"] = self.remote_run_dir
+        return data
 
 
 def runs_dir(config: Config) -> Path:
@@ -157,10 +187,100 @@ def _reap(pid: int | None) -> None:
             return
 
 
-def effective_status(record: RunRecord) -> str:
+def remote_effective_status(record: RunRecord, config: Config | None = None) -> str:
+    """Check the live or terminal status of a run on a remote SSH target."""
+    if not record.destination or not record.remote_run_dir:
+        return LOST
+
+    cfg = config or Config({}, [])
+    target = targets_core.find_target(cfg, record.target)
+    if not target:
+        return LOST
+
+    ssh_prefix = targets_core.target_ssh_prefix(target)
+    run_dir = record.remote_run_dir.rstrip("/")
+    pid = record.pid
+
+    check_cmd = (
+        f"if [ -f '{run_dir}/exit_code' ]; then "
+        f"  echo 'EXIT:'$(cat '{run_dir}/exit_code'); "
+        f"elif [ -n '{pid}' ] && kill -0 '{pid}' 2>/dev/null; then "
+        f"  echo 'RUNNING'; "
+        f"else "
+        f"  echo 'DEAD'; "
+        f"fi"
+    )
+    try:
+        res = subprocess.run(
+            ssh_prefix + [check_cmd],
+            capture_output=True,
+            text=True,
+            timeout=5.0,
+        )
+    except Exception:
+        return "unreachable"
+
+    if res.returncode != 0:
+        return "unreachable"
+
+    out = res.stdout.strip()
+    if out.startswith("EXIT:"):
+        code_str = out.split(":", 1)[1].strip()
+        try:
+            code = int(code_str)
+            if record.directory:
+                try:
+                    (record.directory / "exit_code").write_text(str(code), encoding="utf-8")
+                except OSError:
+                    pass
+            return TERMINAL_OK if code == 0 else TERMINAL_FAIL
+        except ValueError:
+            return TERMINAL_FAIL
+    elif out == "RUNNING":
+        return RUNNING
+    elif out == "DEAD":
+        if record.stopped:
+            return STOPPED
+        return LOST
+
+    return LOST
+
+
+def sandbox_effective_status(record: RunRecord) -> str:
+    """Check status of a run in a local deployed sandbox."""
+    if not record.remote_run_dir:
+        return LOST
+    remote_path = Path(record.remote_run_dir)
+    exit_file = remote_path / "exit_code"
+    if exit_file.is_file():
+        try:
+            code = int(exit_file.read_text(encoding="utf-8").strip())
+            if record.directory and not (record.directory / "exit_code").is_file():
+                try:
+                    (record.directory / "exit_code").write_text(str(code), encoding="utf-8")
+                except OSError:
+                    pass
+            return TERMINAL_OK if code == 0 else TERMINAL_FAIL
+        except ValueError:
+            return TERMINAL_FAIL
+    _reap(record.pid)
+    if pid_alive(record.pid):
+        return RUNNING
+    if record.stopped:
+        return STOPPED
+    return LOST
+
+
+def effective_status(record: RunRecord, config: Config | None = None) -> str:
     exit_code = _exit_code_of(record.directory) if record.directory else None
     if exit_code is not None:
         return TERMINAL_OK if exit_code == 0 else TERMINAL_FAIL
+
+    if record.target != "local" and record.target_transport == "ssh":
+        return remote_effective_status(record, config)
+    elif record.target != "local" and record.target_transport == "local" and record.remote_run_dir:
+        return sandbox_effective_status(record)
+
     if pid_alive(record.pid):
         return PAUSED if record.paused else RUNNING
     if record.stopped:
@@ -264,6 +384,15 @@ def load_run(config: Config, run_id: str) -> RunRecord | None:
         stopped=bool(data.get("stopped", False)),
         extra=dict(data.get("extra") or {}),
         directory=run_dir,
+        target=str(data.get("target", "local")),
+        target_transport=str(data.get("target_transport", "local")),
+        pgid=data.get("pgid"),
+        destination=data.get("destination"),
+        deployment_id=data.get("deployment_id"),
+        build_id=data.get("build_id"),
+        git_revision=data.get("git_revision"),
+        project=data.get("project"),
+        remote_run_dir=data.get("remote_run_dir"),
     )
 
 
@@ -331,11 +460,145 @@ def _wait_gone(record: RunRecord, timeout: float) -> bool:
     return not pid_alive(record.pid)
 
 
-def stop_run(record: RunRecord, timeout: float = 5.0) -> bool:
-    """Terminate the run's process group. Returns True if it stopped."""
-    status = effective_status(record)
-    if status in (TERMINAL_OK, TERMINAL_FAIL, STOPPED, LOST):
+def remote_stop_run(record: RunRecord, config: Config, timeout: float = 5.0) -> bool:
+    """Terminate a remote process group over SSH."""
+    target = targets_core.find_target(config, record.target)
+    if not target:
+        return False
+
+    ssh_prefix = targets_core.target_ssh_prefix(target)
+    pgid = record.pgid or record.pid
+    pid = record.pid
+    if not pid:
         return True
+
+    # Check if already dead
+    check_alive = f"kill -0 {pid} 2>/dev/null && echo 'ALIVE' || echo 'DEAD'"
+    res = subprocess.run(ssh_prefix + [check_alive], capture_output=True, text=True, timeout=5.0)
+    if res.returncode == 0 and res.stdout.strip() == "DEAD":
+        _update_manifest(record, stopped=True, paused=False)
+        record.stopped = True
+        record.paused = False
+        return True
+
+    # 1. Send SIGTERM to remote process group
+    kill_term = f"kill -TERM -{pgid} 2>/dev/null || kill -TERM {pid} 2>/dev/null"
+    subprocess.run(ssh_prefix + [kill_term], capture_output=True, timeout=5.0)
+
+    # 2. Wait up to timeout for process to terminate
+    deadline = time.monotonic() + timeout
+    stopped = False
+    while time.monotonic() < deadline:
+        res = subprocess.run(
+            ssh_prefix + [check_alive],
+            capture_output=True,
+            text=True,
+            timeout=5.0,
+        )
+        if res.returncode == 0 and res.stdout.strip() == "DEAD":
+            stopped = True
+            break
+        time.sleep(0.2)
+
+    # 3. If still alive after timeout, send SIGKILL to process group
+    if not stopped:
+        kill_kill = f"kill -KILL -{pgid} 2>/dev/null || kill -KILL {pid} 2>/dev/null"
+        subprocess.run(ssh_prefix + [kill_kill], capture_output=True, timeout=5.0)
+        time.sleep(0.2)
+        res = subprocess.run(
+            ssh_prefix + [check_alive],
+            capture_output=True,
+            text=True,
+            timeout=5.0,
+        )
+        stopped = (res.stdout.strip() == "DEAD")
+
+    # 4. Update manifest on target and host
+    if record.remote_run_dir:
+        dest_manifest = f"{record.remote_run_dir}/manifest.yaml"
+        update_remote = (
+            f"python3 -c 'import yaml; "
+            f"p=\"{dest_manifest}\"; "
+            f"d=yaml.safe_load(open(p)); d[\"stopped\"]=True; yaml.safe_dump(d, open(p,\"w\"))' 2>/dev/null || true"
+        )
+        subprocess.run(ssh_prefix + [update_remote], capture_output=True, timeout=5.0)
+
+    _update_manifest(record, stopped=True, paused=False)
+    record.stopped = True
+    record.paused = False
+    return stopped
+
+
+def sandbox_stop_run(record: RunRecord, timeout: float = 5.0) -> bool:
+    """Terminate a process group in a local sandbox."""
+    pgid = record.pgid or record.pid
+    pid = record.pid
+    if not pid:
+        return True
+
+    _reap(pid)
+    if not pid_alive(pid):
+        _update_manifest(record, stopped=True, paused=False)
+        record.stopped = True
+        record.paused = False
+        return True
+
+    try:
+        if pgid:
+            os.killpg(pgid, signal.SIGTERM)
+        else:
+            os.kill(pid, signal.SIGTERM)
+    except OSError:
+        pass
+
+    deadline = time.monotonic() + timeout
+    stopped = False
+    while time.monotonic() < deadline:
+        _reap(pid)
+        if not pid_alive(pid):
+            stopped = True
+            break
+        time.sleep(0.1)
+
+    if not stopped:
+        try:
+            if pgid:
+                os.killpg(pgid, signal.SIGKILL)
+            else:
+                os.kill(pid, signal.SIGKILL)
+        except OSError:
+            pass
+        _reap(pid)
+        stopped = not pid_alive(pid)
+
+    _update_manifest(record, stopped=True, paused=False)
+    if record.remote_run_dir:
+        target_man = Path(record.remote_run_dir) / "manifest.yaml"
+        if target_man.is_file():
+            try:
+                data = yaml.safe_load(target_man.read_text(encoding="utf-8"))
+                data["stopped"] = True
+                target_man.write_text(yaml.safe_dump(data), encoding="utf-8")
+            except Exception:
+                pass
+
+    record.stopped = True
+    record.paused = False
+    return stopped
+
+
+def stop_run(record: RunRecord, timeout: float = 5.0, config: Config | None = None) -> bool:
+    """Terminate the run's process group. Returns True if it stopped."""
+    status = effective_status(record, config)
+    if status in (TERMINAL_OK, TERMINAL_FAIL, STOPPED):
+        return True
+
+    cfg = config or Config({}, [])
+    if record.target != "local" and record.target_transport == "ssh":
+        return remote_stop_run(record, cfg, timeout=timeout)
+    elif record.target != "local" and record.target_transport == "local" and record.remote_run_dir:
+        return sandbox_stop_run(record, timeout=timeout)
+
     if record.paused:
         _signal_group(record, signal.SIGCONT)
         time.sleep(0.1)
@@ -379,7 +642,360 @@ def delete_run(record: RunRecord) -> bool:
 
 
 def log_path(record: RunRecord, stream: str = "stdout") -> Path | None:
-    if not record.directory:
-        return None
-    path = record.directory / f"{stream}.log"
-    return path if path.is_file() else None
+    if record.directory:
+        path = record.directory / f"{stream}.log"
+        if path.is_file():
+            return path
+    if record.remote_run_dir and record.target_transport == "local":
+        path = Path(record.remote_run_dir) / f"{stream}.log"
+        if path.is_file():
+            return path
+    return None
+
+
+def read_run_log(
+    record: RunRecord,
+    config: Config | None = None,
+    stream: str = "stdout",
+    lines: int = 50,
+) -> str:
+    """Read trailing log lines from local or remote run."""
+    cfg = config or Config({}, [])
+    if record.target != "local" and record.target_transport == "ssh":
+        target = targets_core.find_target(cfg, record.target)
+        if not target or not record.remote_run_dir:
+            return ""
+        ssh_prefix = targets_core.target_ssh_prefix(target)
+        log_file = f"{record.remote_run_dir.rstrip('/')}/{stream}.log"
+        cmd = ssh_prefix + [f"tail -n {max(lines, 1)} '{log_file}' 2>/dev/null"]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10.0)
+        return res.stdout if res.returncode == 0 else ""
+    elif record.target != "local" and record.target_transport == "local" and record.remote_run_dir:
+        log_file = Path(record.remote_run_dir) / f"{stream}.log"
+        if not log_file.is_file():
+            return ""
+        try:
+            content = log_file.read_text(encoding="utf-8", errors="replace")
+            all_lines = content.splitlines()
+            return "\n".join(all_lines[-max(lines, 1):])
+        except OSError:
+            return ""
+
+    path = log_path(record, stream)
+    if not path or not path.is_file():
+        return ""
+    try:
+        content = path.read_text(encoding="utf-8", errors="replace")
+        all_lines = content.splitlines()
+        return "\n".join(all_lines[-max(lines, 1):])
+    except OSError:
+        return ""
+
+
+def inspect_run_files(record: RunRecord, config: Config | None = None) -> list[dict[str, Any]]:
+    """List run files and byte sizes across local or remote target."""
+    cfg = config or Config({}, [])
+    if record.target != "local" and record.target_transport == "ssh":
+        target = targets_core.find_target(cfg, record.target)
+        if not target or not record.remote_run_dir:
+            return []
+        ssh_prefix = targets_core.target_ssh_prefix(target)
+        run_dir = record.remote_run_dir.rstrip("/")
+        cmd = ssh_prefix + [
+            f"find '{run_dir}' -maxdepth 2 -type f -exec stat -c '%n %s' {{}} + 2>/dev/null"
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10.0)
+        files = []
+        if res.returncode == 0:
+            for line in res.stdout.strip().splitlines():
+                parts = line.rsplit(" ", 1)
+                if len(parts) == 2:
+                    p, s = parts[0], parts[1]
+                    rel = p.replace(run_dir + "/", "")
+                    files.append({"path": rel, "size": int(s) if s.isdigit() else 0})
+        return sorted(files, key=lambda x: x["path"])
+    elif record.target != "local" and record.target_transport == "local" and record.remote_run_dir:
+        target_dir = Path(record.remote_run_dir)
+        files = []
+        if target_dir.is_dir():
+            for item in sorted(target_dir.rglob("*")):
+                if item.is_file():
+                    files.append({
+                        "path": str(item.relative_to(target_dir)),
+                        "size": item.stat().st_size,
+                    })
+        return files
+
+    files = []
+    if record.directory and record.directory.is_dir():
+        for item in sorted(record.directory.rglob("*")):
+            if item.is_file():
+                files.append(
+                    {"path": str(item.relative_to(record.directory)), "size": item.stat().st_size}
+                )
+    return files
+
+
+def start_target_run(
+    target: targets_core.Target,
+    config: Config,
+    config_path: Path,
+    name: str | None = None,
+    backend: str | None = None,
+    kind: str = "experiment",
+    extra_args: list[str] | None = None,
+    extra: dict[str, Any] | None = None,
+    force_headless: bool = False,
+) -> RunRecord:
+    """Launch an experiment as a tracked detached run on a target."""
+    from . import (
+        build as build_core,
+        deploy as deploy_core,
+        experiment,
+        manifest as manifests,
+        project as projects,
+        provenance,
+    )
+
+    # 1. Reachability preflight
+    inspection = targets_core.discover_target(target, config=config)
+    if not inspection.reachable:
+        raise RuntimeError(
+            f"Target '{target.name}' is unreachable: {inspection.error or 'connection failed'}"
+        )
+
+    # 2. Project resolution
+    proj_root = projects.find_project_root(config_path.parent) or projects.find_project_root()
+    if not proj_root:
+        raise RuntimeError("Not inside a Caasi project (no caasi.yaml found).")
+    proj_manifest = manifests.read(proj_root)
+    proj_name = proj_manifest.name or proj_root.name
+
+    # 3. Deployment verification
+    dest = deploy_core.resolve_deployment_destination(target, proj_name)
+    deployment = deploy_core.get_deployment_status(target, dest, config)
+    if not deployment:
+        raise RuntimeError(
+            f"No active deployment found on target '{target.name}' at '{dest}'. "
+            f"Run 'caasi deploy {target.name}' first."
+        )
+
+    # 4. Build verification (if workspace contains ROS packages)
+    has_ros = bool(proj_manifest.components.get("ros2") or (proj_root / "src").is_dir())
+    last_build = build_core.get_last_build_status(target, dest, config)
+    if has_ros:
+        if not last_build:
+            raise RuntimeError(
+                f"No completed build found on target '{target.name}' at '{dest}'. "
+                f"Run 'caasi build --target {target.name}' first."
+            )
+        if last_build.status != "success":
+            raise RuntimeError(
+                f"Last build on target '{target.name}' failed with exit code {last_build.returncode}. "
+                f"Run 'caasi build --target {target.name}' first."
+            )
+
+    # 5. Load and validate experiment manifest
+    exp = experiment.load_experiment(config_path)
+    run_backend = backend or exp.backend
+    run_name = name or exp.name
+
+    # 6. Target relative path resolution
+    config_abs = config_path.resolve()
+    rel_cfg = (
+        config_abs.relative_to(proj_root)
+        if config_abs.is_relative_to(proj_root)
+        else config_path.name
+    )
+    target_config_path = f"{dest.rstrip('/')}/{rel_cfg}"
+
+    if exp.work_dir.is_relative_to(proj_root):
+        rel_work = exp.work_dir.relative_to(proj_root)
+        target_work_dir = f"{dest.rstrip('/')}/{rel_work}".rstrip("/.")
+    else:
+        target_work_dir = dest.rstrip("/")
+
+    if exp.script_path.is_relative_to(proj_root):
+        rel_script = exp.script_path.relative_to(proj_root)
+        target_script = f"{dest.rstrip('/')}/{rel_script}"
+    else:
+        target_script = str(exp.script_path)
+
+    args = list(exp.args) + list(extra_args or [])
+    if force_headless and "--headless" not in args:
+        args = ["--headless", "--no-window", *args]
+
+    # Command on target
+    target_cmd = ["python3", target_script, *args]
+
+    # Sourcing statements
+    ros_distro = inspection.environment.ros_distro if inspection.environment else "jazzy"
+    ros_setup = f"/opt/ros/{ros_distro}/setup.bash"
+    overlay_setup = f"{dest.rstrip('/')}/install/setup.bash"
+
+    # Assemble run IDs and paths
+    run_id = new_run_id(run_name)
+    target_run_dir = f"{dest.rstrip('/')}/.caasi/runs/{run_id}"
+    host_run_dir = runs_dir(config) / run_id
+    host_run_dir.mkdir(parents=True, exist_ok=True)
+
+    # 7. Generate target run.sh script
+    env_exports = []
+    for k, v in exp.env.items():
+        env_exports.append(f"export {k}={shlex.quote(str(v))}")
+    env_exports_str = "\n".join(env_exports)
+
+    wrapper_content = f"""#!/usr/bin/env bash
+RUN_DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
+cd "{target_work_dir}" || exit 1
+[ -f "{ros_setup}" ] && . "{ros_setup}"
+[ -f "{overlay_setup}" ] && . "{overlay_setup}"
+export CAASI_PROJECT_ROOT="{dest}"
+export CAASI_EXPERIMENT="{target_config_path}"
+{env_exports_str}
+"$@"
+ec=$?
+echo "$ec" > "$RUN_DIR/exit_code"
+exit "$ec"
+"""
+
+    # 8. Launch on target
+    if target.transport == "ssh":
+        ssh_prefix = targets_core.target_ssh_prefix(target)
+        upload_cmd = (
+            f"mkdir -p '{target_run_dir}' && "
+            f"cat > '{target_run_dir}/run.sh' && "
+            f"chmod 755 '{target_run_dir}/run.sh'"
+        )
+        res = subprocess.run(
+            ssh_prefix + [upload_cmd],
+            input=wrapper_content,
+            text=True,
+            capture_output=True,
+            timeout=10.0,
+        )
+        if res.returncode != 0:
+            raise RuntimeError(f"Failed to prepare run wrapper on target: {res.stderr.strip()}")
+
+        quoted_cmd = shlex.join(target_cmd)
+        launch_script = (
+            f"nohup setsid '{target_run_dir}/run.sh' {quoted_cmd} "
+            f"> '{target_run_dir}/stdout.log' 2> '{target_run_dir}/stderr.log' </dev/null &\n"
+            f"PID=$!\n"
+            f"echo $PID > '{target_run_dir}/pid'\n"
+            f"ps -o pgid= -p $PID 2>/dev/null | tr -d ' ' > '{target_run_dir}/pgid'\n"
+            f"echo \"PID:$PID:$(cat '{target_run_dir}/pgid')\"\n"
+        )
+        res = subprocess.run(
+            ssh_prefix + [launch_script],
+            capture_output=True,
+            text=True,
+            timeout=10.0,
+        )
+        if res.returncode != 0 or "PID:" not in res.stdout:
+            raise RuntimeError(
+                f"Failed to launch remote process on target: {res.stderr.strip() or res.stdout.strip()}"
+            )
+
+        pid_line = [l for l in res.stdout.splitlines() if l.startswith("PID:")][0]
+        parts = pid_line.split(":")
+        pid = int(parts[1])
+        pgid = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else pid
+
+    else:
+        # Local sandbox target
+        sandbox_run_dir = Path(target_run_dir).expanduser().resolve()
+        sandbox_run_dir.mkdir(parents=True, exist_ok=True)
+        wrapper_path = sandbox_run_dir / "run.sh"
+        wrapper_path.write_text(wrapper_content, encoding="utf-8")
+        wrapper_path.chmod(0o755)
+
+        stdout_file = open(sandbox_run_dir / "stdout.log", "w", encoding="utf-8")
+        stderr_file = open(sandbox_run_dir / "stderr.log", "w", encoding="utf-8")
+        proc = subprocess.Popen(
+            [str(wrapper_path), *target_cmd],
+            cwd=target_work_dir,
+            stdout=stdout_file,
+            stderr=stderr_file,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        stdout_file.close()
+        stderr_file.close()
+        pid = proc.pid
+        pgid = os.getpgid(pid) if hasattr(os, "getpgid") else pid
+        (sandbox_run_dir / "pid").write_text(str(pid), encoding="utf-8")
+        (sandbox_run_dir / "pgid").write_text(str(pgid), encoding="utf-8")
+
+    # 9. Record provenance on both sides
+    git_stat = provenance.git_info(proj_root)
+    git_rev = git_stat.get("head") or "unversioned"
+    if git_stat.get("dirty"):
+        git_rev = f"{git_rev}-dirty"
+
+    manifest_data = {
+        "id": run_id,
+        "name": run_name,
+        "backend": run_backend,
+        "kind": kind,
+        "command": target_cmd,
+        "cwd": target_work_dir,
+        "created": _now(),
+        "pid": pid,
+        "pgid": pgid,
+        "target": target.name,
+        "target_transport": target.transport,
+        "destination": dest,
+        "deployment_id": deployment.deployment_id,
+        "build_id": last_build.build_id if last_build else None,
+        "git_revision": git_rev,
+        "project": proj_name,
+        "remote_run_dir": target_run_dir,
+        "paused": False,
+        "stopped": False,
+        "extra": {
+            "experiment": str(rel_cfg),
+            "headless": exp.headless or force_headless,
+            **(extra or {}),
+        },
+    }
+
+    target_manifest_yaml = yaml.safe_dump(manifest_data, sort_keys=False)
+    if target.transport == "ssh":
+        write_target_man = f"cat > '{target_run_dir}/manifest.yaml'"
+        subprocess.run(
+            ssh_prefix + [write_target_man],
+            input=target_manifest_yaml,
+            text=True,
+            timeout=10.0,
+        )
+    else:
+        (Path(target_run_dir) / "manifest.yaml").write_text(target_manifest_yaml, encoding="utf-8")
+
+    _write_manifest(host_run_dir, manifest_data)
+    record = load_run(config, run_id)
+    if record:
+        provenance.write_bundle(config, record)
+        return record
+
+    return RunRecord(
+        run_id=run_id,
+        name=run_name,
+        backend=run_backend,
+        kind=kind,
+        command=target_cmd,
+        cwd=target_work_dir,
+        created=_now(),
+        pid=pid,
+        pgid=pgid,
+        target=target.name,
+        target_transport=target.transport,
+        destination=dest,
+        deployment_id=deployment.deployment_id,
+        build_id=last_build.build_id if last_build else None,
+        git_revision=git_rev,
+        project=proj_name,
+        remote_run_dir=target_run_dir,
+        directory=host_run_dir,
+    )
+

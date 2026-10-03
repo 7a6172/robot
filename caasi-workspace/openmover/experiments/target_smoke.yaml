@@ -1,0 +1,5 @@
+name: target-smoke
+backend: python
+script: ./target_smoke_test.py
+cwd: .
+description: Safe target smoke test verifying ROS2 imports, detached PGID, and child process lifecycle

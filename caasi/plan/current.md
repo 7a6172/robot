@@ -118,5 +118,15 @@
       * Two-sided build provenance recorded in `<dest>/.caasi-build.json` and host `.caasi/builds/<target>/<build_id>.json`.
       * Added 10 dedicated unit tests in `caasi/tests/test_target_build.py` (total 912 tests passing across suite).
       * Empirically validated on canonical OpenMover: verified local build, nonexistent target rejection, undeployed target rejection, prerequisite build failure capture, and complete 6-package native build on target sandbox in 61.4s.
-    - **Next Step**: Phase 7 Stage C2 (Target-Native Remote Run Execution & Process Lifecycle Management).
+    - **Stage C2 completed & verified (Target-Native Remote Run Execution & Lifecycle Management)**:
+      * [Phase 7 Stage C2 Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/phase-07-report.md#stage-c2-report-target-native-remote-run-execution--lifecycle-management)
+      * Implemented target-aware run lifecycle in `caasi.core.runs` and `caasi.cli.run_cmd`: `caasi run start --target <name>`, `status`, `logs`, `inspect`, `stop`, `list`.
+      * Strict preflight verification: target reachability, deployment verification, target-native build verification.
+      * Detached process supervision via `nohup setsid` ensuring runs survive workstation SSH disconnections; tracks PID and PGID.
+      * Process-group signaling (`kill -TERM -<pgid>`, fallback `kill -KILL -<pgid>`), verified zero orphaned processes across multi-node trees.
+      * Remote log streaming (`caasi run logs -f`) and remote run inventory auditing (`caasi run inspect`).
+      * Two-sided run provenance recorded on host (`~/.caasi/runs/<run_id>/manifest.yaml` + Level 6 bundle) and target (`<remote_run_dir>/manifest.yaml`).
+      * Added 8 dedicated unit tests in `caasi/tests/test_target_run.py` (total 50 target tests passing across target suite).
+      * Empirically validated on canonical OpenMover: verified undeployed target rejection, unbuilt target rejection, successful detached execution, live ROS 2 and package imports, remote log streaming, run file inspection, and complete process group termination with zero orphans.
+    - **Current State**: Phase 7 Stage C2 completed and verified. Ready for user review before proceeding.
 
