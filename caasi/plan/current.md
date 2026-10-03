@@ -3,7 +3,7 @@
 ## Repository Baseline
 - **Root Repository Location**: `/home/zar/Documents/phd/robot/`
 - **Baseline Commit**: `79dc52f80f156b36c1383a5cb19315dc87eb858e`
-- **Latest Checkpoint**: `a7c9c61` (Phase 3 completion)
+- **Latest Checkpoint**: `91415c1` (Phase 3 completion)
 - **Branch**: `master`
 - **Scope Tracked**:
   - `caasi/`: Caasi package, CLI tools, documentation, tests, and persistent `/plan`
@@ -48,5 +48,12 @@
     - Verified Nav2 closed-loop navigation against live simulation: `laserscan_multi_merger` (360° scan on `/scan`), `slam_toolbox` mapping, Nav2 costmap generation, and path execution driving robot to goal `pos=(+0.89, -0.01)`.
     - Executed simultaneous decoupled runs under `caasi run list` (`backend: sim` and `backend: ros`).
     - Verified Isaac Lab evaluation campaign scheduler (`33_run_campaign.py --dry_run`, 56 maps, 4.38h budget) and Gym RL environment (`21_run_openmover_nav.py`, `backend: lab`, 20 steps @ 35 env-steps/s on CUDA:0).
-- **Current State**: Phase 3 multi-subsystem integration fully verified across Isaac Sim, ROS 2, Nav2, and Isaac Lab. Zero modifications to `caasi` core and zero modifications to read-only trees (`openmover_robot`, `openmover_ws`).
-- **Next Concrete Step**: Review Phase 3 results with user and determine Phase 4 goals (full campaign sweeps, multi-seed benchmarks, metric aggregation, and artifact exports).
+  - **Phase 4: Meaningful Campaign Execution, Result Inspection, and Recovery completed**:
+    - [Phase 4 Summary Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-04/phase-04-report.md)
+    - [Phase 4 Case Study Evidence](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-04/case_studies.md)
+    - Managed multi-arm procedural campaign run (`astar_dwa` vs `astar_dwa_shield`) via `caasi run start` (Run ID: `20261003-190446-isaac-lab-campaign-bounded`, PID 263110, 53 env-steps/s, 762 steps/run, exit code 0).
+    - Verified complete process group termination via `caasi run stop` mid-campaign without orphaned Kit simulator processes; status captured as `stopped`.
+    - Verified deterministic resumption via `caasi run restart` (Run ID: `20261003-190733-isaac-lab-campaign-interrupted`, PID 265486), confirming domain runner skipped completed maps and recorded lineage `restarted_from`.
+    - Verified domain aggregation (`34_aggregate_campaign.py`) and artifact inspection (`caasi run inspect`).
+    - Confirmed zero Category D gaps: existing `caasi` capabilities fully manage robotics campaign workflows.
+- **Current State**: Phase 4 successfully closed. Read-only trees preserved untouched; working tree clean.

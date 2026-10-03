@@ -23,7 +23,8 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-LAB = Path(__file__).resolve().parent
+TASKS_DIR = Path(__file__).resolve().parent
+LAB = TASKS_DIR.parent
 ARMS = ("shield", "astar_dwa", "astar_dwa_shield")
 ARM_LABEL = {
     "shield": "trained+shield",

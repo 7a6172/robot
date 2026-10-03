@@ -1,0 +1,15 @@
+{
+ "astar_dwa": {
+  "n_maps": 2,
+  "success_mean_of_means": 1.0,
+  "collision_mean_of_means": 0.0,
+  "ttg_mean": 26.325000762939453,
+  "per_family": {
+   "competition": {
+    "n": 2,
+    "success": 1.0,
+    "collision": 0.0
+   }
+  }
+ }
+}

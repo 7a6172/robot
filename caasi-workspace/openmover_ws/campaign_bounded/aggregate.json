@@ -1,0 +1,127 @@
+{
+ "campaign_dir": "/home/zar/Documents/phd/robot/caasi-workspace/openmover_ws/campaign_bounded",
+ "arms": {
+  "shield": {
+   "overall": null,
+   "per_bin": {},
+   "per_family": {},
+   "presentation": {},
+   "shield_totals": {},
+   "baseline_totals": {},
+   "maps_done": []
+  },
+  "astar_dwa": {
+   "overall": {
+    "n_maps": 1,
+    "episodes": 2,
+    "success": 1.0,
+    "collision": 0.0,
+    "reached": 2,
+    "penalized": 0,
+    "ttg_success_mean": 27.575000762939453,
+    "ttg_success_n": 2
+   },
+   "per_bin": {
+    "0": {
+     "n_maps": 1,
+     "episodes": 2,
+     "success": 1.0,
+     "collision": 0.0,
+     "reached": 2,
+     "penalized": 0,
+     "ttg_success_mean": 27.575000762939453,
+     "ttg_success_n": 2
+    }
+   },
+   "per_family": {
+    "competition": {
+     "n_maps": 1,
+     "episodes": 2,
+     "success": 1.0,
+     "collision": 0.0,
+     "reached": 2,
+     "penalized": 0,
+     "ttg_success_mean": 27.575000762939453,
+     "ttg_success_n": 2
+    }
+   },
+   "presentation": {},
+   "shield_totals": {
+    "shield": 0,
+    "hyst": 0,
+    "escape": 0,
+    "retreat": 0,
+    "pin": 0,
+    "oob": 0,
+    "steps": 0
+   },
+   "baseline_totals": {
+    "plan": 80,
+    "replan": 78,
+    "dwa_reject": 0,
+    "stuck": 0,
+    "steps": 1524
+   },
+   "maps_done": [
+    "f5_b0_m00"
+   ]
+  },
+  "astar_dwa_shield": {
+   "overall": {
+    "n_maps": 1,
+    "episodes": 2,
+    "success": 1.0,
+    "collision": 0.0,
+    "reached": 2,
+    "penalized": 0,
+    "ttg_success_mean": 27.850000381469727,
+    "ttg_success_n": 2
+   },
+   "per_bin": {
+    "0": {
+     "n_maps": 1,
+     "episodes": 2,
+     "success": 1.0,
+     "collision": 0.0,
+     "reached": 2,
+     "penalized": 0,
+     "ttg_success_mean": 27.850000381469727,
+     "ttg_success_n": 2
+    }
+   },
+   "per_family": {
+    "competition": {
+     "n_maps": 1,
+     "episodes": 2,
+     "success": 1.0,
+     "collision": 0.0,
+     "reached": 2,
+     "penalized": 0,
+     "ttg_success_mean": 27.850000381469727,
+     "ttg_success_n": 2
+    }
+   },
+   "presentation": {},
+   "shield_totals": {
+    "shield": 81,
+    "hyst": 74,
+    "escape": 0,
+    "retreat": 0,
+    "pin": 0,
+    "oob": 0,
+    "steps": 1524
+   },
+   "baseline_totals": {
+    "plan": 80,
+    "replan": 78,
+    "dwa_reject": 0,
+    "stuck": 0,
+    "steps": 1524
+   },
+   "maps_done": [
+    "f5_b0_m00"
+   ]
+  }
+ },
+ "incomplete": []
+}

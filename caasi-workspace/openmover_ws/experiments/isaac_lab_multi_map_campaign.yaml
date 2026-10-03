@@ -1,0 +1,14 @@
+name: isaac-lab-campaign-interrupted
+backend: python
+script: ../isaac/lab/tasks/33_run_campaign.py
+description: Multi-map campaign to test caasi run stop and resumption
+cwd: .
+args:
+  - --maps
+  - f5_b0_m00,f5_b0_m01
+  - --arms
+  - astar_dwa
+  - --seeds
+  - "2"
+  - --out
+  - campaign_interrupt_test

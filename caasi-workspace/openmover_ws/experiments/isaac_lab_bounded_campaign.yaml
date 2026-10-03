@@ -1,0 +1,14 @@
+name: isaac-lab-campaign-bounded
+backend: python
+script: ../isaac/lab/tasks/33_run_campaign.py
+description: Bounded Isaac Lab evaluation campaign (astar_dwa and astar_dwa_shield on f5_b0_m00)
+cwd: .
+args:
+  - --maps
+  - f5_b0_m00
+  - --arms
+  - astar_dwa,astar_dwa_shield
+  - --seeds
+  - "2"
+  - --out
+  - campaign_bounded
