@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import platform
+import re
 import socket
 import subprocess
 import time
@@ -18,6 +19,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from ..utils import shell
 from . import environment
 from .config import Config
 from .remotes import list_remotes
@@ -54,7 +56,8 @@ def get_cpu():
 
 def get_gpu():
     gpus = []
-    cuda = None
+    cuda_driver_max = None
+    cuda_toolkit = None
     driver = None
     if shutil.which('nvidia-smi'):
         try:
@@ -71,14 +74,23 @@ def get_gpu():
         except Exception:
             pass
         try:
+            res = subprocess.run(['nvidia-smi'], capture_output=True, text=True, timeout=5)
+            if res.returncode == 0:
+                for line in res.stdout.splitlines():
+                    if 'CUDA Version:' in line:
+                        cuda_driver_max = line.split('CUDA Version:')[-1].strip().split()[0]
+        except Exception:
+            pass
+    if shutil.which('nvcc'):
+        try:
             res = subprocess.run(['nvcc', '--version'], capture_output=True, text=True, timeout=3)
             if res.returncode == 0:
                 for line in res.stdout.splitlines():
                     if 'release' in line:
-                        cuda = line.split('release')[-1].split(',')[0].strip()
+                        cuda_toolkit = line.split('release')[-1].split(',')[0].strip()
         except Exception:
             pass
-    return gpus, driver, cuda
+    return gpus, driver, cuda_driver_max, cuda_toolkit
 
 def get_ros():
     distro = os.environ.get('ROS_DISTRO')
@@ -93,7 +105,7 @@ def get_ros():
     return distro, root
 
 mem = get_mem()
-gpus, driver, cuda = get_gpu()
+gpus, driver, cuda_driver_max, cuda_toolkit = get_gpu()
 ros_distro, ros_root = get_ros()
 
 out = {
@@ -110,13 +122,29 @@ out = {
         'memory_available_kib': mem.get('MemAvailable'),
     },
     'gpu': {'devices': gpus},
-    'drivers': {'nvidia': driver, 'cuda': cuda},
+    'drivers': {
+        'nvidia': driver,
+        'cuda_driver_max': cuda_driver_max,
+        'cuda_toolkit': cuda_toolkit,
+        'cuda': cuda_toolkit or cuda_driver_max,
+    },
     'python': {'version': platform.python_version()},
     'ros': {'distro': ros_distro, 'root': ros_root, 'rmw': os.environ.get('RMW_IMPLEMENTATION')},
     'docker': {'installed': shutil.which('docker') is not None}
 }
 print(json.dumps(out))
 """
+
+
+def detect_nvcc_toolkit() -> str | None:
+    """Return installed CUDA toolkit version from nvcc, if present."""
+    if shell.which("nvcc") is None:
+        return None
+    res = shell.run_cmd(["nvcc", "--version"], timeout=5.0)
+    if not res.ok:
+        return None
+    match = re.search(r"release\s+([\d.]+)", res.stdout)
+    return match.group(1) if match else None
 
 
 @dataclass(frozen=True)
@@ -164,7 +192,9 @@ class TargetEnvironment:
     ros_distro: str | None = None
     ros_root: str | None = None
     rmw: str | None = None
-    cuda_version: str | None = None
+    cuda_driver_max: str | None = None  # Maximum CUDA supported by NVIDIA driver (nvidia-smi)
+    cuda_toolkit: str | None = None     # Installed CUDA compiler/toolkit version (nvcc)
+    cuda_version: str | None = None     # Effective CUDA version (prefers toolkit, fallback driver)
     nvidia_driver: str | None = None
     isaac_sim: dict[str, Any] | None = None
     isaac_lab: dict[str, Any] | None = None
@@ -181,7 +211,9 @@ class TargetInspection:
     target: Target
     reachable: bool
     status: str  # "online", "unreachable", "error"
-    latency_ms: float | None = None
+    ping_ms: float | None = None           # Network TCP round-trip latency (0.0 ms for local)
+    probe_duration_ms: float | None = None # Total elapsed time to collect target inspection facts
+    latency_ms: float | None = None        # Alias to ping_ms (preserving API compatibility)
     resources: TargetResources | None = None
     environment: TargetEnvironment | None = None
     discovered_capabilities: list[str] = field(default_factory=list)
@@ -193,6 +225,8 @@ class TargetInspection:
             "target": self.target.to_dict(),
             "reachable": self.reachable,
             "status": self.status,
+            "ping_ms": self.ping_ms,
+            "probe_duration_ms": self.probe_duration_ms,
             "latency_ms": self.latency_ms,
             "resources": self.resources.to_dict() if self.resources else None,
             "environment": self.environment.to_dict() if self.environment else None,
@@ -358,10 +392,12 @@ def discover_target(
     """Perform capability discovery and resource inspection on a target."""
     cfg = config if config is not None else Config({}, [])
 
+    start = time.perf_counter()
+
     if target.transport == "local":
-        start = time.perf_counter()
         raw_env = environment.collect(cfg)
-        latency_ms = round((time.perf_counter() - start) * 1000.0, 2)
+        probe_duration_ms = round((time.perf_counter() - start) * 1000.0, 2)
+        ping_ms = 0.0
 
         hw = raw_env.get("hardware") or {}
         gpu_info = raw_env.get("gpu") or {}
@@ -380,6 +416,10 @@ def discover_target(
             gpus=gpu_info.get("devices") or [],
         )
 
+        cuda_toolkit = detect_nvcc_toolkit()
+        cuda_driver_max = drivers.get("cuda")
+        cuda_eff = cuda_toolkit or cuda_driver_max
+
         target_env = TargetEnvironment(
             os=sys_info.get("os"),
             kernel=sys_info.get("kernel"),
@@ -389,7 +429,9 @@ def discover_target(
             ros_distro=ros_info.get("distro"),
             ros_root=ros_info.get("root"),
             rmw=ros_info.get("rmw"),
-            cuda_version=drivers.get("cuda"),
+            cuda_driver_max=cuda_driver_max,
+            cuda_toolkit=cuda_toolkit,
+            cuda_version=cuda_eff,
             nvidia_driver=drivers.get("nvidia"),
             isaac_sim=isaac_info.get("sim"),
             isaac_lab=isaac_info.get("lab"),
@@ -417,7 +459,9 @@ def discover_target(
             target=target,
             reachable=True,
             status="online",
-            latency_ms=latency_ms,
+            ping_ms=ping_ms,
+            probe_duration_ms=probe_duration_ms,
+            latency_ms=ping_ms,
             resources=resources,
             environment=target_env,
             discovered_capabilities=sorted(caps),
@@ -434,7 +478,7 @@ def discover_target(
         )
 
     port = target.port or 22
-    reachable, latency_ms = check_socket_reachable(target.host, port, timeout=min(timeout, 2.0))
+    reachable, ping_ms = check_socket_reachable(target.host, port, timeout=min(timeout, 2.0))
     if not reachable:
         return TargetInspection(
             target=target,
@@ -453,21 +497,29 @@ def discover_target(
             timeout=timeout,
         )
     except subprocess.TimeoutExpired:
+        probe_duration_ms = round((time.perf_counter() - start) * 1000.0, 2)
         return TargetInspection(
             target=target,
             reachable=True,
             status="error",
-            latency_ms=latency_ms,
+            ping_ms=ping_ms,
+            probe_duration_ms=probe_duration_ms,
+            latency_ms=ping_ms,
             error=f"Remote probe timed out after {timeout}s",
         )
     except OSError as err:
+        probe_duration_ms = round((time.perf_counter() - start) * 1000.0, 2)
         return TargetInspection(
             target=target,
             reachable=True,
             status="error",
-            latency_ms=latency_ms,
+            ping_ms=ping_ms,
+            probe_duration_ms=probe_duration_ms,
+            latency_ms=ping_ms,
             error=f"Failed to execute SSH probe: {err}",
         )
+
+    probe_duration_ms = round((time.perf_counter() - start) * 1000.0, 2)
 
     if proc.returncode != 0:
         err_msg = proc.stderr.strip() or f"exit code {proc.returncode}"
@@ -475,7 +527,9 @@ def discover_target(
             target=target,
             reachable=True,
             status="error",
-            latency_ms=latency_ms,
+            ping_ms=ping_ms,
+            probe_duration_ms=probe_duration_ms,
+            latency_ms=ping_ms,
             error=f"Remote probe failed: {err_msg}",
         )
 
@@ -486,7 +540,9 @@ def discover_target(
             target=target,
             reachable=True,
             status="error",
-            latency_ms=latency_ms,
+            ping_ms=ping_ms,
+            probe_duration_ms=probe_duration_ms,
+            latency_ms=ping_ms,
             error=f"Invalid JSON returned from remote probe: {err}",
         )
 
@@ -506,6 +562,10 @@ def discover_target(
         gpus=gpu_info.get("devices") or [],
     )
 
+    cuda_driver_max = drivers.get("cuda_driver_max")
+    cuda_toolkit = drivers.get("cuda_toolkit")
+    cuda_eff = drivers.get("cuda") or cuda_toolkit or cuda_driver_max
+
     target_env = TargetEnvironment(
         os=sys_info.get("os"),
         kernel=sys_info.get("kernel"),
@@ -515,7 +575,9 @@ def discover_target(
         ros_distro=ros_info.get("distro"),
         ros_root=ros_info.get("root"),
         rmw=ros_info.get("rmw"),
-        cuda_version=drivers.get("cuda"),
+        cuda_driver_max=cuda_driver_max,
+        cuda_toolkit=cuda_toolkit,
+        cuda_version=cuda_eff,
         nvidia_driver=drivers.get("nvidia"),
         docker=bool(docker_info.get("installed")),
     )
@@ -537,7 +599,9 @@ def discover_target(
         target=target,
         reachable=True,
         status="online",
-        latency_ms=latency_ms,
+        ping_ms=ping_ms,
+        probe_duration_ms=probe_duration_ms,
+        latency_ms=ping_ms,
         resources=resources,
         environment=target_env,
         discovered_capabilities=sorted(caps),

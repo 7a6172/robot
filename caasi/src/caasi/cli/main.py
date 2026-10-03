@@ -21,6 +21,7 @@ from . import (
     container_cmd,
     control_cmd,
     dataset_cmd,
+    deploy_cmd,
     env_cmd,
     gpu,
     lab,
@@ -61,6 +62,7 @@ HELP_PANELS: dict[str, tuple[str, ...]] = {
     _("help.panel.environment"): ("config", "env", "gpu", "monitor", "sensor", "system", "vision"),
     _("help.panel.projects"): (
         "build",
+        "deploy",
         "logs",
         "project",
         "replay",
@@ -204,6 +206,7 @@ app.command("init", help=_("init.help"))(init_command)
 app.command("setup", help=_("setup.help"))(setup_cmd.setup_command)
 app.command("build", help=_("build.help"))(build_cmd.build_command)
 app.add_typer(project_cmd.app, name="project", help=_("project.help"))
+app.command("deploy", help=_("deploy.help"))(deploy_cmd.deploy_command)
 app.command(
     "train",
     help=_("train.help"),

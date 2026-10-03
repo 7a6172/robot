@@ -88,10 +88,16 @@ def target_inspect(
 
     c = output.console()
     status_color = "green" if insp.status == "online" else "red"
-    latency_str = f"{insp.latency_ms:.1f}ms" if insp.latency_ms is not None else "N/A"
+    if target.transport == "local":
+        timing_str = f"transport: local | discovery probe: {insp.probe_duration_ms:.1f}ms"
+    elif insp.ping_ms is not None:
+        probe_str = f" | discovery probe: {insp.probe_duration_ms:.1f}ms" if insp.probe_duration_ms is not None else ""
+        timing_str = f"network ping: {insp.ping_ms:.1f}ms{probe_str}"
+    else:
+        timing_str = "unreachable"
 
     c.print(f"\n[bold cyan]Target:[/bold cyan] [bold]{target.name}[/bold] ([dim]{target.transport}[/dim])")
-    c.print(f"[bold]Status:[/bold] [{status_color}]{insp.status.upper()}[/{status_color}] (latency: {latency_str})")
+    c.print(f"[bold]Status:[/bold] [{status_color}]{insp.status.upper()}[/{status_color}] ({timing_str})")
     if target.deployment_root:
         c.print(f"[bold]Deployment Root:[/bold] {target.deployment_root}")
     if target.tags:
@@ -129,8 +135,14 @@ def target_inspect(
         c.print(f"  [dim]Python:[/dim]       {env.python_version or '-'}")
         ros_str = f"{env.ros_distro} ({env.ros_root or '-'})" if env.ros_distro else "None detected"
         c.print(f"  [dim]ROS 2:[/dim]        {ros_str}")
-        cuda_str = env.cuda_version or "None detected"
-        c.print(f"  [dim]CUDA:[/dim]         {cuda_str}")
+        if env.cuda_toolkit and env.cuda_driver_max:
+            c.print(f"  [dim]CUDA:[/dim]         {env.cuda_toolkit} (toolkit: nvcc) | driver max: {env.cuda_driver_max}")
+        elif env.cuda_toolkit:
+            c.print(f"  [dim]CUDA:[/dim]         {env.cuda_toolkit} (toolkit: nvcc)")
+        elif env.cuda_driver_max:
+            c.print(f"  [dim]CUDA:[/dim]         driver max: {env.cuda_driver_max} (no nvcc toolkit)")
+        else:
+            c.print("  [dim]CUDA:[/dim]         None detected")
         if env.isaac_sim:
             sim_st = env.isaac_sim.get("status", "unknown")
             sim_dt = env.isaac_sim.get("detail", "")
@@ -181,12 +193,18 @@ def target_check(
         output.fail(f"Target '{target.name}' discovery error: {insp.error}")
         raise typer.Exit(1)
 
+    timing = (
+        f"local | probe: {insp.probe_duration_ms:.1f}ms"
+        if target.transport == "local"
+        else f"ping: {insp.ping_ms:.1f}ms | probe: {insp.probe_duration_ms:.1f}ms"
+    )
+
     if insp.mismatches:
-        c.print(f"\n[bold yellow]Target '{target.name}' reached ({insp.latency_ms:.1f}ms), but found mismatches:[/bold yellow]")
+        c.print(f"\n[bold yellow]Target '{target.name}' reached ({timing}), but found mismatches:[/bold yellow]")
         for m in insp.mismatches:
             c.print(f"  [bold red]✖[/bold red] {m}")
         c.print("")
         raise typer.Exit(1)
 
-    c.print(f"\n[bold green]✔ Target '{target.name}' is ONLINE ({insp.latency_ms:.1f}ms) and fully COMPATIBLE.[/bold green]")
+    c.print(f"\n[bold green]✔ Target '{target.name}' is ONLINE ({timing}) and fully COMPATIBLE.[/bold green]")
     c.print(f"  Capabilities: {', '.join(insp.discovered_capabilities) or 'standard'}\n")

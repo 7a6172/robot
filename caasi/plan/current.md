@@ -94,8 +94,19 @@
       * Discovered target facts: hardware specs (CPU model/cores, total/available memory, GPU accelerators) and software environment (OS, kernel, architecture, Python, ROS 2 distro, CUDA, Docker, Isaac Sim, Isaac Lab).
       * Bounded non-blocking remote discovery via TCP socket preflight and compact remote Python probes over SSH without preinstall dependencies.
       * Declarative vs discovered compatibility and mismatch engine (detects architecture mismatches, missing GPU/CUDA, ROS distro divergence, missing domain capabilities).
+      * Refined semantics: disambiguated network latency (`ping_ms`) from discovery probe duration (`probe_duration_ms`), and driver-supported maximum runtime CUDA version (`cuda_driver_max`) from compiler toolkit version (`cuda_toolkit`).
       * Implemented CLI commands: `caasi target list [--check] [--json]`, `caasi target inspect <name> [--json]`, `caasi target check <name> [--json]`, with `caasi node` alias.
-      * Added 19 comprehensive unit tests in `caasi/tests/test_targets.py` (total 889 passing tests).
-      * Empirically validated on local workstation, custom config profiles, simulated edge nodes, offline nodes, and mismatch scenarios.
-    - **Next Step**: Phase 7 Stage B (Deployment Engine & Target-Native Workspaces).
+      * Added 19 comprehensive unit tests in `caasi/tests/test_targets.py`.
+    - **Stage B completed & verified (Deployment Foundation & Synchronization Engine)**:
+      * [Phase 7 Stage B Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/phase-07-report.md)
+      * Implemented deployment abstractions in `caasi.core.deploy` (`DeploymentSpec`, `DeploymentRecord`).
+      * Strict separation of project content (`caasi.yaml`, `caasi.lock`, `src/`, `config/`, selective `assets/`) from development-only content (`build/`, `install/`, `log/`, `.git/`, `tests/`, `.caasi/runs/`, `.caasi/deployments/`).
+      * Incremental synchronization engine built on `rsync` over local/SSH transports with itemized change tracking.
+      * Target preflight & capability compatibility verification before file transfer.
+      * Two-sided provenance tracking: `<destination>/.caasi-deployment.json` on target and `.caasi/deployments/<target>/<id>.json` on host.
+      * Post-deployment verification engine structurally validating project manifest, source tree, and deployment metadata integrity.
+      * CLI interface: `caasi deploy <target> [--dry-run] [--force] [--dest <path>] [--status] [--list] [--json]`.
+      * Added 13 dedicated unit tests in `caasi/tests/test_deploy.py` (total 902 tests passing across suite).
+      * Empirically validated on canonical OpenMover: 833 files (40.4 MiB) synchronized in 0.63s; subsequent unchanged synchronization transferred 0 regular file bytes in 0.60s. Tested offline targets, incompatible targets, and permission failures.
+    - **Next Step**: Phase 7 Stage C (Target-Native Build & Transparent Remote Run Execution).
 

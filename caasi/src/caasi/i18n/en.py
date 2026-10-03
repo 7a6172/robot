@@ -1520,5 +1520,15 @@ MESSAGES: dict[str, str] = {
     "target.flag.check": "Probe reachability and latency of all listed targets.",
     "target.not_found": "No target matching '{query}' (configured: {valid}).",
     "target.title": "Execution Targets",
+    # -- caasi deploy -------------------------------------------------------
+    "deploy.help": "Deploy and synchronize project workspaces to execution targets.",
+    "deploy.arg.target": "Execution target name (from 'caasi target list').",
+    "deploy.flag.dry_run": "Preview synchronization and changes without modifying target.",
+    "deploy.flag.force": "Proceed with deployment even if target preflight reports compatibility warnings.",
+    "deploy.flag.dest": "Override destination deployment path on target.",
+    "deploy.flag.status": "Show status of current deployment on target without deploying.",
+    "deploy.list_help": "List recorded deployment records for the project.",
+    "deploy.status_help": "Inspect the active deployment status on an execution target.",
 }
+
 
