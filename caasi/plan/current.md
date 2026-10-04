@@ -386,12 +386,62 @@
     - **Next step (not auto-proceeded)**: decide between fleet/resource orchestration and
       artifact management; container orchestration as a first-class transport is a
       separate future capability and was deliberately not introduced here.
-  - **Current State**: Both open threads are now closed and committed — the three-way
-    equivalence chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`** for six tested
-    simulator-independent behaviors) and **Phase 7 Stage D** (real remote target
-    validation against `u24-307`). Stage D exposed and fixed three genuine caasi
-    defects and produced tested SSH-disconnect-survival evidence.
-    Awaiting user decision on the next stage: fleet/resource orchestration,
-    artifact management, or container orchestration as a first-class transport.
-    (Carried-forward reproducibility gap, unrelated to Stage D: no committed ROS 1
+  - **Phase 7 Stage E2 (Remote ROS 2 Observability): COMPLETED.**
+    - [Stage E2 Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-e2-report.md)
+    - [Stage E Discovery](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-e-discovery.md)
+    - [Observability Addendum](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-e-observability-addendum.md)
+    - Made caasi's existing ROS 2 query surface **target-aware**, so a workstation can
+      observe a ROS 2 runtime on a separate machine through caasi:
+      `caasi ros status|list|graph|node|topic|service|doctor --target <t>`.
+    - **Thin delegation, no reimplementation**: the target's own `ros2` CLI produces
+      every answer. The target-side snippet sources the ROS underlay (and optional
+      project overlay), then `exec ros2 "$@"`. caasi contributes only transport,
+      environment sourcing and presentation — no DDS or ROS 2 internals rebuilt.
+    - Added **`--domain` / `-d`** (ROS_DOMAIN_ID) because a runtime may live on a
+      non-default domain, where querying the default returns an **empty graph rather
+      than an error** — silently misleading.
+    - Deliberately **excluded** from `--target`: `ros launch` and `ros topic --echo`,
+      since they start long-lived processes (the *execution* lifecycle, not
+      observability). Remote `--echo` says so and points at `run start --target`.
+    - **`caasi target state` was NOT implemented.** Every input it would aggregate
+      already exists as a composable command (`target check`, `target list --check`,
+      `deploy --status`, `run list --target`), so it would duplicate without adding
+      capability. Recorded as a decision, not an omission.
+    - **Validation used standard ROS 2 demo nodes, NOT OpenMover** (per instruction to
+      use the smallest workload giving valid evidence): `demo_nodes_cpp talker`,
+      `listener`, `add_two_ints_server` on `u24-307`, ROS_DOMAIN_ID 42. Reproducible
+      start/stop scripts committed under `phase-07/e2-demo-runtime/`.
+    - **Decisive cross-check**: with the same domain, the workstation's own ROS
+      returned nothing while `--target u24-307` returned the 3 demo nodes — proving
+      caasi observes the **remote** runtime, not local state.
+    - **Validation matrix all PASS**: reachable+ROS running; reachable+ROS unavailable
+      (rc 127 + marker); unreachable (rc 1, bounded ~22s, clear message); query failure
+      for a missing node (rc 1, "ROS 2 ran and returned no match"); unknown target (rc 1,
+      no silent local fallback); fresh invocation from a fully-unsourced shell; and
+      local commands unchanged when `--target` is omitted.
+    - **Failure classification**: unreachable vs no-ROS2 vs not-found vs generic query
+      failure are reported distinctly, because they have different remedies. All failure
+      paths exit 1.
+    - **Tests**: 8 new in `tests/test_ros_cmd.py` (16 → 24 passing). Full suite:
+      **936 passed, 1 failed** — the failure is the **pre-existing** terminal-width
+      artifact in `test_perception_cmd.py`, proven unrelated to E2 (and to Stage D).
+    - **Observed**: Tailscale relay probe latency climbed 6.0→10.0s across repeated
+      checks against the 20s budget, with one transient UNREACHABLE before recovering.
+      Recorded as an environmental observation, not an E2 defect.
+    - **Untested (explicitly)**: non-ROS runtimes (container/systemd/process adapters
+      are not implemented — `caasi monitor` remains local-only); multi-target/fleet
+      aggregation; continuous polling (on-demand only, by design); non-SSH transports;
+      cross-host DDS discovery within a domain; SROS 2/DDS security; OpenMover
+      integration (not used for E2; a natural follow-up, not a prerequisite).
+    - **Ordering note**: E2 was done before E1 at the user's direction. Per the agreed
+      staging, **E1 (result/output collection)** remains the next bounded step.
+  - **Current State**: Three threads closed and committed — the three-way equivalence
+    chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**), **Phase 7 Stage D** (real remote
+    target validation against `u24-307`, which exposed and fixed three caasi defects),
+    and **Phase 7 Stage E2** (remote ROS 2 observability: `caasi ros … --target`, thin
+    delegation over the target's own `ros2`).
+    Next per the agreed staging: **E1 result/output collection** (designed, bounded,
+    completes the compute path). Later: persistent runtime (needs real robot evidence)
+    and non-ROS runtime adapters behind the same capability-keyed registry.
+    (Carried-forward reproducibility gap, unrelated to these stages: no committed ROS 1
     Dockerfile for the legacy reference environment.)
