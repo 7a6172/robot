@@ -1184,7 +1184,8 @@ all** for these six behaviors.
 
 ### 12A.5 The only difference, and its single cause
 
-The chain is **A ≈ B ≡ C**. The residual A-vs-{B,C} difference is the same one
+The chain is **`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`** (equivalently `A ≈ B ≡ C`).
+The residual A-vs-{B,C} difference is the same one
 already diagnosed in §12.7, and it is unchanged by this work:
 
 | Behavior | A vs {B,C} | Cause |
@@ -1237,7 +1238,8 @@ Only intended locations changed: the four parameterized harnesses, the new
 ### 12A.8 What this does and does not establish
 
 **Establishes:** for the six tested simulator-free behaviors, the chain
-**A ≈ B ≡ C** holds. Specifically, B and C are behaviorally indistinguishable
+**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`** (`A ≈ B ≡ C`) holds. Specifically, B and C
+are behaviorally indistinguishable
 (byte-identical outputs), and A matches them within the declared tolerances with
 all residual differences attributable to the compiler/toolchain.
 
@@ -1377,7 +1379,8 @@ differences were each resolved:
 > hardware paths remain **unverified** and are not claimed equivalent.
 >
 > Across all three implementations (`ROS1-reference`, `ROS2-reference`,
-> `caasi-ROS2`) the chain holds as **A ≈ B ≡ C** for these six behaviors, with B
+> `caasi-ROS2`) the chain holds as **`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`** for these
+> six behaviors, with B
 > and C indistinguishable at the bit level.
 
 ### Direct answer to the research question

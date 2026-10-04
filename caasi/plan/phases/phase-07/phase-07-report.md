@@ -706,3 +706,126 @@ Dogfooding was executed from `/home/zar/Documents/phd/robot/caasi-workspace/open
 * Full target suite passing: **50 target tests** (`test_target_run.py`, `test_target_build.py`, `test_targets.py`, `test_deploy.py`).
 * Full regression test suite passing: **912 tests** across the entire Caasi repository.
 
+
+---
+
+## Equivalence Validation Record: ROS1 → ROS2-reference → caasi-ROS2
+
+**Status:** Completed & Behaviourally Verified
+**Date:** October 2026
+**Scope:** Six deterministic, simulator-independent behaviors across all three OpenMover implementations
+
+This record is included in the Phase 7 report because the equivalence work was
+performed while Phase 7 was open, and because the validated chain is what
+justifies treating the caasi-native project as the continued ROS 2
+implementation.
+
+### 1. What was validated
+
+The three implementations under comparison:
+
+| Label | Tree | Role |
+| :--- | :--- | :--- |
+| `ROS1-reference` | `openmover_robot/` | Immutable ROS 1 original, run in a containerized Noetic environment |
+| `ROS2-reference` | `openmover_ws/` | Immutable pre-caasi ROS 2 port |
+| `caasi-ROS2` | `caasi-workspace/openmover/` | Canonical caasi-native ROS 2 project |
+
+```text
+original ROS1              existing ROS2 reference        caasi-native ROS2
+(ROS1-reference)     →     (ROS2-reference)         →     (caasi-ROS2)
+
+      behavioral equivalence               byte-identical outputs
+      within declared tolerances           for all six tested behaviors
+```
+
+**Final conclusion:** **`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`** for the tested
+simulator-independent behaviors.
+
+### 2. Results (18/18 pairings PASS)
+
+| Behavior | Declared tolerance | ROS1 ↔ ROS2-ref | ROS2-ref ↔ caasi | ROS1 ↔ caasi |
+| :--- | :--- | :--- | :--- | :--- |
+| `cmd_vel` gating / mode / emergency | exact / 0 ULP | PASS | PASS | PASS |
+| odometry / twist | exact / 0 ULP | PASS | PASS | PASS |
+| obstacle grid | exact / 0 ULP | PASS | PASS | PASS |
+| TF forward kinematics | 1e-12 | PASS (1.11e-16) | PASS (**0.0, bit-identical**) | PASS (1.11e-16) |
+| `laserscan_multi_merger` | exact / 0 ULP | PASS (bit-identical) | PASS (bit-identical) | PASS (bit-identical) |
+| global planner algorithm | ≤ 1 grid cell (0.05 m) | PASS (0.428 cell) | PASS (**0.000 cell**) | PASS (0.428 cell) |
+
+### 3. Key finding
+
+**The caasi migration introduced no observable behavioral change in the tested
+behaviors.** `ROS2-reference` and `caasi-ROS2` produced **byte-identical
+structured output on all six behaviors** — identical per-test output hashes, and
+byte-identical planner plans with exactly equal path lengths (Hausdorff distance
+`0.000` cells).
+
+The only residual difference is ROS1 versus both ROS 2 trees, and it tracks the
+compiler boundary exactly: **g++ 9.4.0** (Ubuntu 20.04, ROS1) versus
+**g++ 13.3.0** (Ubuntu 24.04, both ROS 2). These remain as measured and are not
+attributed to any implementation or migration difference.
+
+### 4. Method
+
+No new equivalence methodology was introduced. The four ROS 2 harnesses gained a
+single `--tree <workspace>` argument; inputs, test cases, metrics and
+pre-declared tolerances are exactly those used for the original ROS 1 ↔ ROS 2
+comparison. Behavior preservation was verified *before* the parameterized
+harness was used: each harness run against its default tree reproduced the
+previously recorded ROS 2 reference results **byte-identically**.
+
+### 5. Scope of the claim
+
+**Covers:** six deterministic, simulator-independent behaviors — `cmd_vel`
+handling, odometry/twist transform, obstacle-grid computation, TF forward
+kinematics, dual-scan merging, and the global planner **algorithm**.
+
+**Does not cover:**
+
+* **Simulator physics.** Gazebo Classic → Gazebo Harmonic / Isaac Sim is an
+  **intentional simulator replacement**, not an equivalence claim. No common
+  OpenMover simulator scenario exists between the stacks.
+* **Physical hardware** (`motor_handler`, `io_board_handler`, live `bluesea2`
+  UDP) — requires the real robot.
+* **Full end-to-end navigation or SLAM** — `navigation_handler`,
+  `localization_handler` and Cartographer output were not exercised at runtime.
+* **The ROS-service-level planner path.** ROS 1 exposes `navfn/MakeNavPlan` on a
+  `costmap_2d` costmap while ROS 2 embeds planning in `navigation_handler` over
+  Nav2 costmaps; there is no common service scenario, so the planner comparison
+  remains **algorithm-level** on identical synthetic costmaps.
+
+### 6. Integrity evidence
+
+| Tree | Dirty entries | Content hash | Status |
+| :--- | :--- | :--- | :--- |
+| `openmover_robot` (ROS1-reference) | 0 | `f17c242a8cb64b4f987ae606f9c749e2…` | **unchanged throughout the equivalence work** |
+| `openmover_ws` (ROS2-reference) | 0 | `1e09f5de6f66f91d8f107d23274afb7b…` | **unchanged throughout the equivalence work** |
+| `caasi-workspace/openmover` (caasi-ROS2) | 0 | `24ef2da43dfccc36478b2d7d64830a10…` | **unchanged by this three-way validation** |
+
+Committed compact evidence: `caasi/plan/audits/ros1-ros2-comparison/three_way_records.json`
+(per-test input hashes, all three pairings, verdicts, environment/toolchain
+records) plus `compare_three_way.py`. Raw harness logs are deliberately not
+committed; the committed harnesses regenerate them, and regeneration was
+**verified to reproduce the committed records exactly**.
+
+### 7. Relationship to Stage D
+
+This validation is independent of Phase 7 Stage D (real remote target
+validation), which remains **paused, not cancelled**. Two `caasi` defects that
+Stage D exposed were fixed and committed separately (`99fc43c`). Stage D does not
+resume until the user decides based on the equivalence evidence.
+
+### 8. Reproducibility gap (documented, not fixed here)
+
+There is currently **no committed Dockerfile or setup script** for the ROS 1
+reference environment; its configuration exists only as inline commands in
+`ros1-ros2-comparison/README.md` and §15 of the ROS 1 → ROS 2 audit, plus the
+live `ros1-ref` container. Re-creating the ROS 1 baseline from the repository
+alone is therefore not yet possible. Recorded as a reproducibility gap; no
+Dockerfile was created as part of this checkpoint.
+
+### 9. Full references
+
+* [ROS 1 → ROS 2 Functional Equivalence Validation](file:///home/zar/Documents/phd/robot/caasi/plan/audits/ros1_to_ros2_functional_equivalence.md) — static comparison and the six-behavior runtime pass (§12), plus the three-way extension (§12A)
+* [Migration & Equivalence Audit](file:///home/zar/Documents/phd/robot/caasi/plan/audits/migration_and_equivalence_audit.md) — §3.3 records the canonical three-way chain
+* [Comparison harnesses and records](file:///home/zar/Documents/phd/robot/caasi/plan/audits/ros1-ros2-comparison/) — scripts, README, `three_way_records.json`

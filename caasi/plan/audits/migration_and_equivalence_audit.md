@@ -27,6 +27,13 @@ Canonical Caasi Project (caasi-workspace/openmover)
 
 The empirical evidence collected in this audit primarily and directly verifies **Hop 2**: that the canonical caasi project faithfully preserves and operationalizes the audited ROS 2 / Isaac Sim / Isaac Lab project. Functional equivalence with the historical ROS 1 base (**Hop 1**) is established only where the existing ROS 2 port had already ported that functionality and where that functionality has been directly verified in this or prior phase audits.
 
+> **Both hops are now closed for six behaviors.** §3.3 records the three-way
+> result — `ROS1 ≈ ROS2-reference ≡ caasi-ROS2` — established by running the same
+> six simulator-free behaviors against all three trees with identical inputs.
+> Hop 1 evidence is in
+> [`ros1_to_ros2_functional_equivalence.md`](ros1_to_ros2_functional_equivalence.md)
+> §12A.
+
 > **Hop 1 is now measured directly.** The companion audit
 > [**ROS 1 → ROS 2 Functional Equivalence Validation**](ros1_to_ros2_functional_equivalence.md)
 > reproduces the ROS 1 reference system from its own `install.sh` in an isolated
@@ -43,7 +50,8 @@ The empirical evidence collected in this audit primarily and directly verifies *
 3. **Deterministic Numerical Equivalence**: Executing the tested deterministic 20-step point-goal scenario (`21_run_openmover_nav.py`, seed 42, 1 environment, random policy) produced **bit-for-bit identical floating-point values** between `openmover_ws` and `caasi-workspace/openmover` across all telemetry: observation norm (`13.7327`), LiDAR scan statistics, goal/velocity vectors, and robot displacement (`[-0.006, -0.009] m`).
 4. **Closed-Loop Simulation & Navigation**: Isaac Sim RTX Raytraced LiDARs stream to `laserscan_multi_merger`, produce 360° `/scan`, drive `slam_toolbox` mapping, resize Nav2 costmaps (324 × 313 cells), and execute dynamic `/cmd_vel` velocity commands ($v_x = 0.3\text{ m/s}$, $+7.61\text{ m}$ forward translation) to a controlled halt.
 5. **No Loss of Required Operational Source**: All source code, configs, procedural maps, and trained model weights necessary to build, run, and evaluate the project are preserved. Historical research logs (>1.5 GB), intermediate campaign JSONs (>2 GB), and MP4 episode videos were intentionally excluded from the project source tree to prevent repository bloat.
-6. **Scope Boundary**: A small number of historical, physical-environment, or non-operational artifacts remain intentionally excluded or not yet migrated. Therefore, the canonical project is functionally equivalent to the audited ROS 2 / Isaac implementation for the tested workflows, with the audited ROS 1-derived functionality preserved through that port.
+6. **Three-Way Behavioral Equivalence (see §3.3)**: Running six simulator-free behaviors against all three implementations closes the chain. **`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`** for the tested simulator-independent behaviors: `ROS1-reference ↔ ROS2-reference` agree within declared tolerances, and `ROS2-reference ↔ caasi-ROS2` are **byte-identical on all six behaviors**. **The caasi migration introduced no observable behavioral change in the tested behaviors.** 18/18 pairings pass.
+7. **Scope Boundary**: A small number of historical, physical-environment, or non-operational artifacts remain intentionally excluded or not yet migrated. Therefore, the canonical project is functionally equivalent to the audited ROS 2 / Isaac implementation for the tested workflows, with the audited ROS 1-derived functionality preserved through that port.
 
 ---
 
@@ -150,6 +158,134 @@ Both runs executed `--num_envs 1 --num_steps 20 --policy random` with environmen
 
 ---
 
+### 3.3 Three-Way Behavioral Equivalence: ROS1 → ROS2-reference → caasi-ROS2
+
+§3.1 establishes **existing ROS 2 ↔ caasi-native ROS 2** within the Isaac Lab
+domain. The ROS 1 → ROS 2 port is validated separately, in
+[`ros1_to_ros2_functional_equivalence.md`](ros1_to_ros2_functional_equivalence.md)
+§12A. This section records the combined three-way result, which closes the chain
+across all three implementations.
+
+#### 3.3.1 The chain
+
+```text
+original ROS1                existing ROS2 reference        caasi-native ROS2
+openmover_robot      →       openmover_ws            →      caasi-workspace/openmover
+(ROS1-reference)             (ROS2-reference)               (caasi-ROS2)
+
+        behavioral equivalence                      byte-identical outputs
+        within declared tolerances                  for all six tested behaviors
+```
+
+| Transition | Relationship | Basis |
+| :--- | :--- | :--- |
+| ROS1-reference ↔ ROS2-reference | **Behavioral equivalence within declared tolerances** | Six simulator-free behaviors, identical inputs (§12A of the ROS 1 → ROS 2 audit) |
+| ROS2-reference ↔ caasi-ROS2 | **Byte-identical outputs for all six tested behaviors** | Same six behaviors run against both trees via `--tree` |
+
+**Final conclusion:**
+
+> **`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`** for the tested simulator-independent
+> behaviors.
+
+#### 3.3.2 Per-behavior results (18/18 pairings PASS)
+
+| Behavior | Declared tolerance | ROS1 ↔ ROS2-ref | ROS2-ref ↔ caasi | ROS1 ↔ caasi |
+| :--- | :--- | :--- | :--- | :--- |
+| `cmd_vel` gating / mode / emergency | exact / 0 ULP | PASS | PASS | PASS |
+| odometry / twist | exact / 0 ULP | PASS | PASS | PASS |
+| obstacle grid | exact / 0 ULP | PASS | PASS | PASS |
+| TF forward kinematics | 1e-12 | PASS (1.11e-16) | PASS (**0.0, bit-identical**) | PASS (1.11e-16) |
+| `laserscan_multi_merger` | exact / 0 ULP | PASS (bit-identical) | PASS (bit-identical) | PASS (bit-identical) |
+| global planner algorithm | ≤ 1 grid cell (0.05 m) | PASS (0.428 cell) | PASS (**0.000 cell**) | PASS (0.428 cell) |
+
+#### 3.3.3 The migration introduced no observable behavioral change
+
+`ROS2-reference` and `caasi-ROS2` are not merely equivalent — they are
+**byte-identical** on every tested behavior. Per-test output hashes are equal
+between the two ROS 2 trees:
+
+| Behavior | ROS1-reference | ROS2-reference | caasi-ROS2 |
+| :--- | :--- | :--- | :--- |
+| `cmd_vel` | `6a425dbc820c1b20` | `9bd62201e67a7214` | `9bd62201e67a7214` |
+| odometry | `6a425dbc820c1b20` | `9bd62201e67a7214` | `9bd62201e67a7214` |
+| obstacle grid | `6a425dbc820c1b20` | `9bd62201e67a7214` | `9bd62201e67a7214` |
+| TF | `dfad6a426a125be8` | `63ab2d01f699e0ae` | `63ab2d01f699e0ae` |
+| scan merger | `5eeca47f01075d72` | `4c6c823611fea98a` | `4c6c823611fea98a` |
+| planner | `00f87a224bbebbca` | `2ffd5780fe6359ad` | `2ffd5780fe6359ad` |
+
+The planner comparison additionally shows **byte-identical plans with exactly
+equal path lengths** (Hausdorff distance `0.000` cells).
+
+> **The caasi migration introduced no observable behavioral change in the tested
+> behaviors.**
+
+#### 3.3.4 Residual differences and their cause
+
+The only residual difference is ROS1 versus both ROS 2 trees, and it tracks the
+**compiler boundary exactly**:
+
+| | ROS1-reference | ROS2-reference | caasi-ROS2 |
+| :--- | :--- | :--- | :--- |
+| OS | Ubuntu 20.04.6 LTS | Ubuntu 24.04.5 LTS | Ubuntu 24.04.5 LTS |
+| ROS | noetic | jazzy | jazzy |
+| Compiler | **g++ 9.4.0** | **g++ 13.3.0** | **g++ 13.3.0** |
+
+Where the two ROS 2 trees share a toolchain, their output is bit-identical;
+where ROS 1 differs, the gap is one ULP (TF quaternion) or sub-cell (planner
+waypoints, 0.150–0.428 cells). These remain **as measured** and are not
+attributed to any implementation or migration difference.
+
+#### 3.3.5 Scope of the three-way claim
+
+**Covers:** six deterministic, simulator-independent behaviors — `cmd_vel`
+handling, odometry/twist transform, obstacle-grid computation, TF forward
+kinematics, dual-scan merging, and the global planner **algorithm**.
+
+**Does not cover:**
+
+- **Simulator physics.** Gazebo Classic → Gazebo Harmonic / Isaac Sim is an
+  intentional **simulator replacement**, not an equivalence claim. No common
+  OpenMover simulator scenario exists between the stacks, and neither simulator
+  was run for equivalence purposes.
+- **Physical hardware.** `motor_handler`, `io_board_handler` and live `bluesea2`
+  UDP require the real robot and were deliberately not exercised.
+- **Full end-to-end navigation or SLAM.** `navigation_handler`,
+  `localization_handler`, Cartographer output and integrated trajectory
+  behaviour were not exercised at runtime.
+- **The ROS-service-level planner path.** ROS 1 exposes `navfn/MakeNavPlan` on a
+  `costmap_2d` costmap while ROS 2 embeds planning in `navigation_handler` over
+  Nav2 costmaps; there is no common service scenario. The planner comparison
+  remains **algorithm-level** on identical synthetic costmaps.
+
+#### 3.3.6 Integrity evidence
+
+Verified after the three-way work:
+
+| Tree | Dirty entries | Content hash | Status |
+| :--- | :--- | :--- | :--- |
+| `openmover_robot` (ROS1-reference) | 0 | `f17c242a8cb64b4f987ae606f9c749e2…` | **unchanged throughout the equivalence work** |
+| `openmover_ws` (ROS2-reference) | 0 | `1e09f5de6f66f91d8f107d23274afb7b…` | **unchanged throughout the equivalence work** |
+| `caasi-workspace/openmover` (caasi-ROS2) | 0 | `24ef2da43dfccc36478b2d7d64830a10…` | **unchanged by this three-way validation** |
+
+Committed compact evidence:
+`ros1-ros2-comparison/three_way_records.json` (5.8 KB — per-test input hashes,
+all three pairings, verdicts, and environment/toolchain records) plus the
+comparator `compare_three_way.py`. Raw harness logs are deliberately not
+committed; the committed harnesses regenerate them, and regeneration was
+**verified to reproduce the committed records exactly**.
+
+#### 3.3.7 Reproducibility gap (documented, not fixed here)
+
+There is currently **no committed Dockerfile or setup script** for the ROS 1
+reference environment. Its configuration exists only as inline commands in
+`ros1-ros2-comparison/README.md` and §15 of the ROS 1 → ROS 2 audit, plus the
+live `ros1-ref` container. The comparison is reproducible from those snippets,
+but re-creating the ROS 1 baseline from the repository alone is not yet
+possible. Recorded as a **reproducibility gap**; no Dockerfile was created as
+part of this checkpoint.
+
+---
+
 ## 4. Discrepancy & Gap Analysis
 
 ### 4.1 Excluded Research Logs and Rendered Artifacts
@@ -176,3 +312,5 @@ The migration audit demonstrates that:
 2. The complete operational source code for all 9 ROS 2 packages is byte-for-byte identical to the reference port.
 3. Isaac Sim simulation, ROS 2 bridges, Nav2 SLAM, and Isaac Lab point-goal navigation operate headlessly through `caasi` and produce identical telemetry to reference runs under tested conditions.
 4. A small number of historical, physical-environment, or non-operational artifacts remain intentionally excluded or not yet migrated, and their status is explicitly documented above.
+5. **The full chain is closed for the tested behaviors**: `ROS1 ≈ ROS2-reference ≡ caasi-ROS2` (§3.3). The migration from the existing ROS 2 port to the canonical caasi-native project produced **byte-identical structured outputs across all six tested simulator-free behaviors**.
+6. **Scope limits (§3.3.5)**: this conclusion does not extend to simulator physics (an intentional simulator replacement), physical hardware, full end-to-end navigation or SLAM, or the ROS-service-level planner path (the planner comparison remains algorithm-level). ROS1-versus-ROS2 differences remain as measured and track the compiler boundary.

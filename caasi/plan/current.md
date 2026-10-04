@@ -261,8 +261,21 @@
         `planner_ab_ros1.cpp`/`planner_ab_ros2.cpp`, `build_planner_*.sh`,
         `compare_abc.py`, `compare_d.py`, `compare_f.py`) with README reproduction
         steps and harness caveats.
-    - **Three-way behavioral equivalence validation completed: A ≈ B ≡ C**:
-      * Closed the remaining gap: the chain was **A↔B runtime-validated** and
+    - **Three-way behavioral equivalence validation completed — chain closed**:
+      * **Canonical result**:
+        ```text
+        original ROS1  →  existing ROS2 reference  →  caasi-native ROS2
+        ROS1-reference     ROS2-reference              caasi-ROS2
+
+        ROS1 ≈ ROS2-reference ≡ caasi-ROS2
+        ```
+        — for the **six tested simulator-independent behaviors only**.
+      * **ROS1-reference ↔ ROS2-reference**: behavioral equivalence **within
+        declared tolerances**.
+      * **ROS2-reference ↔ caasi-ROS2**: **byte-identical outputs for all six
+        tested behaviors** (identical per-test output hashes; planner plans
+        byte-identical with exactly equal path lengths).
+      * Closed the remaining gap: the chain had been **A↔B runtime-validated** and
         **B↔C source-parity + Isaac Lab runtime**, but **A↔C had never been
         behaviorally compared**, and the B↔C runtime evidence came from a
         different test domain (GPU RL) than the A↔B evidence (ROS 2 message nodes).
@@ -288,8 +301,8 @@
       * **Key result — `ROS2-reference` ≡ `caasi-ROS2`, not merely ≈**: the two
         ROS 2 implementations produced **byte-identical structured output on all
         six behaviors** (identical per-test output hashes; planner plans
-        byte-identical with exactly equal path lengths). The migration to the
-        caasi-native project introduced **no observable behavioral change**.
+        byte-identical with exactly equal path lengths). **The caasi migration
+        introduced no observable behavioral change in the tested behaviors.**
       * **The only residual difference is A vs {B,C}, and it is unchanged** from
         the earlier pass: TF one ULP (quaternion, differing trig), planner
         0.150–0.428 cells. Both track the **compiler boundary exactly** — g++
@@ -307,10 +320,19 @@
         `f17c242a…` and `openmover_ws` `1e09f5de…` both **unchanged** (0 dirty);
         `caasi-workspace/openmover` `24ef2da4…` **unchanged by this work**. Only
         intended locations changed (4 harnesses, comparator, records, docs).
-      * **Not established** (unchanged): simulation physics, end-to-end
-        navigation, SLAM output, `navigation_handler`/`localization_handler`
-        runtime behavior, the ROS-service-level planner path, and physical
-        hardware. The three-way pass adds the same six behaviors and nothing more.
+      * **Scope — six deterministic behaviors only.** Not established, and not
+        claimed equivalent:
+        - **No simulator-physics equivalence.** Gazebo Classic → Gazebo Harmonic /
+          Isaac Sim remains an **intentional simulator replacement**; no common
+          OpenMover simulator scenario exists and neither simulator was run for
+          equivalence.
+        - **No physical-hardware equivalence.** `motor_handler`, `io_board_handler`
+          and live `bluesea2` UDP require the real robot (deliberately not exercised).
+        - **No full end-to-end navigation/SLAM equivalence.** `navigation_handler`,
+          `localization_handler` and Cartographer output were not run.
+        - **Planner comparison remains algorithm-level** on identical synthetic
+          costmaps; the ROS-service-level planner path has no common scenario.
+        - **ROS1 compiler-boundary differences remain as measured** (see below).
       * **ROS1 reference container**: kept **independent** (no caasi inside it, no
         caasi reference to it) so it remains an external oracle. Do not make caasi
         manage the ROS1 reference; container orchestration remains a separate
@@ -329,7 +351,8 @@
     (`remote-target-01`) is stopped but retained; its scaffolding is parked at
     `/tmp/stage-d-parked/`. Per instruction, Stage D does **not** proceed until the user
     decides based on this equivalence evidence.
-  - **Current State**: ROS 1 → ROS 2 functional equivalence validation complete and the
-    three-way chain closed (A ≈ B ≡ C for six simulator-free behaviors), all committed.
+  - **Current State**: Equivalence validation complete and the three-way chain closed —
+    **`ROS1 ≈ ROS2-reference ≡ caasi-ROS2` for the six tested simulator-independent
+    behaviors**, all committed. Reproducibility gap recorded (no committed ROS 1 Dockerfile).
     Awaiting user decision on whether to resume Phase 7 Stage D, or to pursue another
     capability first.
