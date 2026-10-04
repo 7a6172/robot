@@ -709,6 +709,27 @@ Dogfooding was executed from `/home/zar/Documents/phd/robot/caasi-workspace/open
 
 ---
 
+## Stage D Report: Real Remote Target Validation
+
+Stage D validated the complete target lifecycle against a **genuinely separate
+machine** (`u24-307`) reached over SSH/Tailscale, rather than a local container.
+It is recorded as a standalone report because it is substantial and because it
+exposed three real caasi defects that were documented and fixed:
+
+* [Stage D Report](stage-d-report.md)
+* [Gap G1: SSH probe/connect timeout](stage-d-gap-ssh-timeout.md)
+* [Gap G2: remote run-control timeouts](stage-d-gap-run-timeouts.md)
+* [Gap G3: `deploy --status` destination resolution](stage-d-gap-deploy-status.md)
+
+Headline results: deploy VERIFIED (835 files) → target-native build (185.83 s,
+10 workers derived from the target's own CPU/RAM, artifacts only on the target)
+→ detached run → **SSH-disconnect survival actually tested** (SSH client
+SIGKILLed mid-run; same PID 77787, heartbeats advancing) → fresh-invocation
+status/logs/inspect → `run stop` reports `stopped` with the tested process tree
+gone → two-sided provenance → unreachable target fails bounded in ~2.1 s.
+
+---
+
 ## Equivalence Validation Record: ROS1 → ROS2-reference → caasi-ROS2
 
 **Status:** Completed & Behaviourally Verified

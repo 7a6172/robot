@@ -337,22 +337,61 @@
         caasi reference to it) so it remains an external oracle. Do not make caasi
         manage the ROS1 reference; container orchestration remains a separate
         future capability.
-  - **Phase 7 Stage D (Real Remote Target Validation): PAUSED, not cancelled.** Containerized
-    remote-target validation over SSH had been partially exercised before this equivalence
-    study was requested (target identity/discovery, project deployment with dev-artifact
-    exclusion verified, target-native build, detached run lifecycle, remote logs/status/
-    inspect, remote stop + process cleanup, and unreachable/bad-auth/undeployed failure
-    cases). Two genuine `caasi` bugs it exposed were fixed and committed separately
-    (`99fc43c`): the remote discovery probe was broken on any real SSH target
-    (`python3 -c` argv was re-parsed by the remote shell → `SyntaxError`; now base64 +
-    `shlex.quote`), and SSH identity selection is now bounded via `-o IdentitiesOnly=yes`.
-    Remaining Stage D work (SSH-client-termination resilience evidence, A–G evidence matrix,
-    Stage D report section) is **not yet done**. The Stage D container
-    (`remote-target-01`) is stopped but retained; its scaffolding is parked at
-    `/tmp/stage-d-parked/`. Per instruction, Stage D does **not** proceed until the user
-    decides based on this equivalence evidence.
-  - **Current State**: Equivalence validation complete and the three-way chain closed —
-    **`ROS1 ≈ ROS2-reference ≡ caasi-ROS2` for the six tested simulator-independent
-    behaviors**, all committed. Reproducibility gap recorded (no committed ROS 1 Dockerfile).
-    Awaiting user decision on whether to resume Phase 7 Stage D, or to pursue another
-    capability first.
+  - **Phase 7 Stage D (Real Remote Target Validation): COMPLETED against a real machine.**
+    - [Stage D Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-d-report.md)
+    - **Target**: `u24-307`, a genuinely separate Ubuntu 24.04 machine over
+      **SSH/Tailscale** (relay "hkg"), CPU-only (no GPU, no Docker). Distinct from the
+      workstation in hostname, kernel (6.8.0-139 vs 6.8.0-142), CPU (Xeon E5-2630 v2,
+      12 cores vs i7-12700K, 20 cores) and RAM (62.7 vs 46.8 GiB). The released PyPI
+      `caasi 0.3.0` pipx install on the target was left **untouched**; the workstation
+      dev checkout remained the controller.
+    - **Lifecycle verified end-to-end**: `target check` → `deploy` (VERIFIED, 835 files)
+      → `build --target` (185.83 s, artifacts only on the target, **10 workers derived
+      from the target's own 62.7 GiB / 12 cores**) → `run start` (detached, PPID 1)
+      → **tested SSH-disconnect survival** → fresh-invocation `status`/`logs`/`inspect`
+      → `run stop` (`stopped`, tested tree gone) → two-sided provenance → bounded
+      offline failure (~2.1 s) → connectivity restored.
+    - **SSH-disconnect survival was actually TESTED**, not inferred: the local SSH client
+      was SIGKILLed mid-run (0 ssh processes remained), and the run continued with the
+      **same PID 77787**, heartbeats advancing step 20 → 110. This strengthens the
+      Stage C2 claim, since the launching invocation had already exited beforehand.
+    - **Three genuine caasi defects exposed and fixed** (each documented before fixing,
+      each fix the smallest general change):
+      * **[G1] `stage-d-gap-ssh-timeout.md`** — hardcoded 3 s SSH probe/connect timeout
+        made a real remote target permanently unreachable (measured: TCP 350 ms vs SSH
+        5–6 s). Fixed with an optional per-target `ssh_timeout` (default 3.0 preserved).
+      * **[G2] `stage-d-gap-run-timeouts.md`** — 12 hardcoded 5 s/10 s budgets in the
+        remote run paths caused `run stop` to time out and **mis-report `lost`** even
+        though the kill had succeeded. Fixed by deriving per-call budgets from
+        `ssh_timeout`, and by treating "kill sent" and "state confirmed" as different
+        facts so a delivered signal is never downgraded to `lost`.
+      * **[G3] `stage-d-gap-deploy-status.md`** — `deploy --status` could not find a
+        deployment it had just created, because the read path used the bare
+        `deployment_root` while the write path appended the project name. Fixed by
+        using the same resolver on both paths. Latency-independent; affects the
+        documented default destination layout generally.
+    - **Tests added**: 9 (5 in `test_targets.py`, 2 in `test_target_run.py`,
+      2 in `test_deploy.py`). Target-related suites: **125 passing**. Full suite:
+      **928 passed, 1 failed** — the single failure
+      (`test_perception_cmd.py::test_perception_segment_dry_run_passes_extra_args`) is
+      **pre-existing and unrelated**, verified by stashing the Stage D changes and
+      reproducing it on the unmodified commit.
+    - **Scope limits**: no GPU/simulation claim (the target has no NVIDIA GPU and was
+      never used for Isaac Sim/Lab); the workload is the project's existing CPU-only
+      `target_smoke` experiment. No physical-robot claim. No fleet/scheduling claim
+      (one target only). Process cleanup is reported for **the tested process group and
+      its spawned child**, not as a universal zero-orphan guarantee. No ROS 1 involvement.
+    - **Reference integrity preserved**: `openmover_robot` `f17c242a…` and `openmover_ws`
+      `1e09f5de…` both unchanged throughout.
+    - **Next step (not auto-proceeded)**: decide between fleet/resource orchestration and
+      artifact management; container orchestration as a first-class transport is a
+      separate future capability and was deliberately not introduced here.
+  - **Current State**: Both open threads are now closed and committed — the three-way
+    equivalence chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`** for six tested
+    simulator-independent behaviors) and **Phase 7 Stage D** (real remote target
+    validation against `u24-307`). Stage D exposed and fixed three genuine caasi
+    defects and produced tested SSH-disconnect-survival evidence.
+    Awaiting user decision on the next stage: fleet/resource orchestration,
+    artifact management, or container orchestration as a first-class transport.
+    (Carried-forward reproducibility gap, unrelated to Stage D: no committed ROS 1
+    Dockerfile for the legacy reference environment.)
