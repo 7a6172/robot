@@ -3,7 +3,7 @@
 ## Repository Baseline
 - **Root Repository Location**: `/home/zar/Documents/phd/robot/`
 - **Baseline Commit**: `79dc52f80f156b36c1383a5cb19315dc87eb858e`
-- **Latest Checkpoint**: `8a14c54` (Phase 4 completion)
+- **Latest Checkpoint**: `99fc43c` (Stage D code fixes: remote SSH discovery + target-native build)
 - **Branch**: `master`
 - **Scope Tracked**:
   - `caasi/`: Caasi package, CLI tools, documentation, tests, and persistent `/plan`
@@ -130,3 +130,84 @@
       * Empirically validated on canonical OpenMover: verified undeployed target rejection, unbuilt target rejection, successful detached execution, live ROS 2 and package imports, remote log streaming, run file inspection, and complete process group termination with zero orphans.
     - **Current State**: Phase 7 Stage C2 completed and verified. Ready for user review before proceeding.
 
+  - **ROS 1 → ROS 2 Functional Equivalence Validation completed** (inserted before Phase 7 Stage D):
+    - [ROS 1 → ROS 2 Functional Equivalence Audit](file:///home/zar/Documents/phd/robot/caasi/plan/audits/ros1_to_ros2_functional_equivalence.md)
+    - [Comparison scripts](file:///home/zar/Documents/phd/robot/caasi/plan/audits/ros1-ros2-comparison/)
+    - **Question answered**: is the ROS 2 OpenMover a faithful *functional* port of ROS 1
+      OpenMover? **Yes, for the functionality actually tested** — every compared artifact
+      matched with zero differences.
+    - **ROS 1 reference environment**: Docker container `ros1-ref` from
+      `osrf/ros:noetic-desktop-full` (Ubuntu 20.04.6, ROS Noetic, glibc 2.31),
+      `--network host --shm-size=2g`. Docker is the ROS 1 reference environment only;
+      it is **not** a caasi target and caasi does not manage the ROS 1 system.
+    - **`install.sh` treated as authoritative.** Every step executed in order. Only three
+      steps SKIPPED with documented reasons and zero equivalence impact: mainline kernel
+      install (impossible in a container; host provisioning, not ROS functionality),
+      re-adding ROS apt source (base image already provides Noetic; skipping preserves the
+      working configuration), and `ufw allow ssh` (no firewall in container). Two steps
+      ADAPTED: passwordless sudo (container is root) and the pip mirror (unreachable; default
+      PyPI used).
+    - **ROS 1 system verified operational** (not merely built): all 9 packages discoverable,
+      8 message + 10 service types generated, all 9 C++ node executables built, 5 Python
+      servers present, HAL modules importable, Cartographer binaries installed, and a live
+      `roscore` session with `robot_state_publisher` publishing `/tf`/`/tf_static`.
+    - **Measured equivalence results (all zero differences)**:
+      * Messages: **8/8 exact** on field name + type + order (live `rosmsg show -r` vs ROS 2 `.msg`).
+      * Services: **10/10 exact** including `NavToRequest` (13 request fields).
+      * Kinematics: **40/40 joint fields @ 1e-9** (8 joints × type/parent/child/origin/axis); 9 links, 8 joints, identical sets.
+      * Physical constants: wheel separation `0.324`, wheel radius `0.05035` (= diameter/2 exactly), LiDAR model (600 samples, ±1.57 rad, 0.22–10.0 m, 15 Hz) all identical.
+      * Driver/config: `bluesea2` + `laserscan_multi_merger` **36/36 literals match, 0 genuine differences**; `hardwares.yaml` 15/15 and `modules.yaml` 9/9 identical.
+      * Topics: **0 missing** across all 9 handler components; TF frames **6/6 identical**.
+      * Algorithm cores: global planner 95.6% (9 files byte-identical, remainder API-translation only), local planner 98.7%, math_utils 99.1%.
+      * Launch files: **11/11 ported** to `.launch.py`.
+    - **Intentional port differences documented** (not failures): `rospy`→`rclpy`,
+      `roscpp`→`rclcpp`, catkin→colcon/ament, `roslaunch`→ROS 2 launch, `ROS_*`→`RCLCPP_*`,
+      `costmap_2d`→`nav2_costmap_2d`, `tf::getYaw`→`tf2::getYaw`, `boost::thread`→`std::thread`,
+      Gazebo Classic→Gazebo Harmonic, Cartographer/OSQP source builds→binary underlays,
+      `snake_case`→`PascalCase` service type names, and a Cartographer `odom` remap that
+      **fixes a ROS 1 type mismatch** (`PoseWithCovarianceStamped` vs `nav_msgs/Odometry`).
+    - **No functional gap identified.** Items that first appeared as gaps were each resolved:
+      5 "missing" message fields were a measurement artifact (`rosmsg show` recursive type
+      expansion — re-run with `-r`), `control/joy` is commented out in ROS 1 itself, and the
+      7 `mapping/lio/*` topics exist only in Rviz configs with no node code referencing them.
+    - **One genuine numeric difference recorded, unresolved**: ROS 1 `costmap.update_frequency`
+      is `1.0` while ROS 2's `global_costmap` uses `3.0`. Its behavioral impact was **not**
+      measured and it is not claimed equivalent.
+    - **NOT VERIFIED (explicitly not claimed equivalent)**: Gazebo Classic vs Harmonic vs
+      Isaac Sim **physics** behavior; end-to-end ROS 1 navigation; LiDAR/odometry message
+      value equivalence; planner path output A/B; physical hardware paths
+      (`motor_handler`, `io_board_handler`, live `bluesea2` UDP — requires the real robot,
+      deliberately out of scope). The simulator was **replaced**, not shown equivalent; only
+      the *model and ROS interface* it must satisfy were shown equivalent.
+    - **Reference integrity preserved**: `openmover_robot` was fingerprinted before and after
+      — file count 2552 and tree hash
+      `f17c242a8cb64b4f987ae606f9c749e278690f109d8159b145ed0cbb697c1886` unchanged, 0 dirty
+      entries. All builds occurred in the container copy; the host reference was never written to.
+    - **Two inaccuracies in the existing migration audit corrected**: it cited a
+      `Motion.msg` that does not exist in either tree (actual ROS 1 set is 8 messages), and
+      its Hop 1 equivalence was previously inferred rather than measured. Both are now fixed,
+      and the two audits cross-link.
+    - **Environment issues investigated to conclusion (not port defects)**: non-deterministic
+      GCC `internal compiler error` crashes traced to Docker's default 64 MiB `/dev/shm`
+      under high `-j20` parallelism (resolved by raising `/dev/shm` and reducing parallelism;
+      cgroup `oom_kill` counters were 0, so not OOM); three **pre-existing reference-tree
+      build-hygiene defects** (a regular file where catkin expects a `toplevel.cmake` symlink,
+      a case-mismatched `relocalization_request.srv`, and a vestigial empty
+      `add_action_files` block) fixed only in the container copy.
+  - **Phase 7 Stage D (Real Remote Target Validation): PAUSED, not cancelled.** Containerized
+    remote-target validation over SSH had been partially exercised before this equivalence
+    study was requested (target identity/discovery, project deployment with dev-artifact
+    exclusion verified, target-native build, detached run lifecycle, remote logs/status/
+    inspect, remote stop + process cleanup, and unreachable/bad-auth/undeployed failure
+    cases). Two genuine `caasi` bugs it exposed were fixed and committed separately
+    (`99fc43c`): the remote discovery probe was broken on any real SSH target
+    (`python3 -c` argv was re-parsed by the remote shell → `SyntaxError`; now base64 +
+    `shlex.quote`), and SSH identity selection is now bounded via `-o IdentitiesOnly=yes`.
+    Remaining Stage D work (SSH-client-termination resilience evidence, A–G evidence matrix,
+    Stage D report section) is **not yet done**. The Stage D container
+    (`remote-target-01`) is stopped but retained; its scaffolding is parked at
+    `/tmp/stage-d-parked/`. Per instruction, Stage D does **not** proceed until the user
+    decides based on this equivalence evidence.
+  - **Current State**: ROS 1 → ROS 2 functional equivalence validation complete and committed.
+    Awaiting user decision on whether to resume Phase 7 Stage D, or to pursue another
+    capability first.

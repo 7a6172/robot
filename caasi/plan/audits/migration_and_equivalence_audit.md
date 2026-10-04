@@ -27,6 +27,16 @@ Canonical Caasi Project (caasi-workspace/openmover)
 
 The empirical evidence collected in this audit primarily and directly verifies **Hop 2**: that the canonical caasi project faithfully preserves and operationalizes the audited ROS 2 / Isaac Sim / Isaac Lab project. Functional equivalence with the historical ROS 1 base (**Hop 1**) is established only where the existing ROS 2 port had already ported that functionality and where that functionality has been directly verified in this or prior phase audits.
 
+> **Hop 1 is now measured directly.** The companion audit
+> [**ROS 1 → ROS 2 Functional Equivalence Validation**](ros1_to_ros2_functional_equivalence.md)
+> reproduces the ROS 1 reference system from its own `install.sh` in an isolated
+> Noetic environment and compares it against the ROS 2 port with machine-checked
+> tests: **8/8 messages and 10/10 services match exactly** on field name/type/order,
+> **40/40 kinematic joint fields match at 1e-9**, driver/config parameters match,
+> TF frames are identical, and the global-planner algorithm core is
+> byte-identical or API-translation only. That audit also records what remains
+> **unverified** (simulation physics, end-to-end navigation, physical hardware).
+
 ### Summary of Audit Findings
 1. **Source Package Parity**: All 9 ROS 2 packages in `caasi-workspace/openmover/src` are **100% byte-for-byte identical** (`diff -rq` returned 0) to the audited `openmover_ws/src` tree.
 2. **Simulation & RL Assets**: All operational USD scenes, meshes, and robot articulations are consolidated under `assets/robots/` and `assets/scenes/`, resolved dynamically via `CAASI_PROJECT_ROOT`.
@@ -51,7 +61,7 @@ Every component across the three repositories is categorized into one of five st
 | Package / Directory | Historical ROS 1 (`openmover_robot`) | Operational ROS 2 (`openmover_ws`) | Canonical Caasi Project (`openmover`) | Classification | Audit Verification Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `openmover` | Hardware bringup, UDP motor driver, teleop | ROS 2 Jazzy hardware node & launch files | `src/openmover` | **MOVED** (from ROS 2) / **PORTED** (from ROS 1) | Byte-for-byte identical to ROS 2 port (`diff -rq` clean). Contains real hardware UDP drivers, launch files, and default configurations. |
-| `openmover_msgs` | ROS 1 message defs (`Obstacle.msg`, `Motion.msg`) | ROS 2 rosidl package (`Obstacle.msg`, `Motion.msg`) | `src/openmover_msgs` | **MOVED** (from ROS 2) / **PORTED** (from ROS 1) | Byte-for-byte identical to ROS 2 port. Interface verified via `caasi native ros interface show openmover_msgs/msg/Obstacle`. |
+| `openmover_msgs` | ROS 1 message defs (8 msg: `obstacle`, `pose`, `twist`, `bms_data`, `flow_state`, `motor_state`, `nav_to_simple`, `nav_to_state`; 10 srv) | ROS 2 rosidl package (same 8 msg + 10 srv, PascalCase) | `src/openmover_msgs` | **MOVED** (from ROS 2) / **PORTED** (from ROS 1) | Byte-for-byte identical to ROS 2 port. Interface verified via `caasi native ros interface show openmover_msgs/msg/Obstacle`. ROS 1 field-level equivalence measured in the [ROS 1 → ROS 2 validation](ros1_to_ros2_functional_equivalence.md): 8/8 messages and 10/10 services match exactly. |
 | `bluesea2` | ROS 1 Bluesea LiDAR driver | ROS 2 Jazzy Bluesea LiDAR driver | `src/bluesea2` | **MOVED** (from ROS 2) / **PORTED** (from ROS 1) | Byte-for-byte identical to ROS 2 port. Real UDP socket communication logic preserved. |
 | `ira_laser_tools` | Catkin dual LiDAR merger (`laserscan_multi_merger`) | Ament CMake dual LiDAR merger | `src/ira_laser_tools` | **MOVED** (from ROS 2) / **PORTED** (from ROS 1) | Byte-for-byte identical to ROS 2 port. Verified merging dual RTX LiDAR streams into `/scan` during live simulation. |
 | `warehouse_simulation` | `warehouse_simulation_toolkit` (Gazebo Classic 11) | `warehouse_simulation` (Modern Gazebo + Isaac bridge) | `src/warehouse_simulation` | **REWRITTEN / PORTED** | Modernized from Gazebo Classic. Byte-for-byte identical to `openmover_ws/src`. |
