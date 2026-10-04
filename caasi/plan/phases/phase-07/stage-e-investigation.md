@@ -219,20 +219,44 @@ code implements it.
 
 ### G-E5 — Size-stratified reality is unaddressed
 
-**Measured behaviour.** Output scale in this project varies by orders of
-magnitude, so a single copy-everything policy is wrong:
+**Measured behaviour.** Output scale varies by orders of magnitude, so a single
+copy-everything policy is wrong. The figures below were measured on the
+**local workstation (`zar@u24-z690p`)** at the exact path:
 
-| Output class | Example | Measured size |
+```text
+/home/zar/Documents/phd/robot/openmover_ws/isaac/lab
+```
+
+| Output class | Example | Measured |
 | :--- | :--- | :--- |
 | Result JSON | campaign aggregates | **462 files** |
 | Model checkpoints | `.pt` weights | **330 files** |
 | Video | `.mp4` episodes | **67 files** |
-| **Total (Isaac Lab campaign outputs)** | | **5.0 GB** |
-| ROS build/log tree (target-side) | `build`, `install`, `log` | 193M / 13M / 4.1M |
+| **Total (that one directory)** | | **5.0 GB** (1531 files) |
+| ROS build/log tree (local project) | `build`, `install`, `log` | 193M / 13M / 4.1M |
 
-Returning 5 GB to the workstation by default would be actively harmful; keeping
-4 KB of metrics on the target would defeat the purpose. This is the concrete
-justification for a *routing* policy rather than a *sync* policy.
+**Provenance of this measurement — important for correct interpretation:**
+
+- Machine: `u24-z690p` (the workstation). **Not** the remote target.
+- It is a **pre-existing historical Isaac Lab campaign output directory**, not
+  caasi-generated remote artifacts. File mtimes span 2026-09-02 → 2026-09-07;
+  **0 files** were touched on 2026-10-04 when Stage D ran; the tree was last
+  committed in the baseline `79dc52f` (2026-10-03), with 749 of its files
+  git-tracked under `openmover_ws/`.
+- Nothing was copied between `u24-z690p` and `u24-307` during this work. The only
+  transfer was the Stage D deployment: **835 files / 40.4 MiB** of project
+  *source*. Verified on the target: **0 `.pt` files** in `~`, and the deployed
+  `lab/models/` is 4.0 KB and contains no artifacts.
+
+So this figure is cited **only as a realistic magnitude for the design question**
+(what if a run produces gigabytes of checkpoints and video?), using a real
+example from this project. It is *not* evidence that caasi produced or moved
+those artifacts — caasi has no such capability, which is precisely gap G-E2.
+
+Returning gigabytes to the workstation by default would be actively harmful;
+keeping 4 KB of metrics on the target would defeat the purpose. That contrast —
+not the specific directory — is the justification for a *routing* policy rather
+than a *sync* policy.
 
 ---
 
@@ -363,7 +387,10 @@ Staged so each step is independently verifiable and the design can still change:
 
 1. **E1 — Inventory only.** Compute the artifact inventory for a *finished* run
    (local and remote) with hash, size, kind, and location. No copying. Verify
-   against the real `u24-307` target and the 5 GB Isaac Lab output set.
+   against the real `u24-307` target, and against a local run directory that
+   produces a large output set (the 5 GB tree named in §3 G-E5 is a convenient
+   magnitude reference, but a run producing outputs under a run directory is the
+   better fixture).
 2. **E2 — Declaration.** Add optional `outputs:` to experiment config; classify
    produced files by declaration, falling back to observed inventory.
 3. **E3 — Routing.** Implement `workstation` and `target_local` destinations via
@@ -381,12 +408,14 @@ Staged so each step is independently verifiable and the design can still change:
 These are genuine design forks, not rhetorical:
 
 1. **Default for unclassified outputs.** Return to workstation, or leave on
-   target? Returning is friendlier for small results but dangerous at 5 GB;
-   leaving is safe but means results silently stay remote. *(Recommendation: leave
-   on target and record the location, so nothing is silently moved or lost.)*
-2. **Hash everything, or hash on demand?** Hashing 330 `.pt` files costs real I/O
-   over a relay. *(Recommendation: hash small artifacts by default, hash large
-   ones only when `--verify` is requested.)*
+   target? Returning is friendlier for small results but dangerous at
+   multi-gigabyte scale; leaving is safe but means results silently stay remote.
+   *(Recommendation: leave on target and record the location, so nothing is
+   silently moved or lost.)*
+2. **Hash everything, or hash on demand?** Hashing hundreds of multi-megabyte
+   checkpoint files costs real I/O, especially over a relay. *(Recommendation:
+   hash small artifacts by default, hash large ones only when `--verify` is
+   requested.)*
 3. **Where does the artifact record live** — inside `manifest.yaml`, or a sibling
    `artifacts.yaml`? *(Recommendation: sibling file, matching the existing
    one-concern-per-file bundle layout.)*
@@ -421,6 +450,6 @@ These are genuine design forks, not rhetorical:
 | No fetch/route mechanism exists | Observed gap | `grep` across `src/` |
 | No output declaration in experiments | Observed gap | `target_smoke.yaml` inspected |
 | `artifact_routing` designed but unimplemented | Existing design + observed gap | Proposal §5 vs `grep` in `src/` |
-| Outputs span 4 KB → 5.0 GB | Measured behaviour | `du`/`find` over Isaac Lab campaign outputs |
+| Outputs span ~4 KB → ~5 GB in practice | Measured behaviour | `du`/`find` on **`u24-z690p`** at `openmover_ws/isaac/lab` (5.0 GB, pre-existing historical campaign outputs; **0** `.pt` and no such tree on `u24-307`) |
 
 **No implementation has been performed. No reference tree was modified.**
