@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import pathlib
 import textwrap
 
 import pytest
@@ -349,3 +350,148 @@ def test_ros_requires_ros2(runner, tmp_path, monkeypatch):
         result = runner.invoke(app, args)
         assert result.exit_code == 1
         assert "ros2 CLI not found" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Remote target queries (--target)
+#
+# E2 makes the existing local query surface target-aware. These tests mock the
+# SSH transport so no network is required; the behaviour under test is caasi's
+# own: how it builds the remote invocation, and how it reports the outcome.
+# ---------------------------------------------------------------------------
+
+from caasi.core.targets import Target  # noqa: E402
+
+
+@pytest.fixture
+def remote_target(tmp_path, monkeypatch):
+    """A configured SSH target, so --target resolves without network access."""
+    cfg_file = tmp_path / "caasi-remote.yaml"
+    cfg_file.write_text(
+        yaml.safe_dump({
+            "paths": {"runs": str(tmp_path / "runs")},
+            "targets": {
+                "probe-host": {
+                    "transport": "ssh", "host": "probe.invalid", "user": "u",
+                    "ssh_timeout": 5.0,
+                }
+            },
+        }), encoding="utf-8",
+    )
+    monkeypatch.setenv("CAASI_CONFIG", str(cfg_file))
+    return "probe-host"
+
+
+def test_remote_query_builds_sourced_ssh_invocation(monkeypatch):
+    """The remote call sources ROS then delegates to the target's own ros2."""
+    seen: dict = {}
+
+    def fake_run_cmd(args, timeout=None, env=None):
+        seen["args"] = args
+        seen["timeout"] = timeout
+        from caasi.utils.shell import ShellResult
+        return ShellResult(0, "/scan\n/tf\n", "")
+
+    monkeypatch.setattr(ros_core.shell, "run_cmd", fake_run_cmd)
+    target = Target(name="probe-host", transport="ssh", host="probe.invalid",
+                    user="u", ssh_timeout=5.0)
+
+    result = ros_core.remote_ros2(target, ["topic", "list"],
+                                  ros_setup="/opt/ros/jazzy/setup.bash")
+    assert result.ok
+    joined = " ".join(seen["args"])
+    # ssh transport
+    assert "ssh" in seen["args"][0]
+    assert "u@probe.invalid" in joined
+    # delegates to the target's ros2 rather than reimplementing anything
+    assert "exec ros2" in joined
+    # sources the underlay so a non-interactive shell can find it
+    assert "/opt/ros/jazzy/setup.bash" in joined
+
+
+def test_remote_query_reports_missing_ros2_as_127(monkeypatch):
+    """A target without ros2 produces the 127 + marker the CLI maps to a clear error."""
+    def fake_run_cmd(args, timeout=None, env=None):
+        from caasi.utils.shell import ShellResult
+        return ShellResult(127, "", "CAASI_NO_ROS2\n")
+
+    monkeypatch.setattr(ros_core.shell, "run_cmd", fake_run_cmd)
+    target = Target(name="probe-host", transport="ssh", host="probe.invalid")
+    result = ros_core.remote_ros2(target, ["topic", "list"])
+    assert result.returncode == 127
+    assert "CAASI_NO_ROS2" in result.stderr
+
+
+def test_remote_query_passes_domain_id(monkeypatch):
+    """A non-default ROS_DOMAIN_ID must reach the target's ros2 invocation."""
+    seen: dict = {}
+
+    def fake_run_cmd(args, timeout=None, env=None):
+        seen["args"] = args
+        from caasi.utils.shell import ShellResult
+        return ShellResult(0, "/talker\n", "")
+
+    monkeypatch.setattr(ros_core.shell, "run_cmd", fake_run_cmd)
+    target = Target(name="probe-host", transport="ssh", host="probe.invalid")
+    ros_core.remote_ros2(target, ["node", "list"], domain_id=42)
+    assert "ROS_DOMAIN_ID=42" in " ".join(seen["args"])
+
+
+def test_remote_query_unreachable_is_negative_returncode(monkeypatch):
+    """A transport failure is rc -1, which the CLI reports as unreachable."""
+    def fake_run_cmd(args, timeout=None, env=None):
+        from caasi.utils.shell import ShellResult
+        return ShellResult(-1, "", "timed out after 5.0s")
+
+    monkeypatch.setattr(ros_core.shell, "run_cmd", fake_run_cmd)
+    target = Target(name="probe-host", transport="ssh", host="probe.invalid")
+    result = ros_core.remote_ros2(target, ["topic", "list"])
+    assert result.returncode == -1
+
+
+def test_cli_unknown_target_fails_without_querying_local(runner, monkeypatch):
+    """A --target typo must not silently fall back to the workstation."""
+    monkeypatch.setenv("CAASI_CONFIG", str(pathlib.Path("/nonexistent-cfg.yaml")))
+    called: list = []
+    monkeypatch.setattr(ros_core, "run_ros2",
+                        lambda *a, **k: called.append(a) or _ok())
+    result = runner.invoke(app, ["ros", "list", "topics", "--target", "typo-name"])
+    assert result.exit_code == 1
+    assert called == [], "local ros2 was invoked despite an unknown target"
+
+
+def _ok():
+    from caasi.utils.shell import ShellResult
+    return ShellResult(0, "", "")
+
+
+def test_cli_local_path_unchanged_without_target(runner, fake_ros):
+    """Omitting --target keeps the original local behaviour exactly."""
+    result = runner.invoke(app, ["ros", "list", "topics"])
+    assert result.exit_code == 0
+    assert "/scan" in result.output and "/tf" in result.output
+
+
+def test_remote_status_json_includes_target(runner, remote_target, monkeypatch):
+    """Remote status is labelled with the target it came from."""
+    monkeypatch.setattr(ros_core, "remote_ros_environment",
+                        lambda t: {"available": True, "distro": "jazzy",
+                                   "root": "/opt/ros/jazzy",
+                                   "binary": "/opt/ros/jazzy/bin/ros2",
+                                   "rmw": None})
+    monkeypatch.setattr(ros_core, "remote_ros2_lines", lambda *a, **k: ["/chatter"])
+    result = runner.invoke(app, ["ros", "status", "--target", remote_target, "--json"])
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.output)
+    assert data["target"] == remote_target
+    assert data["distro"] == "jazzy"
+    assert data["topics"] == 1
+
+
+def test_remote_status_unreachable_reports_error(runner, remote_target, monkeypatch):
+    monkeypatch.setattr(ros_core, "remote_ros_environment",
+                        lambda t: {"available": False, "error": "Connection timed out"})
+    result = runner.invoke(app, ["ros", "status", "--target", remote_target])
+    # An unreachable target is an error, not an empty success.
+    assert result.exit_code == 1
+    assert "unreachable" in result.output.lower()
