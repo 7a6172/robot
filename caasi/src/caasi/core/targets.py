@@ -160,6 +160,10 @@ class Target:
     port: int | None = None
     identity: str | None = None
     deployment_root: str | None = None
+    # Per-target SSH budget in seconds. Targets reached over a relay, VPN or
+    # high-latency link need more than the conservative 3.0s default for the SSH
+    # handshake and the discovery probe. See plan/phases/phase-07/stage-d-gap-ssh-timeout.md.
+    ssh_timeout: float = 3.0
     tags: list[str] = field(default_factory=list)
     declared_capabilities: list[str] = field(default_factory=list)
     declared_resources: dict[str, Any] = field(default_factory=dict)
@@ -240,12 +244,15 @@ class TargetInspection:
 
 def target_ssh_prefix(target: Target) -> list[str]:
     """Build ssh invocation argument list for an SSH target."""
+    # ConnectTimeout is the TCP/SSH handshake budget. It must accommodate the
+    # target's real link latency; a relayed or VPN path can need several seconds.
+    connect_timeout = max(1, int(round(target.ssh_timeout)))
     args = [
         "ssh",
         "-o",
         "BatchMode=yes",
         "-o",
-        "ConnectTimeout=3",
+        f"ConnectTimeout={connect_timeout}",
         "-o",
         "StrictHostKeyChecking=accept-new",
     ]
@@ -344,6 +351,7 @@ def list_targets(config: Config) -> list[Target]:
                 port=spec.get("port"),
                 identity=spec.get("identity"),
                 deployment_root=spec.get("deployment_root"),
+                ssh_timeout=float(spec.get("ssh_timeout", 3.0)),
                 tags=list(spec.get("tags") or []),
                 declared_capabilities=list(spec.get("capabilities") or []),
                 declared_resources=dict(spec.get("resources") or {}),
@@ -389,10 +397,17 @@ def find_target(config: Config, query: str) -> Target | None:
 def discover_target(
     target: Target,
     config: Config | None = None,
-    timeout: float = 3.0,
+    timeout: float | None = None,
 ) -> TargetInspection:
-    """Perform capability discovery and resource inspection on a target."""
+    """Perform capability discovery and resource inspection on a target.
+
+    ``timeout`` bounds the discovery round-trip. When omitted, the target's own
+    ``ssh_timeout`` is used, so a slow (relayed, VPN, WAN) target can raise its
+    budget in configuration without every call site having to know about it.
+    """
     cfg = config if config is not None else Config({}, [])
+    if timeout is None:
+        timeout = target.ssh_timeout
 
     start = time.perf_counter()
 
@@ -509,7 +524,11 @@ def discover_target(
             ping_ms=ping_ms,
             probe_duration_ms=probe_duration_ms,
             latency_ms=ping_ms,
-            error=f"Remote probe timed out after {timeout}s",
+            error=(
+                f"Remote probe timed out after {timeout}s. The target answered on "
+                f"TCP but SSH did not complete in budget; raise 'ssh_timeout' for "
+                f"this target if it is reached over a relay, VPN or high-latency link."
+            ),
         )
     except OSError as err:
         probe_duration_ms = round((time.perf_counter() - start) * 1000.0, 2)

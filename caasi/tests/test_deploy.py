@@ -165,6 +165,48 @@ def test_deploy_real_and_verification(sample_project: Path, tmp_path: Path) -> N
     assert deployments[0].deployment_id == record.deployment_id
 
 
+def test_deployment_status_resolves_default_destination(
+    sample_project: Path, tmp_path: Path
+) -> None:
+    """`--status` must find a deployment created with the DEFAULT destination.
+
+    Phase 7 Stage D found that the read path used the bare ``deployment_root``
+    while the write path appended the project name, so a live, verified
+    deployment was reported as absent. Both paths must agree.
+    """
+    cfg = Config({}, [])
+    root = tmp_path / "deploy-root"
+    root.mkdir()
+    target = Target(name="local", transport="local", deployment_root=str(root))
+
+    # Deploy using the default destination (no override) -> <root>/<project_name>
+    spec = create_deployment_spec(sample_project, target, cfg)
+    assert spec.destination_path == str(root / "my_robot")
+    record = execute_deployment(spec, dry_run=False, config=cfg)
+    assert record.status == "verified"
+
+    # Reading WITHOUT an explicit destination must find it.
+    status = get_deployment_status(target, None, cfg, project_root=sample_project)
+    assert status is not None, "default destination was not resolved correctly"
+    assert status.deployment_id == record.deployment_id
+    assert status.project_name == "my_robot"
+    assert status.status == "verified"
+
+
+def test_deployment_status_missing_deployment_returns_none(
+    sample_project: Path, tmp_path: Path
+) -> None:
+    """A project with no deployment yet must report absent, not raise."""
+    cfg = Config({}, [])
+    root = tmp_path / "empty-root"
+    root.mkdir()
+    target = Target(name="local", transport="local", deployment_root=str(root))
+    # Nothing deployed under the resolved destination -> None (no crash).
+    assert get_deployment_status(target, None, cfg, project_root=sample_project) is None
+    # An explicit destination that does not exist behaves the same way.
+    assert get_deployment_status(target, str(root / "does-not-exist"), cfg) is None
+
+
 def test_incremental_synchronization(sample_project: Path, tmp_path: Path) -> None:
     dest = tmp_path / "incremental_dest"
     target = Target(name="local", transport="local")

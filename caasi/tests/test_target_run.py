@@ -320,6 +320,81 @@ def test_remote_stop_run_process_group(mock_config: Config) -> None:
     assert any("kill -TERM -7777" in c for c in ssh_executed)
 
 
+def test_remote_stop_uses_target_ssh_budget(mock_config: Config) -> None:
+    """Remote stop budgets each SSH round-trip from the target's own link latency.
+
+    Phase 7 Stage D hit this against a real machine over a Tailscale relay: the
+    5s-per-call budget expired mid-stop even though the kill landed, so the run
+    was mis-reported as `lost`.
+    """
+    target = Target(name="slow", transport="ssh", host="slow.lan", ssh_timeout=20.0)
+    record = runs.RunRecord(
+        run_id="run-test-slow-stop", name="slow_stop", backend="python",
+        kind="experiment", command=["python3", "main.py"], cwd="/srv/app",
+        created="2026-10-04T00:00:00Z", pid=8888, pgid=8888,
+        target="slow", target_transport="ssh", destination="/srv/app",
+        remote_run_dir="/srv/app/.caasi/runs/run-test-slow-stop",
+    )
+    observed: list[float] = []
+
+    def mock_run(cmd, *args, **kwargs):
+        observed.append(kwargs.get("timeout"))
+        res = MagicMock()
+        res.returncode = 0
+        res.stdout = "DEAD\n" if "kill -0" in " ".join(cmd) else ""
+        return res
+
+    with patch.object(targets_core, "find_target", return_value=target), patch(
+        "subprocess.run", side_effect=mock_run
+    ):
+        runs.stop_run(record, config=mock_config)
+
+    # Every SSH call must be given the target's budget, not a hardcoded 5s.
+    assert observed, "no SSH calls were made"
+    assert all(t is not None and t >= 20.0 for t in observed), observed
+
+
+def test_remote_stop_records_stopped_when_confirmation_times_out(mock_config: Config) -> None:
+    """A delivered kill must never be recorded as `lost` just because the
+    follow-up probe could not complete inside its budget.
+
+    This is the exact Stage D mis-report: the tested process tree WAS terminated
+    on the target, but caasi reported status `lost`.
+    """
+    target = Target(name="slow", transport="ssh", host="slow.lan", ssh_timeout=20.0)
+    record = runs.RunRecord(
+        run_id="run-test-timeout-stop", name="timeout_stop", backend="python",
+        kind="experiment", command=["python3", "main.py"], cwd="/srv/app",
+        created="2026-10-04T00:00:00Z", pid=9999, pgid=9999,
+        target="slow", target_transport="ssh", destination="/srv/app",
+        remote_run_dir="/srv/app/.caasi/runs/run-test-timeout-stop",
+    )
+    calls = {"n": 0}
+
+    def mock_run(cmd, *args, **kwargs):
+        calls["n"] += 1
+        joined = " ".join(cmd)
+        if "kill -0" in joined:
+            # Every status probe is too slow to complete: the transport cannot
+            # confirm anything.
+            raise subprocess.TimeoutExpired(cmd=cmd, timeout=kwargs.get("timeout", 5.0))
+        res = MagicMock()
+        res.returncode = 0
+        res.stdout = ""
+        return res
+
+    with patch.object(targets_core, "find_target", return_value=target), patch(
+        "subprocess.run", side_effect=mock_run
+    ):
+        stopped = runs.stop_run(record, config=mock_config)
+
+    # Confirmation failed, so the return value is False ("signalled, unconfirmed")...
+    assert stopped is False
+    # ...but the run must be recorded as stopped, never as lost.
+    assert record.stopped is True
+    assert record.paused is False
+
+
 def test_local_sandbox_lifecycle_and_process_group_cleanup(
     sample_experiment_project: tuple[Path, Path], tmp_path: Path, mock_config: Config
 ) -> None:

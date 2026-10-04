@@ -215,7 +215,8 @@ def remote_effective_status(record: RunRecord, config: Config | None = None) -> 
             ssh_prefix + [check_cmd],
             capture_output=True,
             text=True,
-            timeout=5.0,
+            # One probe = one SSH round-trip; budget from the target's own link.
+            timeout=max(5.0, float(target.ssh_timeout)),
         )
     except Exception:
         return "unreachable"
@@ -461,12 +462,24 @@ def _wait_gone(record: RunRecord, timeout: float) -> bool:
 
 
 def remote_stop_run(record: RunRecord, config: Config, timeout: float = 5.0) -> bool:
-    """Terminate a remote process group over SSH."""
+    """Terminate a remote process group over SSH.
+
+    Returns True when the tested process is confirmed gone. A kill may succeed
+    while confirmation cannot complete (slow link); in that case the run is
+    still recorded as stopped — the signal was delivered — and the return value
+    is False to signal "signalled, not confirmed". It must never be recorded as
+    ``lost``, which would read as "state unknown" and is the mis-report this
+    guards against.
+    """
     target = targets_core.find_target(config, record.target)
     if not target:
         return False
 
     ssh_prefix = targets_core.target_ssh_prefix(target)
+    # Every step of this routine is one SSH round-trip. Budget per call from the
+    # target's own link latency: a relayed/VPN target needs far more than the
+    # 5s that suited a local container.
+    per_call = max(5.0, float(target.ssh_timeout))
     pgid = record.pgid or record.pid
     pid = record.pid
     if not pid:
@@ -474,27 +487,41 @@ def remote_stop_run(record: RunRecord, config: Config, timeout: float = 5.0) -> 
 
     # Check if already dead
     check_alive = f"kill -0 {pid} 2>/dev/null && echo 'ALIVE' || echo 'DEAD'"
-    res = subprocess.run(ssh_prefix + [check_alive], capture_output=True, text=True, timeout=5.0)
-    if res.returncode == 0 and res.stdout.strip() == "DEAD":
-        _update_manifest(record, stopped=True, paused=False)
-        record.stopped = True
-        record.paused = False
-        return True
+    try:
+        res = subprocess.run(ssh_prefix + [check_alive], capture_output=True,
+                             text=True, timeout=per_call)
+        if res.returncode == 0 and res.stdout.strip() == "DEAD":
+            _update_manifest(record, stopped=True, paused=False)
+            record.stopped = True
+            record.paused = False
+            return True
+    except subprocess.TimeoutExpired:
+        # Cannot even read current state; fall through and still deliver the signal.
+        pass
 
     # 1. Send SIGTERM to remote process group
     kill_term = f"kill -TERM -{pgid} 2>/dev/null || kill -TERM {pid} 2>/dev/null"
-    subprocess.run(ssh_prefix + [kill_term], capture_output=True, timeout=5.0)
+    signal_sent = False
+    try:
+        subprocess.run(ssh_prefix + [kill_term], capture_output=True, timeout=per_call)
+        signal_sent = True
+    except subprocess.TimeoutExpired:
+        pass
 
     # 2. Wait up to timeout for process to terminate
     deadline = time.monotonic() + timeout
     stopped = False
     while time.monotonic() < deadline:
-        res = subprocess.run(
-            ssh_prefix + [check_alive],
-            capture_output=True,
-            text=True,
-            timeout=5.0,
-        )
+        try:
+            res = subprocess.run(
+                ssh_prefix + [check_alive],
+                capture_output=True,
+                text=True,
+                timeout=per_call,
+            )
+        except subprocess.TimeoutExpired:
+            time.sleep(0.2)
+            continue
         if res.returncode == 0 and res.stdout.strip() == "DEAD":
             stopped = True
             break
@@ -503,15 +530,22 @@ def remote_stop_run(record: RunRecord, config: Config, timeout: float = 5.0) -> 
     # 3. If still alive after timeout, send SIGKILL to process group
     if not stopped:
         kill_kill = f"kill -KILL -{pgid} 2>/dev/null || kill -KILL {pid} 2>/dev/null"
-        subprocess.run(ssh_prefix + [kill_kill], capture_output=True, timeout=5.0)
+        try:
+            subprocess.run(ssh_prefix + [kill_kill], capture_output=True, timeout=per_call)
+            signal_sent = True
+        except subprocess.TimeoutExpired:
+            pass
         time.sleep(0.2)
-        res = subprocess.run(
-            ssh_prefix + [check_alive],
-            capture_output=True,
-            text=True,
-            timeout=5.0,
-        )
-        stopped = (res.stdout.strip() == "DEAD")
+        try:
+            res = subprocess.run(
+                ssh_prefix + [check_alive],
+                capture_output=True,
+                text=True,
+                timeout=per_call,
+            )
+            stopped = (res.stdout.strip() == "DEAD")
+        except subprocess.TimeoutExpired:
+            stopped = False
 
     # 4. Update manifest on target and host
     if record.remote_run_dir:
@@ -521,8 +555,13 @@ def remote_stop_run(record: RunRecord, config: Config, timeout: float = 5.0) -> 
             f"p=\"{dest_manifest}\"; "
             f"d=yaml.safe_load(open(p)); d[\"stopped\"]=True; yaml.safe_dump(d, open(p,\"w\"))' 2>/dev/null || true"
         )
-        subprocess.run(ssh_prefix + [update_remote], capture_output=True, timeout=5.0)
+        try:
+            subprocess.run(ssh_prefix + [update_remote], capture_output=True, timeout=per_call)
+        except subprocess.TimeoutExpired:
+            pass
 
+    # A delivered signal is enough to record the run as stopped. Its status must
+    # never be downgraded to 'lost' merely because confirmation timed out.
     _update_manifest(record, stopped=True, paused=False)
     record.stopped = True
     record.paused = False
@@ -668,7 +707,9 @@ def read_run_log(
         ssh_prefix = targets_core.target_ssh_prefix(target)
         log_file = f"{record.remote_run_dir.rstrip('/')}/{stream}.log"
         cmd = ssh_prefix + [f"tail -n {max(lines, 1)} '{log_file}' 2>/dev/null"]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10.0)
+        # One tail over SSH; budget from the target's link latency.
+        res = subprocess.run(cmd, capture_output=True, text=True,
+                             timeout=max(10.0, float(target.ssh_timeout) * 2))
         return res.stdout if res.returncode == 0 else ""
     elif record.target != "local" and record.target_transport == "local" and record.remote_run_dir:
         log_file = Path(record.remote_run_dir) / f"{stream}.log"
@@ -704,7 +745,8 @@ def inspect_run_files(record: RunRecord, config: Config | None = None) -> list[d
         cmd = ssh_prefix + [
             f"find '{run_dir}' -maxdepth 2 -type f -exec stat -c '%n %s' {{}} + 2>/dev/null"
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10.0)
+        res = subprocess.run(cmd, capture_output=True, text=True,
+                             timeout=max(10.0, float(target.ssh_timeout) * 2))
         files = []
         if res.returncode == 0:
             for line in res.stdout.strip().splitlines():
@@ -872,7 +914,8 @@ exit "$ec"
             input=wrapper_content,
             text=True,
             capture_output=True,
-            timeout=10.0,
+            # Uploading the wrapper is one SSH round-trip; budget from the link.
+            timeout=max(10.0, float(target.ssh_timeout) * 2),
         )
         if res.returncode != 0:
             raise RuntimeError(f"Failed to prepare run wrapper on target: {res.stderr.strip()}")
@@ -890,7 +933,8 @@ exit "$ec"
             ssh_prefix + [launch_script],
             capture_output=True,
             text=True,
-            timeout=10.0,
+            # Launch is one SSH round-trip; budget from the target's link.
+            timeout=max(10.0, float(target.ssh_timeout) * 2),
         )
         if res.returncode != 0 or "PID:" not in res.stdout:
             raise RuntimeError(
@@ -967,7 +1011,8 @@ exit "$ec"
             ssh_prefix + [write_target_man],
             input=target_manifest_yaml,
             text=True,
-            timeout=10.0,
+            # Writing target-side provenance is one SSH round-trip.
+            timeout=max(10.0, float(target.ssh_timeout) * 2),
         )
     else:
         (Path(target_run_dir) / "manifest.yaml").write_text(target_manifest_yaml, encoding="utf-8")

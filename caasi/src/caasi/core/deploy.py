@@ -21,6 +21,7 @@ from typing import Any
 
 from ..utils import shell
 from . import manifest as manifests
+from . import project as projects
 from . import provenance
 from .config import Config
 from .targets import Target, TargetInspection, discover_target, target_ssh_prefix
@@ -160,7 +161,8 @@ def preflight_target(
     config: Config,
 ) -> tuple[bool, TargetInspection, list[str]]:
     """Validate target reachability and capability compatibility before deployment."""
-    inspection = discover_target(target, config, timeout=3.0)
+    # Defer the timeout to the target's configured budget so slow links work.
+    inspection = discover_target(target, config)
     issues: list[str] = []
 
     if not inspection.reachable:
@@ -311,7 +313,9 @@ def execute_deployment(
         if not dry_run:
             # Ensure destination directory exists on target
             mkdir_cmd = ssh_prefix + [f"mkdir -p '{dest_remote}'"]
-            res = subprocess.run(mkdir_cmd, capture_output=True, text=True, timeout=10.0)
+            # One SSH round-trip; budget from the target's own link latency.
+            res = subprocess.run(mkdir_cmd, capture_output=True, text=True,
+                                 timeout=max(10.0, float(spec.target.ssh_timeout) * 2))
             if res.returncode != 0:
                 err_msg = res.stderr.strip() or f"exit code {res.returncode}"
                 return DeploymentRecord(
@@ -418,7 +422,8 @@ def execute_deployment(
         ssh_prefix = target_ssh_prefix(spec.target)
         dest_meta = f"{spec.destination_path.rstrip('/')}/.caasi-deployment.json"
         write_cmd = ssh_prefix + [f"cat > '{dest_meta}'"]
-        res = subprocess.run(write_cmd, input=meta_json, text=True, capture_output=True, timeout=10.0)
+        res = subprocess.run(write_cmd, input=meta_json, text=True, capture_output=True,
+                             timeout=max(10.0, float(spec.target.ssh_timeout) * 2))
         if res.returncode != 0:
             record.status = "failed"
             record.errors.append(f"Failed to write remote metadata on target: {res.stderr.strip()}")
@@ -467,7 +472,8 @@ def verify_deployment(target: Target, destination_path: str) -> tuple[bool, str 
         f"test -f '{dest}/.caasi-deployment.json' && "
         f"cat '{dest}/.caasi-deployment.json'"
     )
-    res = subprocess.run(ssh_prefix + [check_cmd], capture_output=True, text=True, timeout=10.0)
+    res = subprocess.run(ssh_prefix + [check_cmd], capture_output=True, text=True,
+                         timeout=max(10.0, float(target.ssh_timeout) * 2))
     if res.returncode != 0:
         return False, f"Remote verification check failed on {target.name}: {res.stderr.strip() or 'missing files'}"
 
@@ -481,13 +487,45 @@ def verify_deployment(target: Target, destination_path: str) -> tuple[bool, str 
     return True, None
 
 
+def _resolve_default_destination(
+    target: Target,
+    config: Config | None = None,
+    project_root: Path | None = None,
+) -> str:
+    """Derive the destination the way the deployment writer does.
+
+    Uses the project manifest name when the project can be located, so the read
+    path and the write path agree on ``<deployment_root>/<project_name>``.
+    Falls back to the bare deployment root when no project is discoverable, which
+    preserves the previous behaviour instead of failing.
+    """
+    root = project_root
+    if root is None:
+        root = projects.find_project_root()
+    if root is not None:
+        try:
+            manifest = manifests.read(root)
+            project_name = manifest.name or root.name
+            return resolve_deployment_destination(target, project_name)
+        except Exception:
+            pass
+    return target.deployment_root or "~"
+
+
 def get_deployment_status(
     target: Target,
     destination_path: str | None = None,
     config: Config | None = None,
+    project_root: Path | None = None,
 ) -> DeploymentRecord | None:
-    """Retrieve active deployment status from target."""
-    dest = destination_path or (target.deployment_root or "~")
+    """Retrieve active deployment status from target.
+
+    When no explicit destination is given, the path is derived with the SAME
+    resolver used to write the deployment, so a project deployed to the default
+    layout ``<deployment_root>/<project_name>`` is found rather than looked for
+    one level too high. See plan/phases/phase-07/stage-d-gap-deploy-status.md.
+    """
+    dest = destination_path or _resolve_default_destination(target, config, project_root)
     if target.transport == "local":
         meta_file = Path(dest).expanduser().resolve() / ".caasi-deployment.json"
         if not meta_file.is_file():
@@ -501,7 +539,8 @@ def get_deployment_status(
     # Remote SSH transport
     ssh_prefix = target_ssh_prefix(target)
     cmd = ssh_prefix + [f"cat '{dest.rstrip('/')}/.caasi-deployment.json' 2>/dev/null"]
-    res = subprocess.run(cmd, capture_output=True, text=True, timeout=10.0)
+    res = subprocess.run(cmd, capture_output=True, text=True,
+                         timeout=max(10.0, float(target.ssh_timeout) * 2))
     if res.returncode != 0 or not res.stdout.strip():
         return None
     try:

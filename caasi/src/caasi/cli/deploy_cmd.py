@@ -47,7 +47,11 @@ def _format_bytes(num_bytes: int) -> str:
 def _render_status(target_name: str, dest: Optional[str] = None, json_output: bool = False) -> None:
     c = output.console()
     target = _require_target(target_name)
-    status_rec = deploy_core.get_deployment_status(target, dest, state.cfg())
+    # Pass the project root so the read path derives the same destination the
+    # deployment writer used (<deployment_root>/<project_name>).
+    status_rec = deploy_core.get_deployment_status(
+        target, dest, state.cfg(), project_root=projects.find_project_root()
+    )
 
     if output.wants_json(json_output):
         if status_rec:

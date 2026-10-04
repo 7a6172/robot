@@ -292,7 +292,9 @@ def save_build_record(record: TargetBuildRecord, project_root: Path, target: Tar
         dest_meta = f"{record.destination_path.rstrip('/')}/.caasi-build.json"
         write_cmd = ssh_prefix + [f"cat > '{dest_meta}'"]
         try:
-            subprocess.run(write_cmd, input=rec_json, text=True, capture_output=True, timeout=10.0)
+            # One SSH round-trip; budget from the target's own link latency.
+            subprocess.run(write_cmd, input=rec_json, text=True, capture_output=True,
+                           timeout=max(10.0, float(target.ssh_timeout) * 2))
         except Exception:
             pass
 
@@ -338,7 +340,8 @@ def get_last_build_status(
         ssh_prefix = targets_core.target_ssh_prefix(target)
         cmd = ssh_prefix + [f"cat '{dest.rstrip('/')}/.caasi-build.json' 2>/dev/null"]
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=10.0)
+            res = subprocess.run(cmd, capture_output=True, text=True,
+                                 timeout=max(10.0, float(target.ssh_timeout) * 2))
             if res.returncode == 0 and res.stdout.strip():
                 data = json.loads(res.stdout)
                 return TargetBuildRecord(**data)

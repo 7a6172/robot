@@ -215,6 +215,72 @@ def test_target_ssh_prefix() -> None:
     assert "user1@myhost" in prefix
 
 
+def test_target_ssh_prefix_defaults_to_three_second_connect_timeout() -> None:
+    """A target that does not configure ssh_timeout keeps the previous budget."""
+    t = Target(name="box", transport="ssh", host="myhost")
+    assert t.ssh_timeout == 3.0
+    assert "ConnectTimeout=3" in target_ssh_prefix(t)
+
+
+def test_target_ssh_prefix_honours_slow_link_budget() -> None:
+    """A relayed/VPN target can raise its SSH budget in configuration.
+
+    Phase 7 Stage D exposed this against a real machine reached over a Tailscale
+    relay where the SSH round-trip was ~5-6s: the fixed 3s budget made the target
+    permanently unreachable to caasi.
+    """
+    t = Target(name="slow", transport="ssh", host="remote", ssh_timeout=20.0)
+    assert "ConnectTimeout=20" in target_ssh_prefix(t)
+
+
+def test_ssh_timeout_parsed_from_config() -> None:
+    cfg = Config({}, [])
+    cfg.set(
+        "targets",
+        {
+            "slow-node": {"transport": "ssh", "host": "remote", "ssh_timeout": 15.5},
+            "plain-node": {"transport": "ssh", "host": "remote2"},
+        },
+    )
+    targets = {t.name: t for t in list_targets(cfg)}
+    assert targets["slow-node"].ssh_timeout == 15.5
+    assert targets["plain-node"].ssh_timeout == 3.0  # default preserved
+
+
+def test_discover_target_uses_target_timeout_when_none_given() -> None:
+    """Without an explicit timeout, discovery budgets from the target itself."""
+    seen: dict[str, float] = {}
+
+    def fake_run(cmd, **kwargs):
+        seen["timeout"] = kwargs.get("timeout")
+        raise OSError("stop here - only the timeout value is under test")
+
+    t = Target(name="slow", transport="ssh", host="remote", ssh_timeout=12.0)
+    with (
+        patch("caasi.core.targets.check_socket_reachable", return_value=(True, 1.0)),
+        patch("caasi.core.targets.subprocess.run", side_effect=fake_run),
+    ):
+        discover_target(t)
+    assert seen["timeout"] == 12.0
+
+
+def test_discover_target_explicit_timeout_still_wins() -> None:
+    """An explicit timeout overrides the target's configured budget."""
+    seen: dict[str, float] = {}
+
+    def fake_run(cmd, **kwargs):
+        seen["timeout"] = kwargs.get("timeout")
+        raise OSError("stop here")
+
+    t = Target(name="slow", transport="ssh", host="remote", ssh_timeout=12.0)
+    with (
+        patch("caasi.core.targets.check_socket_reachable", return_value=(True, 1.0)),
+        patch("caasi.core.targets.subprocess.run", side_effect=fake_run),
+    ):
+        discover_target(t, timeout=4.0)
+    assert seen["timeout"] == 4.0
+
+
 # CLI command tests
 
 
