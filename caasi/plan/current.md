@@ -261,6 +261,60 @@
         `planner_ab_ros1.cpp`/`planner_ab_ros2.cpp`, `build_planner_*.sh`,
         `compare_abc.py`, `compare_d.py`, `compare_f.py`) with README reproduction
         steps and harness caveats.
+    - **Three-way behavioral equivalence validation completed: A ≈ B ≡ C**:
+      * Closed the remaining gap: the chain was **A↔B runtime-validated** and
+        **B↔C source-parity + Isaac Lab runtime**, but **A↔C had never been
+        behaviorally compared**, and the B↔C runtime evidence came from a
+        different test domain (GPU RL) than the A↔B evidence (ROS 2 message nodes).
+      * **Tree labels introduced** to stop the previous collision with behavioral
+        test names: `ROS1-reference` (`openmover_robot`), `ROS2-reference`
+        (`openmover_ws`), `caasi-ROS2` (`caasi-workspace/openmover`). Behavioral
+        tests are now numbered 1–6 (A→1, B→2, C→3, D→4, E→5, F→6).
+      * **No new methodology.** The four ROS 2 harnesses gained one
+        `--tree <workspace>` argument; inputs, cases, metrics and pre-declared
+        tolerances are unchanged from A↔B.
+      * **Behavior-preservation verified first**: every parameterized harness run
+        against its default tree reproduced the previous B results
+        **byte-identically** (all four). `caasi-ROS2` determinism also confirmed.
+      * **Result: 18/18 pairings PASS.**
+        | Behavior | ROS1↔ROS2ref | ROS2ref↔caasi | ROS1↔caasi |
+        |---|---|---|---|
+        | cmd_vel gating/mode/emergency | PASS (0 ULP) | PASS (0 ULP) | PASS (0 ULP) |
+        | odometry/twist | PASS (0 ULP) | PASS (0 ULP) | PASS (0 ULP) |
+        | obstacle grid | PASS (0 ULP) | PASS (0 ULP) | PASS (0 ULP) |
+        | TF kinematics | PASS (1.11e-16) | PASS (**0.0, bit-identical**) | PASS (1.11e-16) |
+        | scan merger | PASS (bit-identical) | PASS (bit-identical) | PASS (bit-identical) |
+        | planner algorithm | PASS (0.428 cell) | PASS (**0.000 cell**) | PASS (0.428 cell) |
+      * **Key result — `ROS2-reference` ≡ `caasi-ROS2`, not merely ≈**: the two
+        ROS 2 implementations produced **byte-identical structured output on all
+        six behaviors** (identical per-test output hashes; planner plans
+        byte-identical with exactly equal path lengths). The migration to the
+        caasi-native project introduced **no observable behavioral change**.
+      * **The only residual difference is A vs {B,C}, and it is unchanged** from
+        the earlier pass: TF one ULP (quaternion, differing trig), planner
+        0.150–0.428 cells. Both track the **compiler boundary exactly** — g++
+        9.4.0 (Ubuntu 20.04, ROS1) vs g++ 13.3.0 (Ubuntu 24.04, both ROS 2). Where
+        the two ROS 2 trees share a toolchain their output is bit-identical; no
+        algorithmic difference is required or observed.
+      * **No discrepancy hidden or tolerance loosened.** No C-specific difference
+        was found to investigate; all tolerances remain exactly as declared for A↔B.
+      * **Compact committed evidence**: `three_way_records.json` (5.8 KB —
+        hashes, pairings, verdicts, environment/toolchain records) plus
+        `compare_three_way.py`. Raw harness logs are deliberately **not**
+        committed; the committed harnesses regenerate them, and regeneration was
+        verified to reproduce the committed records exactly.
+      * **Reference integrity re-verified after the work**: `openmover_robot`
+        `f17c242a…` and `openmover_ws` `1e09f5de…` both **unchanged** (0 dirty);
+        `caasi-workspace/openmover` `24ef2da4…` **unchanged by this work**. Only
+        intended locations changed (4 harnesses, comparator, records, docs).
+      * **Not established** (unchanged): simulation physics, end-to-end
+        navigation, SLAM output, `navigation_handler`/`localization_handler`
+        runtime behavior, the ROS-service-level planner path, and physical
+        hardware. The three-way pass adds the same six behaviors and nothing more.
+      * **ROS1 reference container**: kept **independent** (no caasi inside it, no
+        caasi reference to it) so it remains an external oracle. Do not make caasi
+        manage the ROS1 reference; container orchestration remains a separate
+        future capability.
   - **Phase 7 Stage D (Real Remote Target Validation): PAUSED, not cancelled.** Containerized
     remote-target validation over SSH had been partially exercised before this equivalence
     study was requested (target identity/discovery, project deployment with dev-artifact
@@ -275,7 +329,7 @@
     (`remote-target-01`) is stopped but retained; its scaffolding is parked at
     `/tmp/stage-d-parked/`. Per instruction, Stage D does **not** proceed until the user
     decides based on this equivalence evidence.
-  - **Current State**: ROS 1 → ROS 2 functional equivalence validation complete — both
-    the static comparison and the simulator-free behavioral pass — and committed.
+  - **Current State**: ROS 1 → ROS 2 functional equivalence validation complete and the
+    three-way chain closed (A ≈ B ≡ C for six simulator-free behaviors), all committed.
     Awaiting user decision on whether to resume Phase 7 Stage D, or to pursue another
     capability first.

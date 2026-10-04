@@ -11,6 +11,18 @@ navigation algorithm cores, and topic/service surfaces — matches ROS 1 with ze
 measured differences — and six simulator-free runtime behaviors (see §12) match
 as well. See §14 for the exact scope and §13 for what remains unverified.
 
+**Three-way extension (§12A)**: the same six behaviors were then run against the
+canonical caasi-native ROS 2 project as well, closing the **A ↔ B ↔ C** chain:
+
+```text
+ROS1-reference  ≈  ROS2-reference  ≡  caasi-ROS2
+```
+
+`ROS2-reference` and `caasi-ROS2` produced **byte-identical structured output on
+all six behaviors**; `ROS1-reference` matched within the declared tolerances,
+with every residual difference attributable to the compiler/toolchain (g++ 9.4.0
+vs g++ 13.3.0).
+
 > This document validates **Hop 1** (ROS 1 → ROS 2). Hop 2 (ROS 2 → canonical
 > caasi project) is covered separately in
 > [`migration_and_equivalence_audit.md`](migration_and_equivalence_audit.md).
@@ -853,6 +865,11 @@ resolving 'archive.ubuntu.com'`). `--network host` resolved it.
 
 ## 12. Behavioral equivalence pass (runtime, simulator-free)
 
+> **Naming note.** This section predates §12A and labels the six behaviors
+> **Test A … Test F**. §12A numbers them **Test 1 … Test 6** to avoid colliding
+> with the implementation tree labels. The mapping is given in §12A.6:
+> A→1, B→2, C→3, D→4, E→5, F→6.
+
 The earlier sections establish **static** equivalence (interfaces, kinematics,
 parameters, source). This section adds **runtime behavioral** evidence for the
 cases where a fair, deterministic comparison between the two stacks exists.
@@ -1075,6 +1092,166 @@ reported as findings:
 
 ---
 
+## 12A. Three-way validation: ROS1-reference ↔ ROS2-reference ↔ caasi-ROS2
+
+§12 established **A ↔ B** (ROS 1 original ↔ the existing ROS 2 port). The
+migration audit separately established **B ↔ C** source parity plus an
+*Isaac Lab* runtime comparison. Neither closed the chain: **A ↔ C had never been
+behaviorally compared**, and the B↔C runtime evidence came from a different test
+domain (GPU RL) than the A↔B evidence (ROS 2 message nodes).
+
+This section closes the chain by running the **same six behaviors against all
+three implementations** with identical inputs.
+
+### 12A.1 Tree labels
+
+To avoid confusing implementation trees with behavioral tests, the trees are
+labelled throughout (and the behavioral tests are now numbered 1–6):
+
+| Label | Tree | Role |
+| :--- | :--- | :--- |
+| **ROS1-reference** | `openmover_robot/` | Immutable ROS 1 original (containerized) |
+| **ROS2-reference** | `openmover_ws/` | Immutable pre-caasi ROS 2 port |
+| **caasi-ROS2** | `caasi-workspace/openmover/` | Canonical caasi-native ROS 2 project |
+
+### 12A.2 Method — no new methodology
+
+The four ROS 2 harnesses gained a single `--tree <workspace>` argument. **No
+test was redesigned**: the inputs, cases, metrics and pre-declared tolerances are
+exactly those used for A ↔ B. The harnesses are tree-agnostic — they require only
+`<tree>/install/setup.bash` plus the tree's own config/URDF.
+
+**Behavior-preservation check (done before using the parameterized harness).**
+Running each parameterized harness against its default tree (`openmover_ws`)
+reproduced the previously recorded B results **byte-identically**:
+
+| Harness | B result reproduced |
+| :--- | :--- |
+| `behavioral_ros2_run.sh` | byte-identical |
+| `test_d_ros2.sh` | byte-identical |
+| `test_e_ros2.sh` | byte-identical |
+| `build_planner_ros2.sh` | byte-identical |
+
+`caasi-ROS2` determinism was also confirmed: re-running its behavioral harness
+reproduced its output exactly.
+
+### 12A.3 Result matrix
+
+Each behavior was compared across all three pairings under its declared rule.
+
+| Behavior | Tolerance (declared for A↔B, unchanged) | ROS1-ref ↔ ROS2-ref | ROS2-ref ↔ caasi-ROS2 | ROS1-ref ↔ caasi-ROS2 | Result |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `cmd_vel` gating / mode / emergency | exact / 0 ULP | **PASS** (0 ULP) | **PASS** (0 ULP) | **PASS** (0 ULP) | **PASS** |
+| odometry / twist | exact / 0 ULP | **PASS** (0 ULP) | **PASS** (0 ULP) | **PASS** (0 ULP) | **PASS** |
+| obstacle grid | exact / 0 ULP | **PASS** (0 ULP) | **PASS** (0 ULP) | **PASS** (0 ULP) | **PASS** |
+| TF forward kinematics | 1e-12 | **PASS** (1.11e-16) | **PASS** (**0.0, bit-identical**) | **PASS** (1.11e-16) | **PASS** |
+| `laserscan_multi_merger` | exact / 0 ULP | **PASS** (bit-identical) | **PASS** (bit-identical) | **PASS** (bit-identical) | **PASS** |
+| global planner algorithm | ≤ 1 cell (0.05 m) | **PASS** (0.428 cells) | **PASS** (**0.000 cells**) | **PASS** (0.428 cells) | **PASS** |
+
+**18/18 pairings PASS.** The compact machine-readable records are committed as
+`ros1-ros2-comparison/three_way_records.json`.
+
+### 12A.4 The pattern: ROS2-reference ≡ caasi-ROS2 exactly
+
+The two ROS 2 implementations are **not merely equivalent — they are
+byte-identical** on every behavior measured:
+
+| Behavior | ROS2-ref vs caasi-ROS2 |
+| :--- | :--- |
+| `cmd_vel` | max **0 ULP**; identical structured JSON |
+| odometry / twist | max **0 ULP**; identical structured JSON |
+| obstacle grid | max **0 ULP**; identical structured JSON |
+| TF kinematics | max **0.0** — **bit-identical** |
+| scan merger | **bit-identical** |
+| planner | **0.000 cells** Hausdorff; plans **byte-identical**; path lengths exactly equal |
+
+The per-test input hashes confirm this directly: for all six behaviors the
+`ROS2-reference` and `caasi-ROS2` output hashes are **equal**, while the
+`ROS1-reference` hash differs only where the known tolerance applies.
+
+| Behavior | ROS1-ref hash | ROS2-ref hash | caasi-ROS2 hash |
+| :--- | :--- | :--- | :--- |
+| `cmd_vel` | `6a425dbc820c1b20` | `9bd62201e67a7214` | `9bd62201e67a7214` |
+| odometry | `6a425dbc820c1b20` | `9bd62201e67a7214` | `9bd62201e67a7214` |
+| obstacle grid | `6a425dbc820c1b20` | `9bd62201e67a7214` | `9bd62201e67a7214` |
+| TF | `dfad6a426a125be8` | `63ab2d01f699e0ae` | `63ab2d01f699e0ae` |
+| scan merger | `5eeca47f01075d72` | `4c6c823611fea98a` | `4c6c823611fea98a` |
+| planner | `00f87a224bbebbca` | `2ffd5780fe6359ad` | `2ffd5780fe6359ad` |
+
+This is a stronger result than "equivalent": the migration from
+`ROS2-reference` to `caasi-ROS2` introduced **no observable behavioral change at
+all** for these six behaviors.
+
+### 12A.5 The only difference, and its single cause
+
+The chain is **A ≈ B ≡ C**. The residual A-vs-{B,C} difference is the same one
+already diagnosed in §12.7, and it is unchanged by this work:
+
+| Behavior | A vs {B,C} | Cause |
+| :--- | :--- | :--- |
+| `cmd_vel`, odometry, obstacle grid, scan merger | **none** (0 ULP / bit-identical) | — |
+| TF kinematics | `1.11e-16` (one ULP, quaternion components only) | different trig implementations |
+| planner | 0.150–0.428 cells; path length 1.2e-04 / 1.1e-02 m | different compilers |
+
+Both are explained by the toolchain, not by any implementation difference:
+
+| | ROS1-reference | ROS2-reference | caasi-ROS2 |
+| :--- | :--- | :--- | :--- |
+| OS | Ubuntu 20.04.6 LTS | Ubuntu 24.04.5 LTS | Ubuntu 24.04.5 LTS |
+| ROS | noetic | jazzy | jazzy |
+| Compiler | **g++ 9.4.0** | **g++ 13.3.0** | **g++ 13.3.0** |
+| glibc | 2.31 | (host) | (host) |
+
+**The A-side differences track the compiler boundary exactly.** Where the two
+ROS 2 implementations share a toolchain (g++ 13.3.0), their outputs are
+bit-identical; where ROS 1 differs, the difference is one ULP (TF) or sub-cell
+(planner). No algorithmic difference is required or observed.
+
+### 12A.6 Renaming note
+
+Because "Test A/B/C" previously collided with implementation trees "A/B/C", the
+behavioral tests are now referred to by number:
+
+| Old | New | Subject |
+| :--- | :--- | :--- |
+| Test A | **Test 1** | `cmd_vel` gating / mode / emergency |
+| Test B | **Test 2** | odometry / twist transform |
+| Test C | **Test 3** | obstacle grid |
+| Test D | **Test 4** | TF forward kinematics |
+| Test E | **Test 5** | `laserscan_multi_merger` |
+| Test F | **Test 6** | global planner algorithm |
+
+### 12A.7 Reference integrity
+
+Verified after the three-way work:
+
+| Tree | Dirty entries | Content hash | Status |
+| :--- | :--- | :--- | :--- |
+| `openmover_robot` (ROS1-reference) | 0 | `f17c242a8cb64b4f987ae606f9c749e2…` | **unchanged** (matches all prior baselines) |
+| `openmover_ws` (ROS2-reference) | 0 | `1e09f5de6f66f91d8f107d23274afb7b…` | **unchanged** |
+| `caasi-workspace/openmover` (caasi-ROS2) | 0 | `24ef2da43dfccc36478b2d7d64830a10…` | **unchanged by this work** |
+
+Only intended locations changed: the four parameterized harnesses, the new
+`compare_three_way.py`, the records file, and this documentation.
+
+### 12A.8 What this does and does not establish
+
+**Establishes:** for the six tested simulator-free behaviors, the chain
+**A ≈ B ≡ C** holds. Specifically, B and C are behaviorally indistinguishable
+(byte-identical outputs), and A matches them within the declared tolerances with
+all residual differences attributable to the compiler/toolchain.
+
+**Does not establish** (unchanged from §13): simulation physics, end-to-end
+navigation, SLAM output, `navigation_handler`/`localization_handler` runtime
+behavior, the ROS-service-level planner path, or physical hardware. The
+three-way pass adds the same six behaviors as §12 and nothing more.
+
+**Also not established:** that `ROS2-reference` is redundant. It remains the
+immutable reference that the caasi-ROS2 tree is validated against; that is the
+purpose it served here.
+
+---
+
 ## 13. Unverified components
 
 Explicitly **not** verified in this study. None is claimed equivalent.
@@ -1144,6 +1321,19 @@ inputs on both stacks:
 | `laserscan_multi_merger` output | full merged 903-sample scan | **PASS, bit-identical** |
 | Global planner algorithm | 2 scenarios, route + path length | **PASS @ 1 cell**, worst 0.43 cell |
 
+And on the **three-way** chain (§12A), the same six behaviors compared across all
+three implementations — **18/18 pairings PASS**, with `ROS2-reference` and
+`caasi-ROS2` byte-identical throughout:
+
+| Behavior | ROS1-ref ↔ ROS2-ref | ROS2-ref ↔ caasi-ROS2 | ROS1-ref ↔ caasi-ROS2 |
+| :--- | :--- | :--- | :--- |
+| `cmd_vel` gating/mode/emergency | PASS (0 ULP) | PASS (0 ULP) | PASS (0 ULP) |
+| odometry/twist | PASS (0 ULP) | PASS (0 ULP) | PASS (0 ULP) |
+| obstacle grid | PASS (0 ULP) | PASS (0 ULP) | PASS (0 ULP) |
+| TF forward kinematics | PASS (1.11e-16) | PASS (0.0, bit-identical) | PASS (1.11e-16) |
+| scan merger | PASS (bit-identical) | PASS (bit-identical) | PASS (bit-identical) |
+| planner algorithm | PASS (0.428 cell) | PASS (0.000 cell) | PASS (0.428 cell) |
+
 ### What this claim does NOT cover
 
 - It does **not** claim simulation equivalence. The simulator was replaced
@@ -1185,6 +1375,10 @@ differences were each resolved:
 > algorithm)**. Simulation physics, end-to-end navigation, SLAM output,
 > `navigation_handler`/`localization_handler` runtime behavior, and physical
 > hardware paths remain **unverified** and are not claimed equivalent.
+>
+> Across all three implementations (`ROS1-reference`, `ROS2-reference`,
+> `caasi-ROS2`) the chain holds as **A ≈ B ≡ C** for these six behaviors, with B
+> and C indistinguishable at the bit level.
 
 ### Direct answer to the research question
 
@@ -1200,7 +1394,7 @@ one agreed to **under half a grid cell** on route and path length (global
 planner algorithm).
 
 **No behavioral discrepancy attributable to the ROS 1 → ROS 2 port was found.**
-The single residual numeric difference (planner waypoints, Test F) is explained
+The single residual numeric difference (planner waypoints, Test 6 / formerly Test F) is explained
 by a toolchain difference — GCC 9.4 vs GCC 13.3 — and is consistent with the
 finding that the planner sources are byte-identical or API-translation only.
 
@@ -1244,8 +1438,10 @@ Behavioral pass (§12):
 ├── merger_probe.py         E      shared dual-scan merger probe
 ├── test_e_ros1.sh, test_e_ros2.sh  E  merger bring-up
 ├── planner_ab_ros1.cpp, build_planner_ros1.sh   F  ROS 1 planner harness
-├── planner_ab_ros2.cpp, build_planner_ros2.sh   F  ROS 2 planner harness
-└── compare_f.py            F      comparison -> 2/2 PASS @ 1 cell
+├── planner_ab_ros2.cpp, build_planner_ros2.sh   Test 6  ROS 2 planner harness
+├── compare_f.py            Test 6 comparison -> 2/2 PASS @ 1 cell
+├── compare_three_way.py    Three-way comparator (all 6 behaviors, 3 pairings)
+└── three_way_records.json  Compact committed result records (hashes + verdicts)
 ```
 
 ### Key commands
@@ -1288,6 +1484,14 @@ bash test_e_ros2.sh > /tmp/ros2_test_e.log   # bit-identical merged scan
 docker exec ros1-ref bash /root/build_planner.sh > /tmp/ros1_test_f.log
 bash build_planner_ros2.sh > /tmp/ros2_test_f.log
 python3 compare_f.py       # 2/2 PASS @ 1 cell
+
+# Three-way chain (adds caasi-ROS2)
+bash behavioral_ros2_run.sh --tree caasi-workspace/openmover > /tmp/C_beh.log
+bash test_d_ros2.sh         --tree caasi-workspace/openmover > /tmp/C_d.log
+bash test_e_ros2.sh         --tree caasi-workspace/openmover > /tmp/C_e.log
+bash build_planner_ros2.sh  --tree caasi-workspace/openmover > /tmp/C_f.log
+python3 compare_three_way.py --test 1_cmd_vel \
+  --ros1 <A> --ros2 <B> --caasi /tmp/C_beh.log     # -> PASS on all 3 pairings
 ```
 
 ### Reference integrity assertion

@@ -1,0 +1,192 @@
+{
+  "record_version": 1,
+  "kind": "three-way-behavioral-equivalence",
+  "note": "Compact reproducible records. Raw harness output is NOT committed; the committed harnesses regenerate it (see README). Input hashes are sha256[:16] of the harness's structured JSON output.",
+  "environments": {
+    "ROS1-reference": {
+      "environment": "container ros1-ref (osrf/ros:noetic-desktop-full)",
+      "os": "Ubuntu 20.04.6 LTS (focal)",
+      "ros": "noetic",
+      "compiler": "g++ (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0",
+      "glibc": "2.31"
+    },
+    "ROS2-reference": {
+      "environment": "host workspace /home/zar/Documents/phd/robot/openmover_ws",
+      "os": "Ubuntu 24.04.5 LTS (noble)",
+      "ros": "jazzy",
+      "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+    },
+    "caasi-ROS2": {
+      "environment": "host workspace /home/zar/Documents/phd/robot/caasi-workspace/openmover",
+      "os": "Ubuntu 24.04.5 LTS (noble)",
+      "ros": "jazzy",
+      "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+    }
+  },
+  "declared_rules": {
+    "1_cmd_vel": "exact on discrete outcomes, 0 ULP on forwarded values",
+    "2_odometry": "exact frame ids, 0 ULP on values",
+    "3_obstacle_grid": "exact, 0 ULP on finite cells (+inf and ROS2 probe null both mean no return)",
+    "4_tf": "1e-12 on translation and quaternion",
+    "5_scan_merger": "exact structure, 0 ULP on all numerics",
+    "6_planner": "symmetric Hausdorff <= 1 grid cell (0.05 m); exact success flag"
+  },
+  "records": [
+    {
+      "record_version": 1,
+      "test": "1_cmd_vel",
+      "subject": "cmd_vel gating / mode / emergency",
+      "tolerance": "exact / 0 ULP",
+      "inputs": {
+        "ROS1-reference": "6a425dbc820c1b20",
+        "ROS2-reference": "9bd62201e67a7214",
+        "caasi-ROS2": "9bd62201e67a7214"
+      },
+      "pairings": {
+        "ROS1-reference|ROS2-reference": {
+          "pass": true,
+          "detail": "max 0 ULP"
+        },
+        "ROS2-reference|caasi-ROS2": {
+          "pass": true,
+          "detail": "max 0 ULP"
+        },
+        "ROS1-reference|caasi-ROS2": {
+          "pass": true,
+          "detail": "max 0 ULP"
+        }
+      },
+      "result": "PASS"
+    },
+    {
+      "record_version": 1,
+      "test": "2_odometry",
+      "subject": "odometry / twist transform",
+      "tolerance": "exact / 0 ULP",
+      "inputs": {
+        "ROS1-reference": "6a425dbc820c1b20",
+        "ROS2-reference": "9bd62201e67a7214",
+        "caasi-ROS2": "9bd62201e67a7214"
+      },
+      "pairings": {
+        "ROS1-reference|ROS2-reference": {
+          "pass": true,
+          "detail": "max 0 ULP"
+        },
+        "ROS2-reference|caasi-ROS2": {
+          "pass": true,
+          "detail": "max 0 ULP"
+        },
+        "ROS1-reference|caasi-ROS2": {
+          "pass": true,
+          "detail": "max 0 ULP"
+        }
+      },
+      "result": "PASS"
+    },
+    {
+      "record_version": 1,
+      "test": "3_obstacle_grid",
+      "subject": "obstacle grid from LaserScan",
+      "tolerance": "exact / 0 ULP",
+      "inputs": {
+        "ROS1-reference": "6a425dbc820c1b20",
+        "ROS2-reference": "9bd62201e67a7214",
+        "caasi-ROS2": "9bd62201e67a7214"
+      },
+      "pairings": {
+        "ROS1-reference|ROS2-reference": {
+          "pass": true,
+          "detail": "max 0 ULP"
+        },
+        "ROS2-reference|caasi-ROS2": {
+          "pass": true,
+          "detail": "max 0 ULP"
+        },
+        "ROS1-reference|caasi-ROS2": {
+          "pass": true,
+          "detail": "max 0 ULP"
+        }
+      },
+      "result": "PASS"
+    },
+    {
+      "record_version": 1,
+      "test": "4_tf",
+      "subject": "TF forward kinematics",
+      "tolerance": "1e-12",
+      "inputs": {
+        "ROS1-reference": "dfad6a426a125be8",
+        "ROS2-reference": "63ab2d01f699e0ae",
+        "caasi-ROS2": "63ab2d01f699e0ae"
+      },
+      "pairings": {
+        "ROS1-reference|ROS2-reference": {
+          "pass": true,
+          "detail": "max 1.110e-16 m, bit-identical=False"
+        },
+        "ROS2-reference|caasi-ROS2": {
+          "pass": true,
+          "detail": "max 0.000e+00 m, bit-identical=True"
+        },
+        "ROS1-reference|caasi-ROS2": {
+          "pass": true,
+          "detail": "max 1.110e-16 m, bit-identical=False"
+        }
+      },
+      "result": "PASS"
+    },
+    {
+      "record_version": 1,
+      "test": "5_scan_merger",
+      "subject": "laserscan_multi_merger",
+      "tolerance": "exact / 0 ULP",
+      "inputs": {
+        "ROS1-reference": "5eeca47f01075d72",
+        "ROS2-reference": "4c6c823611fea98a",
+        "caasi-ROS2": "4c6c823611fea98a"
+      },
+      "pairings": {
+        "ROS1-reference|ROS2-reference": {
+          "pass": true,
+          "detail": "bit-identical"
+        },
+        "ROS2-reference|caasi-ROS2": {
+          "pass": true,
+          "detail": "bit-identical"
+        },
+        "ROS1-reference|caasi-ROS2": {
+          "pass": true,
+          "detail": "bit-identical"
+        }
+      },
+      "result": "PASS"
+    },
+    {
+      "record_version": 1,
+      "test": "6_planner",
+      "subject": "global planner algorithm",
+      "tolerance": "<= 0.05 m (1 cell)",
+      "inputs": {
+        "ROS1-reference": "00f87a224bbebbca",
+        "ROS2-reference": "2ffd5780fe6359ad",
+        "caasi-ROS2": "2ffd5780fe6359ad"
+      },
+      "pairings": {
+        "ROS1-reference|ROS2-reference": {
+          "pass": true,
+          "detail": "max Hausdorff 2.1404e-02 m (0.428 cells)"
+        },
+        "ROS2-reference|caasi-ROS2": {
+          "pass": true,
+          "detail": "max Hausdorff 0.0000e+00 m (0.000 cells)"
+        },
+        "ROS1-reference|caasi-ROS2": {
+          "pass": true,
+          "detail": "max Hausdorff 2.1404e-02 m (0.428 cells)"
+        }
+      },
+      "result": "PASS"
+    }
+  ]
+}

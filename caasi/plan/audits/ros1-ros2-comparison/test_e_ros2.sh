@@ -1,8 +1,34 @@
 #!/bin/bash
-# TEST E (ROS 2): laserscan_multi_merger with the IDENTICAL dual-scan input and
-# the same static transforms and parameters as the ROS 1 run.
+# TEST 5 (laserscan_multi_merger) - ROS 2 side
+#
+# Identical dual-scan input and the same static transforms and parameters as the
+# ROS 1 reference run.
+#
+# Usage:
+#   test_e_ros2.sh [--tree <workspace>]
+#
+#     --tree  ROS 2 workspace to test (default: openmover_ws)
+#
+# The harness is tree-agnostic: it only requires <tree>/install/setup.bash.
 source /opt/ros/jazzy/setup.bash
-source /home/zar/Documents/phd/robot/openmover_ws/install/setup.bash
+
+TREE="openmover_ws"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --tree) TREE="$2"; shift 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+ROOT=/home/zar/Documents/phd/robot
+WS="$ROOT/$TREE"
+if [ ! -f "$WS/install/setup.bash" ]; then
+  echo "ERROR: no ROS 2 install at $WS/install/setup.bash" >&2
+  exit 1
+fi
+
+echo "=== tree: $TREE ==="
+source "$WS/install/setup.bash"
 
 pkill -f laserscan_multi_merger >/dev/null 2>&1
 pkill -f static_transform >/dev/null 2>&1
@@ -34,5 +60,5 @@ timeout 10 ros2 node list 2>/dev/null | grep -i merger || echo "(not found)"
 tail -8 /tmp/ros2_merger.log
 
 echo
-echo "=== TEST E (ROS 2) ==="
-python3 /tmp/merger_probe.py ros2
+echo "=== TEST E (ROS 2, tree=$TREE) ==="
+python3 /home/zar/Documents/phd/robot/caasi/plan/audits/ros1-ros2-comparison/merger_probe.py ros2

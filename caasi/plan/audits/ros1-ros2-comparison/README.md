@@ -1,5 +1,19 @@
 # ROS 1 ↔ ROS 2 comparison scripts
 
+## Tree labels
+
+Three implementations are compared. To avoid confusion with the behavioral
+*test* names, the trees are referred to by these labels throughout:
+
+| Label | Tree | Role |
+| :--- | :--- | :--- |
+| **ROS1-reference** | `openmover_robot/` | Immutable ROS 1 original, run in a container |
+| **ROS2-reference** | `openmover_ws/` | Immutable pre-caasi ROS 2 port |
+| **caasi-ROS2** | `caasi-workspace/openmover/` | Canonical caasi-native ROS 2 project |
+
+Behavioral tests are numbered `1..6` (not lettered) to keep the two naming
+schemes apart.
+
 Reproducible tooling for
 [`../ros1_to_ros2_functional_equivalence.md`](../ros1_to_ros2_functional_equivalence.md).
 
@@ -83,24 +97,24 @@ These produce the runtime evidence in §12 of the audit. All drive **identical
 inputs** into both stacks with no simulator.
 
 ```bash
-# Tests A/B/C - simulation_handler (cmd_vel, odometry) + obstacle_handler
+# Tests 1-3 - simulation_handler (cmd_vel, odometry) + obstacle_handler
 docker cp behavioral_ros1.sh ros1-ref:/root/beh.sh && docker exec ros1-ref bash /root/beh.sh > /tmp/ros1_beh.log
 bash behavioral_ros2_run.sh > /tmp/ros2_beh.log
 python3 compare_abc.py            # -> 29/29 PASS
 
-# Test D - TF forward kinematics (identical URDF + joint state)
+# Test 4 - TF forward kinematics (identical URDF + joint state)
 docker cp tf_probe.py ros1-ref:/root/ && docker cp test_d_ros1.sh ros1-ref:/root/
 docker exec ros1-ref bash /root/test_d.sh > /tmp/ros1_test_d.log
 bash test_d_ros2.sh > /tmp/ros2_test_d.log
 python3 compare_d.py              # -> 6/6 PASS @ 1e-12
 
-# Test E - laserscan_multi_merger on identical dual scans
+# Test 5 - laserscan_multi_merger on identical dual scans
 docker cp merger_probe.py ros1-ref:/root/ && docker cp test_e_ros1.sh ros1-ref:/root/
 docker exec ros1-ref bash /root/test_e.sh > /tmp/ros1_test_e.log
 bash test_e_ros2.sh > /tmp/ros2_test_e.log
 # compare the emitted JSON scan fields bit-for-bit (see audit §12.6)
 
-# Test F - global planner algorithm A/B on identical synthetic costmaps
+# Test 6 - global planner algorithm A/B on identical synthetic costmaps
 docker cp planner_ab_ros1.cpp ros1-ref:/root/ && docker cp build_planner_ros1.sh ros1-ref:/root/
 docker exec ros1-ref bash /root/build_planner.sh > /tmp/ros1_test_f.log
 bash build_planner_ros2.sh > /tmp/ros2_test_f.log
@@ -126,6 +140,39 @@ python3 compare_f.py              # -> 2/2 PASS @ 1 cell
 - `robot_state_publisher` in ROS 2 should receive the URDF via a params file;
   passing XML with comment headers through `--ros-args` is unreliable.
 
+## Three-way comparison (ROS1-reference ↔ ROS2-reference ↔ caasi-ROS2)
+
+The four ROS 2 harnesses accept `--tree <workspace>` so the same test runs
+against either ROS 2 implementation with identical inputs, metrics and
+tolerances:
+
+```bash
+# ROS2-reference (default; reproduces the original A<->B results byte-identically)
+bash behavioral_ros2_run.sh                      > /tmp/B_beh.log
+bash test_d_ros2.sh                              > /tmp/B_d.log
+bash test_e_ros2.sh                              > /tmp/B_e.log
+bash build_planner_ros2.sh                       > /tmp/B_f.log
+
+# caasi-ROS2
+bash behavioral_ros2_run.sh --tree caasi-workspace/openmover > /tmp/C_beh.log
+bash test_d_ros2.sh         --tree caasi-workspace/openmover > /tmp/C_d.log
+bash test_e_ros2.sh         --tree caasi-workspace/openmover > /tmp/C_e.log
+bash build_planner_ros2.sh  --tree caasi-workspace/openmover > /tmp/C_f.log
+```
+
+Then compare all three pairings for each behavior:
+
+```bash
+python3 compare_three_way.py --test 1_cmd_vel \
+  --ros1 /tmp/ab_baseline/ros1_beh.log --ros2 /tmp/ab_baseline/ros2_beh.log --caasi /tmp/C_beh.log
+# 1_cmd_vel  2_odometry  3_obstacle_grid  4_tf  5_scan_merger  6_planner
+```
+
+`compare_three_way.py --json` emits the compact machine-readable record.
+Consolidated records for the recorded run are in `three_way_records.json`
+(compact: hashes, pairings and results only — raw logs are deliberately not
+committed).
+
 ## Caveats
 
 - `rosmsg show` **without** `-r` expands nested types; comparing that against
@@ -136,10 +183,10 @@ python3 compare_f.py              # -> 2/2 PASS @ 1 cell
   never modified.
 - Non-deterministic GCC crashes during the ROS 1 build are caused by Docker's
   default 64 MiB `/dev/shm` under high parallelism, not by project source.
-- Test F compares the planner **algorithm** only. The ROS-service-level planner
+- Test 6 compares the planner **algorithm** only. The ROS-service-level planner
   path (`navfn/MakeNavPlan` vs Nav2) has no common scenario and is NOT directly
   comparable.
-- Test F's pass tolerance is **one grid cell (0.05 m)** on the Hausdorff distance
+- Test 6's pass tolerance is **one grid cell (0.05 m)** on the Hausdorff distance
   between routes. Waypoints are not byte-identical; the residual comes from
   GCC 9.4 (ROS 1) vs GCC 13.3 (ROS 2). Do not compare waypoints index-by-index,
   and do not round coordinates to cell indices — that metric is unstable near
