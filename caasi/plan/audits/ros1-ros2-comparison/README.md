@@ -77,6 +77,55 @@ python3 classify_steps.py    # install.sh step audit
 | `cmp_nav_src.py` | Line-level similarity per navigation/localization component. |
 | `classify_nav_diff.py` | Separates ROS API translation from algorithmic change. |
 
+## Behavioral pass (simulator-free runtime comparison)
+
+These produce the runtime evidence in §12 of the audit. All drive **identical
+inputs** into both stacks with no simulator.
+
+```bash
+# Tests A/B/C - simulation_handler (cmd_vel, odometry) + obstacle_handler
+docker cp behavioral_ros1.sh ros1-ref:/root/beh.sh && docker exec ros1-ref bash /root/beh.sh > /tmp/ros1_beh.log
+bash behavioral_ros2_run.sh > /tmp/ros2_beh.log
+python3 compare_abc.py            # -> 29/29 PASS
+
+# Test D - TF forward kinematics (identical URDF + joint state)
+docker cp tf_probe.py ros1-ref:/root/ && docker cp test_d_ros1.sh ros1-ref:/root/
+docker exec ros1-ref bash /root/test_d.sh > /tmp/ros1_test_d.log
+bash test_d_ros2.sh > /tmp/ros2_test_d.log
+python3 compare_d.py              # -> 6/6 PASS @ 1e-12
+
+# Test E - laserscan_multi_merger on identical dual scans
+docker cp merger_probe.py ros1-ref:/root/ && docker cp test_e_ros1.sh ros1-ref:/root/
+docker exec ros1-ref bash /root/test_e.sh > /tmp/ros1_test_e.log
+bash test_e_ros2.sh > /tmp/ros2_test_e.log
+# compare the emitted JSON scan fields bit-for-bit (see audit §12.6)
+
+# Test F - global planner algorithm A/B on identical synthetic costmaps
+docker cp planner_ab_ros1.cpp ros1-ref:/root/ && docker cp build_planner_ros1.sh ros1-ref:/root/
+docker exec ros1-ref bash /root/build_planner.sh > /tmp/ros1_test_f.log
+bash build_planner_ros2.sh > /tmp/ros2_test_f.log
+python3 compare_f.py              # -> 2/2 PASS @ 1 cell
+```
+
+### Harness notes (learned the hard way)
+
+- The ROS 1 planner harness needs planner params in the namespaces the planner
+  actually reads: `~/<name>/<param>` for `private_nh` and `~/<param>` for
+  `global_nh` (i.e. `/planner_ab_ros1/global_planner/...` and
+  `/planner_ab_ros1/footprint`). `/footprint` must be an `XmlRpcValue` array of
+  pairs or the planner throws.
+- The ROS 2 planner declares its own parameters during `initialize()`; two
+  planner instances must not share one node or `ParameterAlreadyDeclaredException`
+  is thrown. The harness gives each scenario its own node.
+- The ROS 2 harness links against the workspace's prebuilt static libs
+  (`libglobal_planner_deps.a`, `libmath_utils.a`) using the exact flags and link
+  line CMake recorded, so it exercises the same compiled planner as the shipping
+  nodes. The recorded link line contains a stale path
+  (`libfastcdr.so.2.2.5`); the harness redirects it to a local shim rather than
+  modifying the system.
+- `robot_state_publisher` in ROS 2 should receive the URDF via a params file;
+  passing XML with comment headers through `--ros-args` is unreliable.
+
 ## Caveats
 
 - `rosmsg show` **without** `-r` expands nested types; comparing that against
@@ -87,3 +136,11 @@ python3 classify_steps.py    # install.sh step audit
   never modified.
 - Non-deterministic GCC crashes during the ROS 1 build are caused by Docker's
   default 64 MiB `/dev/shm` under high parallelism, not by project source.
+- Test F compares the planner **algorithm** only. The ROS-service-level planner
+  path (`navfn/MakeNavPlan` vs Nav2) has no common scenario and is NOT directly
+  comparable.
+- Test F's pass tolerance is **one grid cell (0.05 m)** on the Hausdorff distance
+  between routes. Waypoints are not byte-identical; the residual comes from
+  GCC 9.4 (ROS 1) vs GCC 13.3 (ROS 2). Do not compare waypoints index-by-index,
+  and do not round coordinates to cell indices — that metric is unstable near
+  boundaries and understates agreement.

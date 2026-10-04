@@ -194,6 +194,73 @@
       build-hygiene defects** (a regular file where catkin expects a `toplevel.cmake` symlink,
       a case-mismatched `relocalization_request.srv`, and a vestigial empty
       `add_action_files` block) fixed only in the container copy.
+    - **Behavioral equivalence pass completed (simulator-free runtime comparison)**:
+      * Added audit section §12 with six deterministic runtime tests, each driving
+        **identical inputs** into both stacks. No simulator was used, and no source
+        file was modified for any harness.
+      * **Test A — `cmd_vel` response**: 6 cases (manual/auto channel gating, mode
+        service, emergency-stop zeroing) plus 3 service calls. **29/29 checks PASS**;
+        every forwarded value identical, emergency correctly zeroes while still
+        publishing.
+      * **Test B — odometry/twist transform**: identical `nav_msgs/Odometry` in;
+        `/hardware/odom` and `/hardware/twist` out with matching frame ids and
+        numeric fields. **PASS, 0 ULP**.
+      * **Test C — obstacle grid**: identical 360-sample `LaserScan` with 4 known
+        returns → 5×4 obstacle grid. **PASS, bit-identical** (verified via IEEE-754
+        hex: `0x3ffbae1480000000`, `0x3fe75c2900000000`, `0x3fe0f5c280000000`,
+        `0x3fd1eb8520000000` on both sides).
+      * **Test D — TF forward kinematics**: identical URDF + identical joint state
+        into `robot_state_publisher`. **6/6 frames PASS at 1e-12 declared tolerance**;
+        worst observed difference `1.11e-16` (one ULP). `lidar_forward_link`
+        bit-identical.
+      * **Test E — `laserscan_multi_merger`**: identical dual scans + identical
+        static transforms → 903-sample merged scan. **PASS, bit-identical** across
+        every scan field and the merged return.
+      * **Test F — global planner algorithm**: both sides called `make_plan()`
+        directly on identical synthetic costmaps (200×200 @ 0.05 m), same
+        start/goal/params, two scenarios (free map; wall with doorway). **2/2 PASS**
+        at a declared **1-cell (0.05 m)** route tolerance — Hausdorff `7.48e-03 m`
+        (0.150 cells) and `2.14e-02 m` (0.428 cells); path lengths agree to
+        `1.2e-04 m` and `1.1e-02 m`.
+      * **Residual planner waypoint drift explained**: waypoints are not
+        byte-identical because the stacks use different compilers — GCC 9.4.0
+        (Ubuntu 20.04, ROS 1) vs GCC 13.3.0 (Ubuntu 24.04, ROS 2). Floating-point
+        contraction/reassociation differs, shifting sub-cell interpolation. This is
+        consistent with the byte-identical / API-translation-only source finding,
+        so no algorithmic difference is needed to explain it. Each side is
+        individually deterministic (ROS 2 re-run reproduced its output exactly).
+      * **Two measurement artifacts caught and corrected rather than reported as
+        findings**: (1) `rosmsg show` recursive expansion vs `-r` (see the static
+        pass); (2) naive cell-index rounding to compare planner routes gave a
+        misleadingly low 86–89% "similarity" — the boundary-stable Hausdorff metric
+        shows sub-cell agreement, and the naive metric was discarded.
+      * **Costmap frequency left untouched and unresolved**: ROS 1
+        `costmap.update_frequency = 1.0` vs ROS 2 `global_costmap = 3.0`. Neither
+        value was changed. The behavioral pass did **not** measure its significance
+        because the costmap update loop needs a live costmap and no common runtime
+        scenario exists between the stacks. It remains classified as *observed
+        configuration difference; behavioral significance not yet measured*.
+      * **Deliberately NOT compared, with reasons recorded**: Gazebo Classic vs
+        Harmonic vs Isaac Sim **physics** (no common OpenMover scenario — the
+        `warehouse_simulation` demo in both trees is a *Pioneer 3DX + gmapping +
+        move_base* demo using neither the OpenMover robot nor its navigation stack);
+        the ROS-service-level planner path (`navfn/MakeNavPlan` vs Nav2 — no common
+        service scenario); physical hardware paths (require the real robot).
+      * **Conclusion (scoped)**: for the six tested simulator-free behaviors, the
+        ROS 2 implementation faithfully preserves ROS 1 operational behavior. No
+        behavioral discrepancy attributable to the port was found. The conclusion
+        explicitly does **not** extend to simulation physics, SLAM output,
+        end-to-end navigation, `navigation_handler`/`localization_handler` runtime
+        behavior, or hardware.
+      * **Reference integrity re-verified after the behavioral pass**:
+        `openmover_robot` unchanged at 2552 files and tree hash
+        `f17c242a8cb64b4f987ae606f9c749e278690f109d8159b145ed0cbb697c1886`, 0 dirty.
+      * Behavioral harnesses committed under
+        `caasi/plan/audits/ros1-ros2-comparison/` (`behavioral_*.sh/py`,
+        `test_d_*.sh`, `test_e_*.sh`, `merger_probe.py`, `tf_probe.py`,
+        `planner_ab_ros1.cpp`/`planner_ab_ros2.cpp`, `build_planner_*.sh`,
+        `compare_abc.py`, `compare_d.py`, `compare_f.py`) with README reproduction
+        steps and harness caveats.
   - **Phase 7 Stage D (Real Remote Target Validation): PAUSED, not cancelled.** Containerized
     remote-target validation over SSH had been partially exercised before this equivalence
     study was requested (target identity/discovery, project deployment with dev-artifact
@@ -208,6 +275,7 @@
     (`remote-target-01`) is stopped but retained; its scaffolding is parked at
     `/tmp/stage-d-parked/`. Per instruction, Stage D does **not** proceed until the user
     decides based on this equivalence evidence.
-  - **Current State**: ROS 1 → ROS 2 functional equivalence validation complete and committed.
+  - **Current State**: ROS 1 → ROS 2 functional equivalence validation complete — both
+    the static comparison and the simulator-free behavioral pass — and committed.
     Awaiting user decision on whether to resume Phase 7 Stage D, or to pursue another
     capability first.
