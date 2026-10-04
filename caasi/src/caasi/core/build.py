@@ -515,6 +515,7 @@ def execute_target_build(
     steps = [f"cd {dest}"]
     if clean:
         steps.append("rm -rf build install log")
+    steps.append("ulimit -s unlimited 2>/dev/null || true")
     steps.append(f"test -f {ros_setup} && . {ros_setup}")
     steps.append(shlex.join(colcon_cmd))
     remote_sh = " && ".join(steps)

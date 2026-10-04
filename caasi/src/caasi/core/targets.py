@@ -8,10 +8,12 @@ hardware or vendor assumptions into core abstractions.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import platform
 import re
+import shlex
 import socket
 import subprocess
 import time
@@ -250,7 +252,7 @@ def target_ssh_prefix(target: Target) -> list[str]:
     if target.port:
         args += ["-p", str(target.port)]
     if target.identity:
-        args += ["-i", str(Path(target.identity).expanduser())]
+        args += ["-o", "IdentitiesOnly=yes", "-i", str(Path(target.identity).expanduser())]
     endpoint = f"{target.user}@{target.host}" if target.user else (target.host or "")
     args.append(endpoint)
     return args
@@ -487,8 +489,10 @@ def discover_target(
             error=f"Could not connect to {target.host}:{port}",
         )
 
-    # Execute remote Python probe script
-    cmd = target_ssh_prefix(target) + ["python3", "-c", REMOTE_PROBE_SCRIPT.strip()]
+    # Execute remote Python probe script safely via base64 and shlex.quote to prevent shell word splitting
+    b64_script = base64.b64encode(REMOTE_PROBE_SCRIPT.strip().encode("utf-8")).decode("ascii")
+    py_code = f"import base64; exec(compile(base64.b64decode('{b64_script}'), '<remote_probe>', 'exec'))"
+    cmd = target_ssh_prefix(target) + [f"python3 -c {shlex.quote(py_code)}"]
     try:
         proc = subprocess.run(
             cmd,

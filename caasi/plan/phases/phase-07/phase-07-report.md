@@ -394,8 +394,8 @@ Phase 7 Stage C2 establishes target-native remote execution and process lifecycl
 
 1. **Target-Aware Run Execution**: Developers launch tracked runs on configured targets via `caasi run start --target <name> <manifest>` directly from the workstation control plane without manual SSH coordination.
 2. **Deterministic Preflight Verification**: Enforces target reachability, active deployment verification (`get_deployment_status`), and target-native build verification (`get_last_build_status`) before executing remote processes.
-3. **Detached Process Supervision**: Wraps remote target execution in detached sessions (`setsid`) that survive SSH connection drops and client terminations, recording both process PID and session PGID.
-4. **Complete Process Group Termination**: Eliminates orphaned processes by addressing process group trees (`kill -TERM -<pgid>`, falling back to `kill -KILL -<pgid>`), ensuring multi-node ROS 2 and simulator child processes are thoroughly reaped.
+3. **Detached Process Supervision**: Wraps remote target execution in detached sessions (`setsid`) designed to decouple from the initiating terminal session, recording both process PID and session PGID.
+4. **Complete Process Group Termination**: Eliminates dangling child processes by addressing process group trees (`kill -TERM -<pgid>`, falling back to `kill -KILL -<pgid>`), ensuring multi-node ROS 2 and simulator child processes in the tested tree are reaped.
 5. **Remote Log Streaming & Inspection**: Enables retrieving trailing log lines (`caasi run logs`), live remote streaming (`caasi run logs -f`), and target run directory inventory auditing (`caasi run inspect`).
 6. **Two-Sided Run Provenance**: Connects the complete provenance chain on both host and target (`project -> deployment_id -> build_id -> target -> git_revision -> run_id`).
 
@@ -490,7 +490,7 @@ Processes executed on remote targets must not terminate if the developer's works
    ps -o pgid= -p $PID | tr -d ' ' > '<run_dir>/pgid'
    ```
 2. **Session Decoupling**:
-   `setsid` allocates a new session and process group where `PGID == PID`, detaching stdin from any controlling terminal. The process survives workstation disconnects, terminal closures, and SSH network drops.
+   `setsid` allocates a new session and process group where `PGID == PID`, detaching stdin from any controlling terminal. This session decoupling isolates the process group from controlling terminal hangup signals.
 3. **Exit Code Persistence**:
    The wrapper traps or captures command exit status:
    ```bash
@@ -664,7 +664,7 @@ Dogfooding was executed from `/home/zar/Documents/phd/robot/caasi-workspace/open
      ```
      `Run 20261004-021616-target-smoke stopped.`
    - Checked OS process table for all 3 PIDs (`ps -fp 645497,645578,645588`):
-     Returned empty — all 3 processes (bash launcher, python node, and background child process) were terminated cleanly with **strictly zero orphaned processes**.
+     Returned empty — the tested process group and its spawned child were terminated, with no remaining processes from the tested run.
    - Verified `caasi run status 20261004-021616-target-smoke` transitioned to `stopped`.
 
 ---
