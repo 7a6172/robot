@@ -41,6 +41,7 @@ from . import (
     sim,
     runtime_cmd,
     target_cmd,
+    tools_cmd,
     workload_cmd,
     teleop_cmd,
     test_cmd,
@@ -92,9 +93,13 @@ HELP_PANELS: dict[str, tuple[str, ...]] = {
         "native",
         "node",
         "remote",
+        "rosbag",
+        "rqt",
         "runtime",
+        "rviz2",
         "shell",
         "target",
+        "tools",
         "workload",
     ),
 }
@@ -244,6 +249,8 @@ app.add_typer(remote_cmd.app, name="remote", help=_("remote.help"))
 app.add_typer(container_cmd.app, name="container", help=_("container.help"))
 app.add_typer(runtime_cmd.app, name="runtime", help=_("runtime.help"))
 app.add_typer(workload_cmd.app, name="workload", help=_("workload.help"))
+app.add_typer(tools_cmd.app, name="tools", help=_("toolctx.help"))
+tools_cmd.register_direct_tools(app)
 app.add_typer(target_cmd.app, name="target", help=_("target.help"))
 app.add_typer(target_cmd.app, name="node", help=_("target.help"))
 
