@@ -141,17 +141,40 @@ deferred against evidence, environmental, or by design.
 
 ---
 
-## 7. Next step
+## 7. Conclusion
 
-**Stopping for review.** No queues, reservations or scheduling were added, and the
-evidence still does not support them.
+> **The currently justified capability set is complete for the evidence gathered so
+> far.**
 
-The honest position is that the **capability set is complete** for the current
-evidence: the control-plane lifecycle (select → deploy → build → run → observe →
-collect → provenance), heterogeneous targets, runtime and tool observability, the
-persistent lifecycle, and occupancy, are all implemented and validated end to end.
+The control-plane lifecycle (select → deploy → build → run → observe → collect →
+provenance), heterogeneous targets, runtime and tool observability, the persistent
+runtime lifecycle, and occupancy are all implemented and validated end to end
+against the two real machines.
 
-What remains is either deferred against evidence, environmental, or cleanup. A
-further capability stage would need a **new justification** — most plausibly a
-second real project or a genuine multi-target workload — rather than an obvious
-next gap.
+What remains is either **deferred against evidence**, **environmental**, or
+**cleanup** — not capability waiting to be built.
+
+### 7.1 The next expansion must be justified by new evidence
+
+Development does **not** continue merely to keep moving. The next meaningful
+expansion should be justified by **new evidence** — for example:
+
+- **a second real project** (a different ROS 2 / Isaac project, proving the model
+  generalises beyond one codebase), or
+- **a genuine multi-target workload** (work that actually must span machines,
+  which is what would justify revisiting the deferred scheduling remainder),
+
+rather than by an **architectural desire to fill the remaining roadmap**.
+
+### 7.2 Status of the remaining roadmap
+
+| Item | Disposition |
+| :--- | :--- |
+| R8 scheduling / queues / reservations | **deferred** — awaiting observed contention, not an implementation gap |
+| R9 third artifact destination | **deferred** — the requirement says *eventually*; no use case has needed one |
+| R10 monitoring web UI | **deferred** by requirement |
+| G4 `remotes:` shim | **cleanup** — independent, needs a migration path |
+| DDS-over-Tailscale | **environmental** — not a caasi defect |
+| Idle race | **by design** — solving it needs reservations, which are out of scope |
+
+**No further capability work is started.** The state is preserved as-is.

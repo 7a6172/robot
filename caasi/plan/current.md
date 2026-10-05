@@ -1147,6 +1147,40 @@
       **presentation** gap the R8 review flagged (inputs already exist; only exposure is
       missing), and it is the smallest genuinely-open item. **Not started — stopping here.**
 
+  - **Phase 7 Exit-Code Guard + Evidence-Based Stopping Point: COMPLETED.**
+    - [Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/exit-code-guard-report.md)
+    - **The next item was a correctness defect, not a new capability.** A survey of the open work
+      found every candidate deferred-against-evidence, environmental, or by design — so the
+      smallest genuinely-open item was a **defect**.
+    - **`output.fail()` exit-code defect — FIXED.** The helper raises its own `Exit(1)`, making a
+      following `raise typer.Exit(N)` unreachable: the command exits 1 while the author intended N.
+      **The message is correct, which is what made it dangerous** — visible only by *measuring*
+      the exit code. The class had now been hit **three times** (F3, `--where`, `workload run`
+      incompatible target); the third was found by a **static CLI survey**, not by testing.
+      Verified on a real target: a 4-GPU requirement against the workstation's single RTX 3080
+      now exits **3**, with the same message.
+    - **Scope measured, not assumed**: the survey found **76** unreachable raises, of which only
+      **one** was genuinely wrong. The other 75 use `Exit(1)`, matching what `fail()` already
+      raises — dead but harmless. **Deliberately left untouched** rather than churned as
+      unrelated cleanup.
+    - **Durable guard**: a CLI-wide static test catches the class, **verified to actually fail** by
+      temporarily reintroducing the defect (test failed with the offending location, passed again
+      once restored). *A guard never seen to fail is not evidence of anything.*
+    - **Conclusion (agreed phrasing):**
+      > **The currently justified capability set is complete for the evidence gathered so far.**
+    - **The next expansion must be justified by NEW EVIDENCE** — e.g. a **second real project**
+      (proving the model generalises beyond one codebase) or a **genuine multi-target workload**
+      (what would justify revisiting the deferred scheduling remainder) — **not** by an
+      architectural desire to fill the remaining roadmap. **Development does not continue merely
+      to keep moving.**
+    - **Remaining roadmap disposition**: R8 scheduling/queues/reservations **deferred** (awaiting
+      observed contention, not an implementation gap); R9 third artifact destination **deferred**
+      (requirement says *eventually*; no use case); R10 web UI **deferred** by requirement; G4
+      `remotes:` shim **cleanup**; DDS-over-Tailscale **environmental**; idle race **by design**.
+    - **Tests**: 1 new CLI-wide guard. Full suite **1224 passed, 1 failed** (pre-existing
+      `test_perception_cmd.py` terminal-width artifact).
+    - **No further capability work started. State preserved as-is. Stopping for review.**
+
   - **Current State**: Nine threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**
@@ -1179,18 +1213,17 @@
     See [traceability](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/traceability.md)
     and the [F1 acceptance review](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f1-acceptance-review.md).
 
-    **Open items — all recorded, none blocking, none to be "tidied" by expanding scope:**
-    * **F1 `check.strict` / `target select` consolidation.** The design intended
-      `target select` to be another entry point of the existing `CheckEngine`, but the
-      requirement ladder is implemented **twice**. The paths agree for default projects;
-      under `check.strict: true` they **diverge** — `caasi check` reports `incompatible`
-      (exit 3) where `target select` reports a `warning` (exit 0), because `selection.py`
-      calls `summarize(..., strict=False)` unconditionally.
-    * **F2 local build/run destination mismatch** (pre-existing, reported not fixed): for
-      `target: local`, `build` records against the project root while `run` looks at the
-      deployment destination, so `caasi build --target local` + `caasi run --target local`
-      already fails today. Needs a decision on the intended contract (project-root vs
-      destination vs explicit distinction).
+    **Conclusion — the currently justified capability set is complete for the evidence
+    gathered so far.** The next meaningful expansion must be justified by **new evidence**
+    (a second real project, or a genuine multi-target workload) rather than by an
+    architectural desire to fill the remaining roadmap.
+
+    **Open items — recorded, never blocking, never to be "tidied" by expanding scope:**
+    * ~~F1 `check.strict` / `target select` consolidation~~ — **RESOLVED**: one shared ladder
+      (`check.evaluate_requirement`) now serves both entry points, and `check.strict` is
+      propagated rather than hardcoded.
+    * ~~F2 local build/run destination mismatch~~ — **RESOLVED**: the contract was decided
+      (`local` is a deployed target like any other) and the name-based special case removed.
     * **G4** — the legacy `remotes:` shim retirement (needs a migration path).
     * **DDS-over-Tailscale limitation** — an **environmental** finding, accepted as valid
       rather than a failed implementation: caasi supplies the correct ROS 2 context, but
