@@ -656,6 +656,57 @@
       discovery. Test applied: *is caasi deciding and recording, or re-implementing?*
     - No code changed; nothing implemented.
 
+  - **Phase 7 Durable Requirements + Workload/Selection Design: COMPLETED (design only).**
+    - [Durable Requirements](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/durable-requirements.md) |
+      [Workload & Selection Design](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/workload-and-selection-design.md)
+    - **Durable requirements preserved (R1–R10)**, so they cannot be lost between sessions:
+      R1 workstation as control plane; R2 target-aware existing tools (`caasi rviz2
+      --target robot-01` as a *general pattern*, not an RViz subsystem); R3 existing tools
+      remain domain owners; R4 target-aware execution; R5 workload abstraction broad enough
+      for ROS2/Isaac/GPU-training/robot-deployment/Python, **not** designed around
+      OpenMover; R6 requirement-driven inspectable target selection (advisory first, no
+      hidden policy); R7 lifecycle composition keeping lower-level commands; R8 future
+      multi-target control plane **(defer, do not design yet)**; R9 independent execution
+      target vs artifact destination; R10 small **observation-only** web UI, CLI remains the
+      control interface, no control buttons. Cross-cutting: the OpenMover-disappears
+      architectural test, evidence discipline, explicit absence, nothing destructive on a
+      persistent target.
+    - **Design key finding (better than expected)**: the matching machinery *already exists
+      and is already correct*. `core/check.py` documents the **Check Contract** with the
+      exact verdict ladder needed (`compatible`/`untested`/`missing`/`incompatible`) and the
+      §57 doctrine that a version outside a range must **not** assert incompatibility.
+      Crucially, `CheckEngine` is built as *"one compatibility semantics behind every
+      `check`"* and already serves multiple entry points (root `check`, `sim check`,
+      `container check`). So the one real work item is not "build a matcher": it is making
+      fact detection read from a **target's** discovered environment instead of only
+      `config`/`shell.which` (the current, local-machine-only source). `target select`
+      becomes the next **entry point of an existing engine**.
+    - **Model validated against six generalized cases** (local Isaac Lab; remote CPU ROS2;
+      remote GPU sim/training; OpenMover deployment; `rviz2 --target robot-01`; simple
+      Python). All are instances of one model: same `requires` field, same `steps`
+      vocabulary, differing only in *content*. Only one case uses any ROS-specific concept,
+      and only as **data** (`ros2: jazzy` is a requirement value, not a code path). The
+      OpenMover case is **not special** — its only distinction is using the E4 lifecycle as
+      an *additional step in the same model*.
+    - **Proposed model**: `Workload` (name, requires, steps, outputs) is the only genuinely
+      new model, and it introduces **no new execution machinery** — `steps` names operations
+      caasi already has. `SelectReport` is a pure reporting type. Everything else reuses
+      `Target`/`TargetEnvironment`/`TargetResources`, `requirements.satisfies`,
+      `manifest.requires:`/`tested:`, `OutputDeclaration`, deployment/build/run records and
+      `RuntimeDeclaration`.
+    - **Staged plan**: **F1** target-aware facts + `Workload.requires` + advisory read-only
+      `caasi target select` (smallest foundational step; G1/G2/G5 in one step, no new
+      authority, no second compatibility semantics); **F2** workload `steps`/`outputs` +
+      `caasi workload run --target` composing deploy→build→run→collect with existing
+      provenance; **F3** target-aware tool invocation (R2). **Explicitly deferred**: R8
+      multi-target/queues/scheduling/allocation and R10 web UI — the review shows neither is
+      required by F1–F3.
+    - **Boundaries stated**: `steps` is a fixed operation vocabulary, **not** a scripting or
+      DAG engine; selection advises and refuses to guess, never a hidden scheduler; tool
+      wrappers are thin and declarative, never subsystems; composition records the *same*
+      provenance as the manual path rather than a parallel model.
+    - No code changed; nothing implemented.
+
   - **Current State**: Six threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**
