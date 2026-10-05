@@ -961,7 +961,7 @@
       ROS/DDS functionality, no RViz replacement, no remote GUI management, no web UI, no
       daemonisation, **no G4 cleanup**. **Stopping for F3 review.**
 
-  - **Current State**: Eight threads closed and committed — the three-way equivalence
+  - **Current State**: Nine threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**
     (result/output collection with the ephemeral-vs-persistent distinction);
@@ -970,33 +970,48 @@
     **Stage E4** (persistent runtime lifecycle: install/enable/start/status/verify/
     update/rollback, with revision identity and an honest rollback); **Stage F1**
     (workload model + advisory, requirement-driven, inspectable `caasi target select`);
-    and **Stage F2** (workload `steps` and lifecycle composition
-    `deploy → build → run → collect`).
+    **Stage F2** (workload `steps` and lifecycle composition
+    `deploy → build → run → collect`); and **Stage F3** (target-aware tool invocation
+    — one generic mechanism, `caasi rviz2 --target <t>`).
     These stages together are the **caasi 0.4.0** milestone (*target and control-plane
     capabilities*).
 
-    **Stage F2 is ACCEPTED as complete** (G3 closed, G5 closed with F1). Evidence:
-    the four-step composition validated end to end on the real CPU-only target
-    `u24-307`, a GPU workload on `local`, a plain Python workload proving the model
-    is not OpenMover-specific, and the real OpenMover workload correctly refused by
-    the compatibility gate. The defect/findings/evidence records are preserved in
-    [`stage-f2-report.md`](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f2-report.md).
+    **F1, F2 and F3 are all ACCEPTED as complete.**
+    * **F1** — accepted with the **G2 consolidation item recorded as an open
+      implementation issue** (below), which acceptance does not remove.
+    * **F2** — four-step composition validated end to end on the real CPU-only target
+      `u24-307`, a GPU workload on `local`, a plain Python workload proving the model
+      is not OpenMover-specific, and the real OpenMover workload correctly refused by
+      the compatibility gate.
+    * **F3** — generic target-aware invocation accepted; the existing tools remain the
+      domain owners, arguments and exit codes pass through unchanged, target facts are
+      never back-filled from the workstation, domain selection is explicit and safe,
+      and refusal cases are first-class.
 
-    **Architectural gap status**: **G1/G2 remain PENDING F1 acceptance** (not
-    closed), **G3 closed**, **G4 outstanding** (`remotes:` shim retirement),
-    **G5 closed**. See [traceability](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/traceability.md).
+    **Architectural gap status**: **G1 CLOSED**, **G2 CLOSED on capability**,
+    **G3 CLOSED**, **G4 OPEN / cleanup**, **G5 CLOSED**.
+    See [traceability](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/traceability.md)
+    and the [F1 acceptance review](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f1-acceptance-review.md).
 
-    **Stage F3 has NOT started.** Target-aware tool invocation (R2,
-    `caasi rviz2 --target robot-01` as a general pattern) is designed but not
-    implemented, and no F3 code exists.
-
-    **Carried forward, neither blocking F3**:
-    * the **local build/run destination mismatch** (pre-existing, reported not fixed):
-      for `target: local`, `build` records against the project root while `run` looks
-      at the deployment destination, so `caasi build --target local` + `caasi run
-      --target local` already fails today, independent of F2. Needs a decision on the
-      intended contract (project-root vs destination vs explicit distinction);
-    * **G4**, the legacy `remotes:` shim retirement.
+    **Open items — all recorded, none blocking, none to be "tidied" by expanding scope:**
+    * **F1 `check.strict` / `target select` consolidation.** The design intended
+      `target select` to be another entry point of the existing `CheckEngine`, but the
+      requirement ladder is implemented **twice**. The paths agree for default projects;
+      under `check.strict: true` they **diverge** — `caasi check` reports `incompatible`
+      (exit 3) where `target select` reports a `warning` (exit 0), because `selection.py`
+      calls `summarize(..., strict=False)` unconditionally.
+    * **F2 local build/run destination mismatch** (pre-existing, reported not fixed): for
+      `target: local`, `build` records against the project root while `run` looks at the
+      deployment destination, so `caasi build --target local` + `caasi run --target local`
+      already fails today. Needs a decision on the intended contract (project-root vs
+      destination vs explicit distinction).
+    * **G4** — the legacy `remotes:` shim retirement (needs a migration path).
+    * **DDS-over-Tailscale limitation** — an **environmental** finding, accepted as valid
+      rather than a failed implementation: caasi supplies the correct ROS 2 context, but
+      DDS multicast discovery does not traverse the Tailscale link between the two
+      reference machines (different LANs; target `192.168.31.34` unreachable, ~440 ms via
+      Tailscale). **Documented as a limitation, deliberately NOT worked around** — caasi
+      implements no DDS discovery, tunnels or multicast relays.
 
     Next, no auto-proceed. Natural next validations each need something this
     environment lacks: **actual reboot survival** (a target that may be rebooted),
