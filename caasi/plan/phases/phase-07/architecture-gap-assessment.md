@@ -1,6 +1,14 @@
 # Phase 7: Architecture and End-Goal Gap Assessment
 
-**Status:** Read-only assessment. No implementation. Stops for review.
+**Status:** Standing architectural record. G1–G5 below are the reference gaps and
+**remain live** as implementation proceeds in stages F1–F3.
+
+> **G1–G5 are the architectural gaps. F1–F3 are implementation stages.**
+> They are two views of the same work and are **never** substituted for one
+> another: gaps are not removed or renamed because implementation was divided
+> into stages, and implementing a stage does not by itself close a gap. See
+> [`traceability.md`](traceability.md) for the
+> requirement → gap → stage → evidence mapping.
 **Date:** October 2026
 **Scope:** Where caasi stands against its stated end goal, and the smallest next
 architectural step.
@@ -75,6 +83,10 @@ This is the substance of the assessment. Ordered by architectural weight.
 
 ### G1. Nothing decides a target — work names one
 
+**Addressed by stage F1** via an advisory, requirement-driven, inspectable
+`caasi target select`. **Open** — closes when F1's evidence is recorded. See
+[traceability](traceability.md#g1--nothing-decides-a-target--f1).
+
 `find_target` resolves **by exact name or unique prefix only**:
 
 ```python
@@ -104,6 +116,11 @@ set of targets to *choose* among them. That is the single largest conceptual gap
 
 ### G2. `caasi check` is local-only, so compatibility is asymmetric
 
+**Addressed by stage F1** via target-aware fact sourcing that **reuses the
+existing `CheckEngine` / Check Contract** rather than replacing it. **Open** —
+closes when remote-target evaluation including the §57 case is demonstrated. See
+[traceability](traceability.md#g2--check-is-local-only--f1).
+
 `check` answers *"can this project/run work on **this machine**"*. Given how the
 tool now treats targets as first-class, the natural question — *"can this project
 work on **that target**"* — has no command. E4 partially worked around this by
@@ -111,6 +128,10 @@ refusing operations with clear reasons, but incompatibility is discovered
 **after** choosing a target, not before.
 
 ### G3. The lifecycle is a set of independent commands, not one sequence
+
+**Addressed by stage F2** via workload steps and lifecycle composition, which
+must preserve the individual commands. **Open — not addressed by F1 at all.** See
+[traceability](traceability.md#g3--lifecycle-is-independent-commands--f2).
 
 Everything in the chain exists, but nothing composes it:
 
@@ -126,6 +147,11 @@ This is exactly the "individual target operations → higher-level work
 orchestration" transition the user identified.
 
 ### G4. A legacy remote registry still exists alongside targets
+
+**Not solved by F1.** Tracked explicitly as an **outstanding retirement/migration
+task**, to be removed only when the target model fully supersedes it without
+losing compatibility unnecessarily. See
+[traceability](traceability.md#g4--legacy-remotes-shim--outstanding-cleanup-not-f1).
 
 `remotes:` (`remotes.py`, "remote GPU machines", with `connect`/`run`) and
 `targets:` (`targets.py`, the Phase 7 model) coexist. The relationship is already
@@ -143,6 +169,11 @@ duplication to reconcile — worth doing, because selection will want a single
 authoritative list of "where work can go", but it is not a blocker.
 
 ### G5. No notion of *work* separate from a *run*
+
+**Addressed by stages F1/F2** — F1 introduces the minimal `Workload` model needed
+for requirements/selection; F2 extends it with steps/outputs and execution. The
+gap is **not closed until both are done**. See
+[traceability](traceability.md#g5--no-workload-object--f1--f2-split-deliberately).
 
 `Experiment` is **local-only** (`VALID_BACKENDS = ("sim", "lab", "python")`; a
 script path; no target, no deployment, no artifacts). `RunRecord` is
@@ -272,3 +303,7 @@ into an inspected choice of target before the already-working operations run.
 requirement-driven `target select` that reports per-target verdicts including
 UNVERIFIED — advisory and inspectable, with execution still taking an explicit
 target. Implement nothing until reviewed.
+
+**Stage mapping (see [traceability.md](traceability.md)):** F1 addresses G1, G2 and
+the first half of G5; F2 addresses G3 and completes G5; F3 adds R2 (no gap — a new
+capability); G4 is independent outstanding cleanup.

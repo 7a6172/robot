@@ -707,6 +707,57 @@
       provenance as the manual path rather than a parallel model.
     - No code changed; nothing implemented.
 
+  - **Phase 7 Traceability + Stage F1: COMPLETED.**
+    - [Traceability](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/traceability.md) |
+      [Stage F1 Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f1-report.md) |
+      [Durable Requirements](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/durable-requirements.md) |
+      [Design](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/workload-and-selection-design.md)
+    - **G1–G5 kept explicitly alive.** G1–G5 are the *architectural gaps*; F1–F3 are the
+      *implementation stages*. They are never substituted for one another, and implementing a
+      stage does not close a gap. New `traceability.md` records the full chain
+      **end-goal requirement (R1–R10) → gap (G1–G5) → stage (F1–F3) → evidence**, and the
+      gap assessment is annotated in place so each gap shows its stage and status.
+      Mapping: **G1→F1**, **G2→F1**, **G3→F2**, **G4→outstanding cleanup (not F1)**,
+      **G5→F1/F2**.
+    - **Stage F1 implemented** (G1, G2, first half of G5; R1, R4, R5, R6):
+      * `caasi.core.selection` — supplies the missing half of the **Check Contract**: same
+        verdict ladder, same §57 caution, same exit policy, but facts sourced from a
+        **target's** discovery instead of the local machine. **No new compatibility
+        semantics** — `target select` is another entry point of the existing engine.
+      * `caasi.core.workload` — **minimal** `Workload` (`name`, `requires`); `steps`/`outputs`
+        parse and are recorded but not acted on until F2, so an F2 workload loads today.
+      * `caasi target select [WORKLOAD] [--json]` — advisory, read-only, **chooses nothing**.
+    - **Three-way honesty enforced**: satisfied → `compatible`; asked-and-absent → `missing`
+      (a real absence); **never asked → `untested` (not evidence of absence)**. `unreachable`
+      is a transport result, not a verdict.
+    - **Two defects found by validating against real targets** (not fixtures):
+      1. GPU path reported `untested` "not measured" for `u24-307`, which **has no GPUs** —
+         telling an operator "unknown" when the true answer is "none". Fixed by preserving the
+         measured empty list and distinguishing it from a missing inspection.
+      2. A workload file using the `workload:` block spelling parsed to **empty `requires`**,
+         silently reading "this work needs nothing". The parser now accepts that spelling *and*
+         **rejects unknown keys**, so a typo is reported instead of quietly weakening the
+         requirement set.
+    - **Evidence on real targets** (`u24-307` remote Jazzy/no GPU; `local` RTX 3080 10GB):
+      `ros2 jazzy` → both `ready`; `ros2 humble` → both `warning` with the out-of-range note and
+      **exit 0** (§57 honoured); `isaac_sim >=5.0` → both `incompatible`, exit 3;
+      **`gpu count>=1, 8GB` → `u24-307` incompatible ("target reports no GPUs"), `local` ready**;
+      `torch >=2.0` (never probed) → `warning`, "not measured", exit 0; unreachable target →
+      own verdict with the connect error; unknown workload / no requirements → exit 1.
+      The **real OpenMover `requires:`** (`ros2 jazzy`, `isaac_sim>=5.0`, `isaac_lab>=2.0`,
+      `nav2`) was evaluated against both targets without modifying the project: `ros2`
+      compatible, isaac `missing`, **`nav2` untested** (discovery does not probe ROS packages —
+      honestly unmeasured, not a false "missing").
+    - **Explicitly NOT done (not claimed)**: no target selection/ranking/automatic pick
+      (it reports, never chooses); **no composition** (nothing deploys/builds/runs/collects —
+      that is F2); steps/outputs not acted on; no ROS-package probing; **G4 untouched**.
+    - **No gap is closed by F1.** G1/G2 stay **open** until this evidence is accepted; G5 stays
+      open until F2; G3 and G4 untouched.
+    - **Tests**: 39 new in `tests/test_selection.py`. Full suite **1093 passed, 1 failed**
+      (the pre-existing `test_perception_cmd.py` terminal-width artifact).
+    - **Next: Stage F2** (workload `steps`/`outputs` + lifecycle composition → G3, completes G5),
+      then stop for review. Do not auto-proceed.
+
   - **Current State**: Six threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**
