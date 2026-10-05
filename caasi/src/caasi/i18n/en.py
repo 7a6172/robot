@@ -11,9 +11,11 @@ MESSAGES: dict[str, str] = {
     "flag.json": "Emit machine-readable JSON output.",
     # -- root cli -----------------------------------------------------
     "cli.help": (
-        "Caasi — a lightweight, CLI-first orchestration layer for NVIDIA Isaac Sim, "
-        "Isaac Lab and the robotics ecosystem.\n\nHeadless-first. Process-oriented. "
-        "Visualization-independent."
+        "Caasi — a lightweight, CLI-first project and execution management tool for "
+        "robotics.\n\nManages projects, environments, workloads and execution targets "
+        "across local and remote machines, coordinating the tools underneath — ROS 2, "
+        "NVIDIA Isaac Sim, Isaac Lab, Nav2, MoveIt 2, ros2_control, and more.\n\n"
+        "Headless-first. Process-oriented. Visualization-independent."
     ),
     "cli.flag.verbose": "Enable verbose output.",
     "cli.flag.quiet": "Suppress non-essential output.",

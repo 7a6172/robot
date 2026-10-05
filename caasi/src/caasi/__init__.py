@@ -1,4 +1,4 @@
-"""Caasi — a lightweight, CLI-first orchestration layer for the robotics ecosystem.
+"""Caasi — a lightweight, CLI-first project and execution management tool for robotics.
 
 Headless-first, CLI-first, process-oriented, and visualization-independent.
 Independent open-source project; not affiliated with or endorsed by NVIDIA.

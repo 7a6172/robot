@@ -1,7 +1,10 @@
 # Caasi
 
-A lightweight, **CLI-first orchestration layer** for NVIDIA Isaac Sim, Isaac Lab and the
-wider robotics ecosystem (ROS 2, Nav2, MoveIt 2, ros2\_control, ...).
+A lightweight, **CLI-first project and execution management tool for robotics**.
+
+Manage projects, environments, workloads, and execution targets across local
+and remote machines while coordinating the tools underneath — ROS 2, NVIDIA
+Isaac Sim, Isaac Lab, Nav2, MoveIt 2, ros2\_control, and more.
 
 Headless-first. CLI-first. Process-oriented. Visualization-independent.
 
