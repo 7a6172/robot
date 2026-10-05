@@ -1,4 +1,4 @@
-"""``caasi workload`` — declared work, and its composition (Phase 7 Stage F2).
+"""``caasi workload`` — declared work, and its composition.
 
 The composition runs a workload's declared ``steps`` by calling the **existing**
 caasi operations, in order, on an **explicitly named** target:

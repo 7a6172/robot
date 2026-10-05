@@ -1,4 +1,4 @@
-"""Target-aware deployment engine and synchronization foundation (Phase 7 Stage B).
+"""Target-aware deployment engine and synchronization foundation.
 
 Represents and executes project deployments to execution targets (workstation,
 remote robots, edge devices, simulation/compute clusters). Synchronizes selected
@@ -47,7 +47,7 @@ DEFAULT_EXCLUDE_PATTERNS = [
     ".caasi/deployments",
     ".caasi/builds",
     ".caasi-build.json",
-    # Runtime-lifecycle state (Stage E4). These are written into the deployment
+    # Runtime-lifecycle state. These are written into the deployment
     # destination by `caasi runtime install`, not shipped by the project, so
     # `rsync --delete` would otherwise remove caasi's own revision marker and
     # environment fragment on the next deploy -- silently destroying the rollback
@@ -100,7 +100,7 @@ class DeploymentRecord:
     destination_path: str
     deployed_at: str
     status: str  # "verified", "active", "dry_run", "failed", "verification_failed"
-    # Lifecycle intent (Phase 7 Stage E1). `ephemeral` means the deployment exists
+    # Lifecycle intent. `ephemeral` means the deployment exists
     # to serve a job whose results are collected afterwards, so the target MAY be
     # released once they are. `persistent` means the deployment is an operational
     # installation that must remain. Kept separate from `status` because status

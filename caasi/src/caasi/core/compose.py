@@ -1,4 +1,4 @@
-"""Workload composition (Phase 7 Stage F2).
+"""Workload composition.
 
 Runs a workload's declared ``steps`` by calling the **existing** caasi operations,
 in order, on an **explicitly named** target:

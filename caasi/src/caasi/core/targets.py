@@ -1,4 +1,4 @@
-"""Target abstraction model and capability discovery (Phase 7 Stage A).
+"""Target abstraction model and capability discovery.
 
 A Target represents an execution destination (local workstation, remote robot,
 edge device, simulation server, or compute cluster). caasi models targets

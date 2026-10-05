@@ -167,7 +167,7 @@ def evaluate_requirement(
     tested: list[Any] | None = None,
     scope: str = "machine",
 ) -> CheckItem:
-    """The §16 requirement ladder, in ONE place (Phase 7 F1 consolidation).
+    """The §16 requirement ladder, in one place.
 
     This is the single implementation of "given what a target/machine reports for
     *name*, how does it compare against this requirement?". Both entry points use

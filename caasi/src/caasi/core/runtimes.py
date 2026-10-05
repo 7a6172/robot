@@ -1,4 +1,4 @@
-"""Runtime observability adapters (Phase 7 Stage E3).
+"""Runtime observability adapters.
 
 Generalises the E2 observation model beyond ROS 2. Each adapter *asks* a runtime
 for its state using that runtime's own native interface and returns a normalised

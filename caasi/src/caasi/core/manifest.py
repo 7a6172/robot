@@ -43,7 +43,7 @@ class Manifest:
     requires: dict[str, Any] = field(default_factory=dict)
     tested: list[Any] = field(default_factory=list)
     project_layout: dict[str, str] = field(default_factory=dict)
-    # Declared persistent runtime (Phase 7 Stage E4). Empty means the project is
+    # Declared persistent runtime. Empty means the project is
     # not installed as a service; `deploy` alone remains correct for it.
     runtime: dict[str, Any] = field(default_factory=dict)
     # Lifecycle intent: "ephemeral" (compute, releasable) or "persistent" (robot).

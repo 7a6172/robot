@@ -1,4 +1,4 @@
-"""Persistent runtime lifecycle (Phase 7 Stage E4).
+"""Persistent runtime lifecycle.
 
 Answers: *if caasi deploys software to a long-lived target such as a robot, how
 does caasi install / configure / enable / verify / manage that deployment over

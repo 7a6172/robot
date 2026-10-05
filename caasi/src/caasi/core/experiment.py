@@ -44,7 +44,7 @@ class Experiment:
     cwd: str | None = None
     config_path: Path | None = None
     raw: dict[str, Any] = field(default_factory=dict)
-    # Declared run outputs (Phase 7 Stage E1). Empty means "route by policy",
+    # Declared run outputs. Empty means "route by policy",
     # which leaves unclassified data on the target and records where it is.
     outputs: list["artifacts_mod.OutputDeclaration"] = field(default_factory=list)
 

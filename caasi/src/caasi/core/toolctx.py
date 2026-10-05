@@ -1,4 +1,4 @@
-"""Target-aware tool invocation (Phase 7 Stage F3, requirement R2).
+"""Target-aware tool invocation of existing tools against a target.
 
 The principle:
 

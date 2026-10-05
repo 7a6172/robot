@@ -1,4 +1,4 @@
-"""``caasi runtime`` - persistent runtime lifecycle for a target (Phase 7 Stage E4).
+"""``caasi runtime`` - persistent runtime lifecycle for a target.
 
 The lifecycle answers: *if caasi deploys software to a long-lived target such as a
 robot, how does caasi install / configure / enable / verify / manage it over time?*

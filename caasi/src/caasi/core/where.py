@@ -1,4 +1,4 @@
-"""Explicit target selection for workloads (Phase 7 — ``--where``).
+"""Explicit target selection for workloads (``--where``).
 
 The distinction this module exists to preserve:
 

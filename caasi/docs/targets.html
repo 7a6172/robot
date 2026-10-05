@@ -86,7 +86,7 @@ verdict per target, with the measured fact behind it:</p>
 ┏━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Target    ┃ Verdict        ┃ Why                         ┃
 ┡━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ u24-307   │ ✖ incompatible │ gpu: target reports no GPUs │
+│ robot-01  │ ✖ incompatible │ gpu: target reports no GPUs │
 │ local     │ ● ready        │ 2 compatible                │
 └───────────┴────────────────┴─────────────────────────────┘</code></pre>
 
@@ -137,8 +137,8 @@ Selection for workload 'report'
   policy: prefer:cpu-only
   ordering: targets carrying tag 'cpu-only' first, then target name (matched)
 
-  ✔ SELECTED   u24-307
-     selected 'u24-307'; it satisfies the requirements
+  ✔ SELECTED   robot-01
+     selected 'robot-01'; it satisfies the requirements
   ✖ eliminated local  suitable, but not chosen by this policy</code></pre>
 
 <div class="callout note">
@@ -158,7 +158,7 @@ Selection for workload 'impossible'
   policy: any
   ordering: no eligible targets
 
-  ✖ eliminated u24-307  does not satisfy 'gpu' — target reports no GPUs
+  ✖ eliminated gpu-01  does not satisfy 'gpu' — target reports no GPUs
   ✖ eliminated local    does not satisfy 'gpu' — target reports 1 GPU(s), 4 required
 
 Error: no target satisfies this workload (nothing was deployed or queued)</code></pre>

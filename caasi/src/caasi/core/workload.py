@@ -1,4 +1,4 @@
-"""Workload declaration (Phase 7 Stage F1 — minimal form).
+"""Workload declaration.
 
 A *workload* is the work a project wants done, expressed as **data**: what it
 needs, and (from Stage F2) the operations that carry it out. It is deliberately

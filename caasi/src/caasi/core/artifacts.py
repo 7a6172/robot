@@ -1,4 +1,4 @@
-"""Run result/output collection and routing (Phase 7 Stage E1).
+"""Run result/output collection and routing.
 
 This module closes the lifecycle for runs that *produce* data:
 
@@ -855,7 +855,7 @@ def load_artifact_record(run_directory: Path) -> ArtifactRecord | None:
     return record
 
 # ---------------------------------------------------------------------------
-# Lifecycle intent (Phase 7 Stage E1.5)
+# Lifecycle intent
 #
 # Declares what a deployment is FOR, which changes what "done" means:
 #

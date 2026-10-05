@@ -756,8 +756,8 @@ MESSAGES: dict[str, str] = {
     ),
     "test.pipx_detected": (
         "caasi test was invoked from a pipx installation ({package}). "
-        "Please run from the local development virtual environment: "
-        "/home/zar/Documents/phd/robot/caasi/.venv/bin/caasi test"
+        "Please run it from a local development virtual environment instead, "
+        "for example: .venv/bin/caasi test"
     ),
     # -- setup ------------------------------------------------------------------------
     "setup.help": "Detect missing ecosystem components and guide their installation.",
