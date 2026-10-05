@@ -115,6 +115,12 @@ manual. This is the actual gap R8 names — but see §5: the missing piece is an
 missing ergonomic layer — and note that **the inputs already exist**, so this is a
 presentation gap, not a state gap.
 
+**Status: DELIVERED** as `caasi target occupancy` — see
+[`m3-occupancy-query-report.md`](m3-occupancy-query-report.md). Read-only, one
+implementation shared with `--where idle`, three states (`occupied`/`unknown`/
+`idle`) never collapsed, no persistent state, no reservations. The idle race
+remains open by design.
+
 ### 4.3 Useful but premature
 
 - **Capacity/limit accounting** (CPUs, VRAM, memory). Limits already exist as
