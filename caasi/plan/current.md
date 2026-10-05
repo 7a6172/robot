@@ -435,13 +435,70 @@
       integration (not used for E2; a natural follow-up, not a prerequisite).
     - **Ordering note**: E2 was done before E1 at the user's direction. Per the agreed
       staging, **E1 (result/output collection)** remains the next bounded step.
-  - **Current State**: Three threads closed and committed — the three-way equivalence
-    chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**), **Phase 7 Stage D** (real remote
-    target validation against `u24-307`, which exposed and fixed three caasi defects),
-    and **Phase 7 Stage E2** (remote ROS 2 observability: `caasi ros … --target`, thin
-    delegation over the target's own `ros2`).
-    Next per the agreed staging: **E1 result/output collection** (designed, bounded,
-    completes the compute path). Later: persistent runtime (needs real robot evidence)
-    and non-ROS runtime adapters behind the same capability-keyed registry.
+  - **Phase 7 Stage E1 (Result/Output Collection): COMPLETED.**
+    - [Stage E1 Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-e1-report.md)
+    - Closed the compute-side lifecycle:
+      `project → deployment → target → build → run → artifacts/results → destination`.
+    - **New module** `caasi.core.artifacts`: `Artifact`, `ArtifactRoute`,
+      `ArtifactRecord`, `OutputDeclaration`, `RoutingPolicy`, local/remote
+      inventory, collection planning, collection, and the sibling `artifacts.yaml`
+      record. caasi **routes, it does not interpret** — it never parses a
+      checkpoint or metric, and `kind` never gates collection.
+    - **CLI**: `caasi run artifacts <run> [--collect] [--dry-run] [--verify] [--json]`.
+    - **Decisions taken before implementation** (all three as recommended in the
+      investigation): unclassified outputs **stay on the target** with their
+      location recorded; **small files hashed by default, large only with
+      `--verify`**; artifacts collected for **succeeded, failed and stopped** runs.
+    - **A declaration is a filter.** Declaring `outputs:` defines what the run
+      produces (separating results from source/scratch); with no declaration every
+      non-bookkeeping file is inventoried so nothing is lost.
+    - **E1.5 lifecycle intent**: `lifecycle: ephemeral | persistent` (default
+      persistent). After an ephemeral deployment's declared results are collected
+      it is marked `releasable` — **a recording only**; caasi has no delete or
+      release operation, and the CLI states "recorded only; nothing was removed".
+      A persistent deployment is **never** marked releasable.
+    - **Validated on the real remote `u24-307`** with a minimal generated-file
+      workload (2 small results + one 2 MiB checkpoint): remote inventory over SSH,
+      a collection plan of `fetch=2 / leave=1`, and collection that copied exactly
+      the two results — **content verified byte-identical by sha256** — while the
+      2 MiB checkpoint stayed on the target. Target left fully intact
+      (deployment present, all 3 files, checkpoint present).
+    - **Ephemeral vs persistent proven distinct**: ephemeral → `releasable: True`
+      recorded after collection; persistent → not marked, despite identical
+      collection behaviour.
+    - **Additional evidence from real OpenMover data** (241 map JSONs, 6.2 MB in
+      `lab/`): undeclared inventory found 306 files including 28 `.py` source
+      files (showing why declarations matter); declared narrowed correctly to 241
+      map files. This exposed a **genuine bug**: a declared `kind: map` was ignored
+      in favour of extension inference (`.json` → `metrics`). Fixed so a
+      **declaration wins over extension inference**; regression test added.
+    - **Two further bugs found by validation**: the provenance bundle
+      (`configuration.yaml`, `hardware.yaml`, …) was being reported as artifacts
+      (fixed in the bookkeeping list), and the inventory root was wrong (it now
+      uses the run's working directory rather than the run directory, which holds
+      bookkeeping).
+    - **Tests**: 42 new (39 `test_artifacts.py`, 3 `test_experiment.py`). Full
+      suite **976 passed, 1 failed** — the failure is the pre-existing
+      `test_perception_cmd.py` terminal-width artifact, proven unrelated to E1.
+    - **Not established (explicitly)**: no deletion/release/teardown by design; no
+      artifact store (no CAS, dedup or retention policy); no shared/remote
+      destination (only `workstation` and `target_local`); no artifact↔dataset
+      hydration; no transfer progress beyond per-file `rsync --partial`; the
+      `required:` field parses but is **not enforced**, so a run producing nothing
+      reads as zero artifacts rather than a failure; and no persistent-runtime work
+      (not started, per instruction).
+    - Test deployment removed from `u24-307` after validation. Reference trees
+      unchanged.
+
+  - **Current State**: Four threads closed and committed — the three-way equivalence
+    chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
+    validation against `u24-307`, three defects found and fixed); **Stage E2** (remote
+    ROS 2 observability via `caasi ros … --target`); and **Stage E1** (result/output
+    collection: declaration, inventory, routing, provenance, and the
+    ephemeral-vs-persistent lifecycle distinction).
+    Next, no auto-proceed: the **persistent runtime lifecycle** (install/configure,
+    enable, durability, update, rollback — needs real robot evidence) or **non-ROS
+    observability adapters** (container, systemd, bare process). Optional E1
+    extensions exist but none are required.
     (Carried-forward reproducibility gap, unrelated to these stages: no committed ROS 1
     Dockerfile for the legacy reference environment.)
