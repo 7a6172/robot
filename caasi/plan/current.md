@@ -490,15 +490,69 @@
     - Test deployment removed from `u24-307` after validation. Reference trees
       unchanged.
 
-  - **Current State**: Four threads closed and committed — the three-way equivalence
+  - **Phase 7 Stage E3 (Non-ROS Runtime Adapters): COMPLETED.**
+    - [Stage E3 Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-e3-report.md)
+    - Generalised the E2 observation model beyond ROS 2, using each runtime's own
+      **native** interface. Principle unchanged: **caasi asks the runtime for
+      state and presents it consistently; the runtime stays authoritative.**
+    - **New module** `caasi.core.runtimes` with four adapters plus one shared
+      transport primitive (`run_on_target`: local runs directly, SSH joins one
+      quoted command). Normalised `RuntimeReport` / `RuntimeItem` across all four.
+      | runtime | delegates to |
+      |---|---|
+      | process | `ps`, falling back to `/proc` |
+      | systemd | `systemctl`, `journalctl` |
+      | container | `docker`, falling back to `podman` |
+      | ros2 | `ros2` CLI (reuses E2 detection rather than duplicating) |
+    - **CLI**: `caasi target runtime <target> [--runtime …] [--match …] [--unit …] [--lines N] [--system] [--json]`.
+    - **Design decisions recorded**: absence is reported **with a reason**, never as
+      an empty success; `systemctl` present is **not** enough (requires
+      `/run/systemd/system`, so a container shipping systemctl without systemd is
+      correctly reported unavailable); detection is **one round-trip** so a slow
+      relay pays once; budgets scale with `ssh_timeout` (Stage D mechanism); the
+      adapters **only read** — no start/stop/restart/enable/remove; kernel threads
+      are hidden unless `--match` reaches them.
+    - **Validated on real workloads, with no OpenMover involvement** (per the
+      instruction not to require it):
+      * process adapter found a real detached `sleep 900` on `u24-307` by PID/PGID;
+      * systemd adapter observed a real user unit (`active`, `running`, MainPID);
+      * `journalctl` delegation returned real journal lines from that unit;
+      * container adapter observed a real Docker container locally (`running`,
+        `alpine`) alongside exited ones — `u24-307` has no container runtime, so it
+        was correctly reported unavailable *and why*.
+    - **Failure cases**: unknown target rc 1 with **no silent local fallback**;
+      unknown runtime rc 1 with the valid list; unreachable target rc 1, bounded
+      **20.16 s**, with the transport reason on every runtime.
+    - **Tests**: 21 new in `tests/test_runtimes.py`. Full suite **999 passed,
+      1 failed** — the failure is the pre-existing `test_perception_cmd.py`
+      terminal-width artifact, proven unrelated.
+    - **Not established (explicitly)**: no lifecycle operations (observe-only); no
+      container logs/inspect; no multi-target aggregation; no polling or history;
+      container adapter not validated **remotely** (no reachable target has a
+      container runtime); podman covered by test only; no non-systemd init; no
+      `caasi monitor` integration; no security posture tested.
+    - **Environmental note**: `u24-307` connectivity stayed variable (probe
+      round-trips ~325 ms to 1.35 s, several transient SSH drops). This is relay
+      variability, **not** an E1 or E3 failure. One drop looked like the relay but
+      was a real gotcha: `pkill -f "sleep 900"` matches the SSH command line
+      containing that string and kills its own session; the workaround was to match
+      on exact process name and inspect `/proc/<pid>/cmdline`.
+    - Validation fixtures removed: the systemd unit and workload on `u24-307`, and
+      the test container locally. Reference trees unchanged.
+    - The documented E1 `required:` limitation was **left as documented**, not
+      expanded — E3 did not demonstrate a need for it.
+
+  - **Current State**: Five threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
-    validation against `u24-307`, three defects found and fixed); **Stage E2** (remote
-    ROS 2 observability via `caasi ros … --target`); and **Stage E1** (result/output
-    collection: declaration, inventory, routing, provenance, and the
-    ephemeral-vs-persistent lifecycle distinction).
+    validation against `u24-307`, three defects found and fixed); **Stage E1**
+    (result/output collection with the ephemeral-vs-persistent distinction);
+    **Stage E2** (remote ROS 2 observability via `caasi ros … --target`); and
+    **Stage E3** (non-ROS runtime adapters for process, systemd and container,
+    observe-only).
     Next, no auto-proceed: the **persistent runtime lifecycle** (install/configure,
-    enable, durability, update, rollback — needs real robot evidence) or **non-ROS
-    observability adapters** (container, systemd, bare process). Optional E1
-    extensions exist but none are required.
+    enable, durability verification, update/redeploy, rollback) — still requiring
+    real robot evidence, and deliberately not started. Optional extensions exist
+    (E1 artifact destinations, E3 container logs/inspect, multi-target aggregation)
+    but none are required.
     (Carried-forward reproducibility gap, unrelated to these stages: no committed ROS 1
     Dockerfile for the legacy reference environment.)
