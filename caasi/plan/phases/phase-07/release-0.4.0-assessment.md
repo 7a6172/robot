@@ -58,14 +58,30 @@ no object store.** If a genuinely minimal foundation appears (e.g. validating a
 configured destination name against a documented rule), it may be added **only if it
 is a few lines and introduces no infrastructure**. Otherwise documentation alone.
 
-### R10 — monitoring web UI: **small, stdlib-only foundation**
+### R10 — monitoring web UI: **small FastAPI + Jinja2 + HTMX foundation**
 
-**Constraint discovered:** caasi has **exactly three runtime dependencies** (typer,
-rich, pyyaml). Adding FastAPI/Flask/uvicorn for a monitoring UI would be a
-disproportionate architectural change for a bounded release.
+**Stack (decision confirmed, supersedes an earlier stdlib-only proposal):** the
+stack consistent with the author's other projects and the established caasi web
+direction:
 
-**Proposed 0.4.0 scope:** a **stdlib-only** (`http.server`) read-only server,
-launched explicitly by `caasi web` (or equivalent), serving:
+| Layer | Choice | Explicitly not |
+| :--- | :--- | :--- |
+| Server | **FastAPI** | — |
+| Rendering | **Jinja2** (server-rendered) | — |
+| Interactivity | **HTMX** | no SPA, no React/Vue |
+| Styling | plain / flat CSS | no Tailwind, no build step |
+
+**Consequence for dependencies:** caasi currently has exactly three runtime
+dependencies (typer, rich, pyyaml). This adds a web stack, so it belongs in an
+**optional extra** (e.g. `caasi[web]`) rather than the base install — the core CLI
+must keep working without it, and `caasi web` should fail with a clear message
+naming the extra when it is absent.
+
+**Still deliberately absent:** no frontend build system, no SPA architecture, no
+CSS framework.
+
+**Proposed 0.4.0 scope:** a read-only server, launched explicitly by `caasi web`
+(or equivalent), serving:
 
 - targets and their occupancy (the M3 query);
 - recent runs and their status;
@@ -81,7 +97,15 @@ launched explicitly by `caasi web` (or equivalent), serving:
 
 The "no control actions" rule needs a **test that fails if a mutating route is
 added**, not merely prose — that is where the one-control-plane boundary is easiest
-to violate.
+to violate. Under FastAPI this is checkable structurally: enumerate the app's routes
+and assert every one is `GET` and none is a control action.
+
+**Initial content scope** (agreed): targets; target occupancy; runs and run state;
+deployments; artifacts; ROS 2-focused observation where practical.
+
+**Extensibility:** local-only binding (`127.0.0.1`) for 0.4.0, but the server should
+be easy to expose to remote/other access later without restructuring — i.e. the
+binding is a setting, not a hard-coded assumption woven through the code.
 
 **ROS 2 focus:** the CLI's `ros` queries are the natural first content, but they are
 **target-dependent and can be slow**. The design should render what is *recorded*
@@ -154,7 +178,8 @@ Each checkpoint is independently reviewable and stops for review.
 
 | Risk | Response |
 | :--- | :--- |
-| R10 grows into a real web framework | **stop and report** — stdlib only, and if it needs more, it is 0.5.0 |
+| R10 grows beyond observation-only | **stop and report** — no write endpoints, no SPA, no build step; enforced by the route guard |
+| R10's stack breaks the base install | web stack goes in an **optional extra**; the core CLI must work without it |
 | G4 removal drops configuration or capability | **deprecate only**; removal needs a migration path (reported above) |
 | The web UI drifts into a control plane | mutating-route guard test; no write endpoints |
 | R9 grows into artifact infrastructure | documentation only unless a few-line foundation is clearly justified |
@@ -168,10 +193,11 @@ Each checkpoint is independently reviewable and stops for review.
 | :--- | :--- | :--- |
 | R8 | confirm deferred, no work | none |
 | R9 | document the model + extension point | **small** |
-| R10 | stdlib observation-only web foundation + guard | **small–medium** |
+| R10 | FastAPI+Jinja2+HTMX observation-only foundation + guard | **small–medium** |
 | G4 | deprecate in help/docs; **no removal** | **small** |
 | DDS / idle race | no work | none |
 | Hardening | CLI audit, workflow docs, install path, sweep | **medium** |
 
 **Bounded.** Nothing here introduces a daemon, a queue, a database, an artifact
-store, or a second control plane.
+store, or a second control plane. R10 adds a web stack, but as an **optional extra**
+with no frontend build step and no mutating routes.
