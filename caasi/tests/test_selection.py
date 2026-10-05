@@ -355,3 +355,51 @@ def test_steps_and_outputs_parse_but_f1_does_not_act_on_them():
     w = W.parse_workload({"name": "t", "steps": [{"run": {"command": "x"}}], "outputs": [{"path": "*.log"}]})
     assert w.steps == [{"run": {"command": "x"}}]
     assert w.outputs == [{"path": "*.log"}]
+
+# ---------------------------------------------------------------------------
+# Presence without a version (found on the real workstation)
+# ---------------------------------------------------------------------------
+
+
+def test_present_but_unversioned_is_not_reported_as_absent():
+    """Isaac Sim was detected on the workstation with status ok and no version.
+
+    Mapping that to None made the ladder read it as *absent*, reporting a machine
+    that has Isaac Sim as not having it at all. The Check Contract's own
+    convention (``_isaac_version`` returning "installed") is followed instead.
+    """
+    facts = S.target_facts(_inspection(isaac_sim={"status": "ok", "detail": "Isaac Sim at /x"}))
+    assert S._version_str(facts["isaac_sim"]) == S.INSTALLED
+
+
+def test_present_but_unversioned_requirement_is_untested_not_missing():
+    verdicts = S.evaluate_requirements(
+        {"isaac_sim": {"version": ">=5.0"}},
+        {"isaac_sim": S.INSTALLED},
+    )
+    assert verdicts[0].verdict == "untested"
+    assert verdicts[0].verdict != "missing"
+
+
+def test_present_but_unversioned_note_names_the_cause():
+    verdicts = S.evaluate_requirements(
+        {"isaac_sim": {"version": ">=5.0"}}, {"isaac_sim": S.INSTALLED}
+    )
+    assert "version is not recorded" in verdicts[0].note
+
+
+def test_a_failed_isaac_status_is_absent():
+    """Status is what says whether the tool exists; a failure is a real absence."""
+    facts = S.target_facts(_inspection(isaac_sim={"status": "fail"}))
+    assert S._version_str(facts["isaac_sim"]) is None
+
+
+def test_isaac_status_ok_with_a_version_uses_the_version():
+    facts = S.target_facts(_inspection(isaac_sim={"status": "ok", "version": "4.5.0"}))
+    assert S._version_str(facts["isaac_sim"]) == "4.5.0"
+
+
+def test_present_but_unversioned_without_a_range_is_untested():
+    """Even with no range declared, presence alone is not a comparison."""
+    verdicts = S.evaluate_requirements({"isaac_sim": {}}, {"isaac_sim": S.INSTALLED})
+    assert verdicts[0].verdict == "untested"

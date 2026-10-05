@@ -37,15 +37,33 @@ from .targets import Target, TargetEnvironment, TargetInspection, TargetResource
 TARGET_UNREACHABLE = "unreachable"
 
 
+#: Sentinel used when a tool is present but reports no version. Mirrors the Check
+#: Contract's own convention (``check._isaac_version`` returns "installed"), and
+#: matters because ``None`` would be read as *absent*: a target with Isaac Sim
+#: installed but no version recorded would be reported as not having it at all.
+INSTALLED = "installed"
+
+
 def _version_str(value: Any) -> str | None:
-    """Normalise a discovered fact to the string form the ladder compares."""
+    """Normalise a discovered fact to the string form the ladder compares.
+
+    A discovery entry that reports the tool present without a version becomes
+    :data:`INSTALLED` rather than ``None``, so presence is never mistaken for
+    absence. This mirrors ``check._isaac_version``, which returns "installed" in
+    exactly this situation.
+    """
     if value is None:
         return None
     if isinstance(value, dict):
-        # Isaac entries are dicts carrying a version plus provenance; the version
-        # is what a requirement is matched against.
+        # Isaac entries are dicts carrying status/provenance; a version is what a
+        # requirement is matched against, but status says whether it exists at all.
         inner = value.get("version")
-        return str(inner) if inner not in (None, "") else None
+        if inner not in (None, ""):
+            return str(inner)
+        status = str(value.get("status") or "").strip().lower()
+        if status in ("ok", "detected", "installed", "present"):
+            return INSTALLED
+        return None
     text = str(value).strip()
     return text or None
 
@@ -253,12 +271,17 @@ def evaluate_requirements(
                 )
             )
         else:
-            verdicts.append(
-                RequirementVerdict(
-                    name, spec, detected, "untested",
-                    f"could not compare {detected} against {spec}",
+            # `None` from satisfies() means unverifiable, not incompatible -- and
+            # the common cause is worth naming: a tool confirmed present whose
+            # version is not recorded cannot be compared against a version range.
+            if detected == INSTALLED:
+                note = (
+                    f"{name} is present but its version is not recorded, so it "
+                    f"cannot be compared against {spec}"
                 )
-            )
+            else:
+                note = f"could not compare {detected} against {spec}"
+            verdicts.append(RequirementVerdict(name, spec, detected, "untested", note))
 
     return verdicts
 
