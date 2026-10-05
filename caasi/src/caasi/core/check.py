@@ -160,6 +160,63 @@ class EnvironmentChecker:
         return [CheckItem("fingerprint", None, detected or None, "compatible")]
 
 
+def evaluate_requirement(
+    name: str,
+    entry: Any,
+    detected: str | None,
+    tested: list[Any] | None = None,
+) -> CheckItem:
+    """The §16 requirement ladder, in ONE place (Phase 7 F1 consolidation).
+
+    This is the single implementation of "given what a target/machine reports for
+    *name*, how does it compare against this requirement?". Both entry points use
+    it:
+
+    * ``ProjectRequirementsChecker`` -- facts detected on the **local machine**;
+    * ``selection.evaluate_requirements`` -- facts discovered on a **target**.
+
+    Only the *fact source* differs between them; the ladder, the notes and the §57
+    caution do not. Keeping one implementation is the point: a second copy silently
+    diverged before (`check.strict` was honoured by one path and not the other).
+
+    ``detected`` is supplied by the caller rather than looked up here, which is what
+    lets the same ladder serve a target that is not this machine. ``detected is
+    None`` means *not detected*, and callers are responsible for deciding whether
+    that is a measured absence or an unmeasured fact.
+    """
+    spec = _version_spec(entry)
+    verified = _is_verified(tested or [], name, detected)
+
+    if detected is None:
+        return CheckItem(name, spec, None, "missing", _("check.note.not_detected"))
+
+    if not spec:
+        if verified:
+            return CheckItem(name, None, detected, "compatible", _("check.note.verified"), True)
+        return CheckItem(name, None, detected, "untested", _("check.note.no_version"))
+
+    verdict = requirements.satisfies(detected, spec)
+    if verdict is True:
+        if verified:
+            return CheckItem(name, spec, detected, "compatible", _("check.note.verified"), True)
+        return CheckItem(name, spec, detected, "compatible")
+
+    if verdict is False:
+        # §57 evidence-not-guarantees: an out-of-range version is a warning with an
+        # explanation, never an assertion of incompatibility.
+        return CheckItem(
+            name,
+            spec,
+            detected,
+            "untested",
+            _("check.note.out_of_range", required=spec, detected=detected),
+        )
+
+    return CheckItem(
+        name, spec, detected, "untested", _("check.note.unverifiable", required=spec)
+    )
+
+
 class ProjectRequirementsChecker:
     """``caasi.yaml`` requires/components versus detected versions (§4.4)."""
 
@@ -188,31 +245,8 @@ class ProjectRequirementsChecker:
     def _requirement_item(
         self, ctx: CheckContext, name: str, entry: Any, tested: list[Any]
     ) -> CheckItem:
-        spec = _version_spec(entry)
-        detected = detect(ctx.config, name)
-        verified = _is_verified(tested, name, detected)
-        if detected is None:
-            return CheckItem(name, spec, None, "missing", _("check.note.not_detected"))
-        if not spec:
-            if verified:
-                return CheckItem(name, None, detected, "compatible", _("check.note.verified"), True)
-            return CheckItem(name, None, detected, "untested", _("check.note.no_version"))
-        verdict = requirements.satisfies(detected, spec)
-        if verdict is True:
-            if verified:
-                return CheckItem(name, spec, detected, "compatible", _("check.note.verified"), True)
-            return CheckItem(name, spec, detected, "compatible")
-        if verdict is False:
-            return CheckItem(
-                name,
-                spec,
-                detected,
-                "untested",
-                _("check.note.out_of_range", required=spec, detected=detected),
-            )
-        return CheckItem(
-            name, spec, detected, "untested", _("check.note.unverifiable", required=spec)
-        )
+        """Local-machine facts through the shared ladder."""
+        return evaluate_requirement(name, entry, detect(ctx.config, name), tested)
 
 
 def _version_spec(entry: Any) -> str | None:

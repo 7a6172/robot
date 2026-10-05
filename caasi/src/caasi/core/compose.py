@@ -110,6 +110,7 @@ def check_target_compatibility(
     requirements: dict[str, Any],
     inspection,
     tested: list[Any] | None = None,
+    config=None,
 ) -> tuple[bool, str | None]:
     """Gate composition on the same verdicts `caasi target select` reports.
 
@@ -123,7 +124,9 @@ def check_target_compatibility(
     """
     from . import selection as selection_core
 
-    report = selection_core.select_target(target, requirements, inspection, tested)
+    report = selection_core.select_target(
+        target, requirements, inspection, tested, strict=_strict_of(config)
+    )
 
     if not report.reachable:
         return False, f"target '{target.name}' is unreachable: {report.error or 'unknown'}"
@@ -140,13 +143,33 @@ def check_target_compatibility(
 
 
 def unmeasured_requirements(
-    target, requirements: dict[str, Any], inspection, tested: list[Any] | None = None
+    target,
+    requirements: dict[str, Any],
+    inspection,
+    tested: list[Any] | None = None,
+    config=None,
 ) -> list[str]:
     """Requirements that could not be measured, for reporting (never blocking)."""
     from . import selection as selection_core
 
-    report = selection_core.select_target(target, requirements, inspection, tested)
+    report = selection_core.select_target(
+        target, requirements, inspection, tested, strict=_strict_of(config)
+    )
     return [f"{v.name}: {v.note}" for v in report.verdicts if v.verdict == "untested"]
+
+
+def _strict_of(config) -> bool:
+    """The project's `check.strict` setting, if a config was supplied.
+
+    Companion checks must agree with `caasi check` about the same requirement, so
+    this is read rather than assumed.
+    """
+    if config is None:
+        return False
+    try:
+        return bool(config.get("check.strict", False))
+    except Exception:  # noqa: BLE001 - a config that cannot answer is not strict
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -326,6 +349,8 @@ def build_step_runner(
     experiment_path: Path | None = None,
     backend: str | None = None,
     workload_outputs: list[Any] | None = None,
+    workload_name: str | None = None,
+    workload_config: str | None = None,
     on_poll: Callable[[str], None] | None = None,
     json_output: bool = False,
 ) -> StepRunner:
@@ -407,6 +432,17 @@ def build_step_runner(
             state["experiment_path"] = config_path
         command = options.get("command")
 
+        # Workload identity travels with the run, so provenance can answer "which
+        # workload produced this?" without inferring it from the experiment filename
+        # or from `kind: workload` -- neither of which identifies *which* workload.
+        # The selected target is recorded for the same reason: a composed run has a
+        # target that was chosen, and that choice is part of its provenance.
+        provenance_extra: dict[str, Any] = {"workload": workload_name}
+        if workload_config:
+            provenance_extra["workload_config"] = str(workload_config)
+        if experiment_path is not None:
+            provenance_extra["experiment"] = str(experiment_path)
+
         if config_path is not None:
             record = runs_core.start_target_run(
                 target=target,
@@ -415,6 +451,7 @@ def build_step_runner(
                 name=options.get("name"),
                 backend=backend,
                 kind="workload",
+                extra=dict(provenance_extra),
             )
         elif command:
             record = runs_core.start_target_run(
@@ -425,7 +462,7 @@ def build_step_runner(
                 backend=backend,
                 kind="workload",
                 extra_args=None,
-                extra={"command": command},
+                extra={**provenance_extra, "command": command},
             )
         else:
             raise stopped(

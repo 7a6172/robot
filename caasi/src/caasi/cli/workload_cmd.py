@@ -164,10 +164,10 @@ def workload_run(
     if dry_run:
         inspection = targets_core.discover_target(target_obj, config=cfg)
         proceed, reason = compose_core.check_target_compatibility(
-            target_obj, requirements, inspection, tested
+            target_obj, requirements, inspection, tested, config=cfg
         )
         unmeasured = compose_core.unmeasured_requirements(
-            target_obj, requirements, inspection, tested
+            target_obj, requirements, inspection, tested, config=cfg
         )
         if output.wants_json(json_output):
             output.echo_json({
@@ -200,7 +200,7 @@ def workload_run(
     if not skip_check:
         inspection = targets_core.discover_target(target_obj, config=cfg)
         proceed, reason = compose_core.check_target_compatibility(
-            target_obj, requirements, inspection, tested
+            target_obj, requirements, inspection, tested, config=cfg
         )
         if not proceed:
             output.fail(reason or _("workload.incompatible", target=target_obj.name))
@@ -211,6 +211,8 @@ def workload_run(
         target=target_obj,
         config=cfg,
         workload_outputs=workload.outputs,
+        workload_name=workload.name,
+        workload_config=str(workload.config_path) if workload.config_path else None,
     )
 
     def on_step(result) -> None:

@@ -109,7 +109,10 @@ def test_out_of_range_is_a_warning_not_incompatible():
         {"ros2": {"version": "humble"}}, {"ros2": "jazzy"}
     )
     assert verdicts[0].verdict == "untested"
-    assert "outside the required range" in verdicts[0].note
+    # The note now comes from the shared Check Contract ladder (F1 consolidation),
+    # so the wording is the contract's rather than a second hand-written copy.
+    assert "outside required" in verdicts[0].note
+    assert "not tested by Caasi" in verdicts[0].note
 
 
 def test_out_of_range_reports_both_required_and_detected():

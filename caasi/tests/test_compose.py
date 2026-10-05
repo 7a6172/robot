@@ -454,3 +454,137 @@ def test_build_step_reads_the_real_build_result_api():
 
     bad = BuildResult(returncode=1, command=["colcon"], root="/x", workers=2, duration=1.0)
     assert bad.ok is False
+
+
+# ---------------------------------------------------------------------------
+# M1: workload identity in provenance
+#
+# R8 architecture review finding: a composed run recorded `kind: workload` and the
+# EXPERIMENT name, but not the WORKLOAD name -- so provenance could not answer
+# "which workload produced this?" once more than one workload existed, and two
+# workloads sharing one experiment were indistinguishable.
+# ---------------------------------------------------------------------------
+
+
+def test_run_records_the_workload_name(monkeypatch, tmp_path):
+    """The workload identity must reach the run record, not just the experiment."""
+    captured: dict = {}
+
+    def fake_start_target_run(**kwargs):
+        captured.update(kwargs)
+        record = type("R", (), {"run_id": "r1", "target": "t", "target_transport": "local",
+                                "directory": None, "remote_run_dir": None})()
+        return record
+
+    from caasi.core import runs as runs_core
+
+    monkeypatch.setattr(runs_core, "start_target_run", fake_start_target_run)
+    monkeypatch.setattr(C, "wait_for_terminal", lambda *a, **k: runs_core.TERMINAL_OK)
+
+    runner = C.build_step_runner(
+        project_root=tmp_path,
+        target=Target(name="local", transport="local"),
+        config=None,
+        experiment_path=tmp_path / "experiments" / "job.yaml",
+        workload_name="beta",
+        workload_config=str(tmp_path / "workloads" / "beta.yaml"),
+    )
+    runner.run({"config": str(tmp_path / "experiments" / "job.yaml")})
+
+    assert captured["extra"]["workload"] == "beta"
+    assert captured["extra"]["workload_config"].endswith("beta.yaml")
+
+
+def test_two_workloads_sharing_an_experiment_are_distinguishable(monkeypatch, tmp_path):
+    """The case the old provenance could not answer."""
+    seen: list[str] = []
+
+    def fake_start_target_run(**kwargs):
+        seen.append(kwargs["extra"]["workload"])
+        record = type("R", (), {"run_id": "r", "target": "t", "target_transport": "local",
+                                "directory": None, "remote_run_dir": None})()
+        return record
+
+    from caasi.core import runs as runs_core
+
+    monkeypatch.setattr(runs_core, "start_target_run", fake_start_target_run)
+    monkeypatch.setattr(C, "wait_for_terminal", lambda *a, **k: runs_core.TERMINAL_OK)
+
+    for name in ("alpha", "beta"):
+        runner = C.build_step_runner(
+            project_root=tmp_path, target=Target(name="local", transport="local"),
+            config=None, experiment_path=tmp_path / "job.yaml", workload_name=name,
+        )
+        runner.run({"config": str(tmp_path / "job.yaml")})
+
+    assert seen == ["alpha", "beta"]
+
+
+def test_the_command_form_also_records_the_workload(monkeypatch, tmp_path):
+    captured: dict = {}
+
+    def fake_start_target_run(**kwargs):
+        captured.update(kwargs)
+        return type("R", (), {"run_id": "r", "target": "t", "target_transport": "local",
+                              "directory": None, "remote_run_dir": None})()
+
+    from caasi.core import runs as runs_core
+
+    monkeypatch.setattr(runs_core, "start_target_run", fake_start_target_run)
+    monkeypatch.setattr(C, "wait_for_terminal", lambda *a, **k: runs_core.TERMINAL_OK)
+
+    runner = C.build_step_runner(
+        project_root=tmp_path, target=Target(name="local", transport="local"),
+        config=None, workload_name="beta",
+    )
+    runner.run({"command": "python3 x.py"})
+
+    assert captured["extra"]["workload"] == "beta"
+    assert captured["extra"]["command"] == "python3 x.py"
+
+
+# ---------------------------------------------------------------------------
+# F1 consolidation: check and target select share one ladder
+# ---------------------------------------------------------------------------
+
+
+def test_check_and_target_select_agree_on_an_out_of_range_requirement():
+    """The divergence that motivated consolidation: one requirement, one verdict."""
+    from caasi.core import check as check_core
+    from caasi.core import selection as selection_core
+    from caasi.core.targets import (
+        TargetEnvironment, TargetInspection, TargetResources,
+    )
+
+    inspection = TargetInspection(
+        target=Target(name="t"), reachable=True, status="online",
+        environment=TargetEnvironment(ros_distro="jazzy"),
+        resources=TargetResources(gpus=[]), discovered_capabilities=[],
+    )
+
+    for strict in (False, True):
+        item = check_core.evaluate_requirement("ros2", {"version": "humble"}, "jazzy", [])
+        local = check_core.summarize([item], strict=strict)
+        remote = selection_core.select_target(
+            Target(name="t"), {"ros2": {"version": "humble"}}, inspection, strict=strict
+        ).status
+        assert local == remote, f"strict={strict}: check={local} select={remote}"
+
+
+def test_shared_ladder_is_the_single_implementation():
+    """Both entry points must call the shared function, not own a copy."""
+    from caasi.core import check as check_core
+    from caasi.core import selection as selection_core
+    import inspect as _inspect
+
+    assert hasattr(check_core, "evaluate_requirement")
+    source = _inspect.getsource(selection_core.evaluate_requirements)
+    assert "check_core.evaluate_requirement(" in source
+
+
+def test_strict_is_not_hardcoded_in_selection():
+    from caasi.core import selection as selection_core
+    import inspect as _inspect
+
+    source = _inspect.getsource(selection_core.select_target)
+    assert "strict=False" not in source

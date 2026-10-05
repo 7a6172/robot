@@ -352,3 +352,96 @@ def test_cli_build_target_remote_json(sample_project: Path, monkeypatch: pytest.
     assert data["target_name"] == "orin-node"
     assert data["build_id"] == "build-test-999"
     assert data["deployment_id"] == "dep-test-888"
+
+
+# ---------------------------------------------------------------------------
+# Local build/run destination contract (Phase 7 F2 follow-up)
+#
+# PRE-EXISTING DEFECT, reported in the F2 report and fixed here. `target: local`
+# is a DEPLOYED target like any other -- `deploy` puts it in
+# ~/.caasi/deployments/local/<project>, `run` requires that deployment and
+# executes there -- but `build` recorded in the PROJECT ROOT, so `build` then
+# `run` on the local target failed with "No completed build found".
+#
+# The discriminator is now whether a deployment EXISTS, not whether the target is
+# named `local`.
+# ---------------------------------------------------------------------------
+
+
+def _fake_successful_build():
+    proc = MagicMock()
+    proc.returncode = 0
+    proc.stdout = ["Finished <<< sample_pkg [1.0s]\n"]
+    proc.wait.return_value = 0
+    return proc
+
+
+def test_local_build_uses_the_deployment_when_one_exists(sample_project: Path, tmp_path: Path) -> None:
+    """A deployed local target builds AT the deployment, which is where run looks."""
+    from caasi.core import deploy as deploy_core
+
+    deployment = tmp_path / "deployments" / "test_robot"
+    deployment.mkdir(parents=True)
+    (deployment / "src").mkdir()
+    (deployment / "src" / "keep").write_text("x")
+
+    target = Target(name="local", transport="local", deployment_root=str(tmp_path / "deployments"))
+    cfg = Config({}, [])
+
+    fake_inspection = MagicMock()
+    fake_inspection.reachable = True
+    fake_inspection.resources = None
+    fake_inspection.environment = MagicMock(ros_root=None, ros_distro="jazzy")
+
+    def _fake_execute_build(root, **kwargs):
+        # Emulate a successful build, writing the record the way the real path does.
+        res = MagicMock()
+        res.ok = True
+        res.returncode = 0
+        res.duration = 1.0
+        res.workers = 1
+        res.command = ["colcon", "build"]
+        res.packages = ["sample_pkg"]
+        res.output = ""
+        return res
+
+    real_deployment = MagicMock()
+    real_deployment.deployment_id = "deploy-test-1"
+
+    with patch.object(deploy_core, "get_deployment_status", return_value=real_deployment), \
+         patch.object(build_core.targets_core, "discover_target", return_value=fake_inspection), \
+         patch.object(build_core, "execute_build", side_effect=_fake_execute_build):
+        result = build_core.execute_target_build(
+            target=target, project_root=sample_project, config=cfg,
+        )
+
+    # The record belongs to the DEPLOYMENT, not the project root. This is the
+    # assertion that matters: it is exactly where `run` looks for it.
+    assert (deployment / ".caasi-build.json").is_file()
+    assert not (sample_project / ".caasi-build.json").is_file()
+
+
+def test_local_build_without_a_deployment_still_builds_the_workspace(
+    sample_project: Path,
+) -> None:
+    """The standalone local-workspace build is preserved, not replaced."""
+    target = Target(name="local", transport="local", deployment_root=".")
+    cfg = Config({}, [])
+
+    with patch("subprocess.Popen", return_value=_fake_successful_build()):
+        result = build_core.execute_target_build(
+            target=target, project_root=sample_project, config=cfg,
+        )
+
+    assert result.ok
+    assert (sample_project / ".caasi-build.json").is_file()
+
+
+def test_deployment_presence_not_the_target_name_selects_the_path() -> None:
+    """The fix removes a special case rather than adding a lookup fallback."""
+    import inspect as _inspect
+
+    source = _inspect.getsource(build_core.execute_target_build)
+    assert "local_deployment" in source
+    # The old name-based discriminator must no longer decide the path alone.
+    assert "is_local_workspace = (local_deployment is None)" in source

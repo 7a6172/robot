@@ -387,8 +387,28 @@ def execute_target_build(
     if git_stat.get("dirty"):
         git_rev = f"{git_rev}-dirty"
 
-    is_local_workspace = (target.name == "local") or (
-        target.transport == "local" and (not target.deployment_root or target.deployment_root == ".")
+    # A local target is a DEPLOYED target like any other, so a build belongs at its
+    # deployment destination -- which is where `run` looks for the record. Keying
+    # this on the target being *named* `local` made build record in the project root
+    # while run looked at the deployment, so `build` then `run` on the local target
+    # failed. The discriminator is whether a deployment exists, not the name.
+    #
+    # The local-workspace path is kept for its real purpose: a standalone build in
+    # one's own checkout, with no deployment to belong to.
+    local_deployment = None
+    if target.transport == "local":
+        candidate = deploy_core.resolve_deployment_destination(
+            target, manifests.read(project_root).name or project_root.name
+        )
+        if deploy_core.get_deployment_status(target, candidate, cfg):
+            local_deployment = candidate
+
+    is_local_workspace = (local_deployment is None) and (
+        (target.name == "local")
+        or (
+            target.transport == "local"
+            and (not target.deployment_root or target.deployment_root == ".")
+        )
     )
 
     if is_local_workspace:

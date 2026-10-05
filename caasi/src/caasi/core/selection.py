@@ -215,9 +215,20 @@ def evaluate_requirements(
 ) -> list[RequirementVerdict]:
     """Evaluate *requirements* against a target's *facts*.
 
-    Mirrors :meth:`check.ProjectRequirementsChecker._requirement_item` exactly, so
-    the verdicts a target produces are the same kind a local ``check`` produces.
-    The only difference is the fact source.
+    Uses the **same ladder** as local ``check`` (:func:`check.evaluate_requirement`),
+    so a requirement cannot produce different verdicts depending on whether it was
+    evaluated through ``caasi check`` or ``caasi target select``. Before the F1
+    consolidation this was a second, hand-written copy of the ladder, and the two
+    paths diverged under ``check.strict``.
+
+    Only two things are target-specific, and both are about *where the fact came
+    from* rather than how it is judged:
+
+    * **Not-measured vs absent.** A component the target was never probed for is
+      ``untested``, because its absence carries no information. A probed component
+      the target does not have is a genuine ``missing``.
+    * **Presence without a version.** A tool confirmed present whose version is not
+      recorded cannot be compared, and the note says so.
     """
     verdicts: list[RequirementVerdict] = []
 
@@ -225,63 +236,42 @@ def evaluate_requirements(
         entry = requirements[name]
 
         if _entry_matches_gpu(name):
+            # Resource-shaped, so no version ladder applies.
             verdicts.append(_gpu_verdict(name, entry, facts))
             continue
 
-        spec = check_core._version_spec(entry)
         detected = _version_str(facts.get(name))
+        probed = name.strip().lower() in PROBED_FACTS
 
-        if detected is None:
-            if name.strip().lower() not in PROBED_FACTS:
-                # Discovery never asks about this, so its absence carries no
-                # information. Reporting "missing" here would assert a fact the
-                # target was never examined for.
-                verdicts.append(
-                    RequirementVerdict(
-                        name, spec, None, "untested",
-                        "target discovery does not report this component, so it is "
-                        "not measured (not evidence of absence)",
-                    )
-                )
-            else:
-                verdicts.append(
-                    RequirementVerdict(name, spec, None, "missing",
-                                       "required component was not detected on this target")
-                )
-            continue
-
-        if not spec:
-            verdicts.append(
-                RequirementVerdict(name, None, detected, "untested",
-                                   "version not declared, so it cannot be compared")
-            )
-            continue
-
-        result = requirements_core.satisfies(detected, spec)
-        if result is True:
-            verdicts.append(RequirementVerdict(name, spec, detected, "compatible"))
-        elif result is False:
-            # §57 evidence-not-guarantees: an out-of-range version is a warning
-            # with an explanation, never an assertion of incompatibility.
+        if detected is None and not probed:
+            # Never asked about, so this is unmeasured rather than absent.
             verdicts.append(
                 RequirementVerdict(
-                    name, spec, detected, "untested",
-                    f"detected {detected} is outside the required range {spec} "
-                    f"(not asserted incompatible from a version range alone)",
+                    name, check_core._version_spec(entry), None, "untested",
+                    "target discovery does not report this component, so it is "
+                    "not measured (not evidence of absence)",
                 )
             )
-        else:
-            # `None` from satisfies() means unverifiable, not incompatible -- and
-            # the common cause is worth naming: a tool confirmed present whose
-            # version is not recorded cannot be compared against a version range.
-            if detected == INSTALLED:
-                note = (
-                    f"{name} is present but its version is not recorded, so it "
-                    f"cannot be compared against {spec}"
-                )
-            else:
-                note = f"could not compare {detected} against {spec}"
-            verdicts.append(RequirementVerdict(name, spec, detected, "untested", note))
+            continue
+
+        item = check_core.evaluate_requirement(name, entry, detected, tested)
+        note = item.note
+        if detected == INSTALLED and item.compatibility == "untested":
+            # Name the actual cause; the generic ladder note would be misleading.
+            note = (
+                f"{name} is present but its version is not recorded, so it "
+                f"cannot be compared against {item.required}"
+            )
+        verdicts.append(
+            RequirementVerdict(
+                name=item.name,
+                required=item.required,
+                detected=item.detected,
+                verdict=item.compatibility,
+                note=note,
+                verified=item.verified,
+            )
+        )
 
     return verdicts
 
@@ -301,6 +291,7 @@ def select_target(
     requirements: dict[str, Any],
     inspection: TargetInspection | None,
     tested: list[Any] | None = None,
+    strict: bool | None = None,
 ) -> SelectReport:
     """Evaluate one target against requirements. Advisory: it decides nothing."""
     if inspection is None or not inspection.reachable:
@@ -316,7 +307,11 @@ def select_target(
         CheckItem(v.name, v.required, v.detected, v.verdict, v.note, v.verified)  # type: ignore[arg-type]
         for v in verdicts
     ]
-    result = check_core.summarize(items, strict=False)
+    # `check.strict` is honoured here exactly as `caasi check` honours it. Before
+    # consolidation this was hardcoded to False, so a project with
+    # `check.strict: true` got `incompatible` from `check` and only a `warning`
+    # from `target select` for the SAME requirement.
+    result = check_core.summarize(items, strict=bool(strict))
 
     return SelectReport(
         target=target.name,
@@ -332,8 +327,10 @@ def select_all(
     requirements: dict[str, Any],
     inspected: dict[str, TargetInspection],
     tested: list[Any] | None = None,
+    strict: bool | None = None,
 ) -> list[SelectReport]:
     """Evaluate several targets. Still advisory — it ranks nothing and chooses nothing."""
     return [
-        select_target(t, requirements, inspected.get(t.name), tested) for t in targets
+        select_target(t, requirements, inspected.get(t.name), tested, strict=strict)
+        for t in targets
     ]

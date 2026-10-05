@@ -360,7 +360,14 @@ def target_select(
         except Exception as exc:  # noqa: BLE001 - an unreachable target is a verdict
             inspected[target.name] = None
 
-    reports = selection_core.select_all(targets, requirements, inspected, tested)
+    # Honour `check.strict` exactly as `caasi check` does. Selection and check must
+    # agree about the same requirement; before the F1 consolidation this was
+    # hardcoded, so the two commands could report different verdicts (and exit
+    # codes) for one project.
+    reports = selection_core.select_all(
+        targets, requirements, inspected, tested,
+        strict=bool(config.get("check.strict", False)),
+    )
 
     if output.wants_json(json_output):
         output.echo_json({
