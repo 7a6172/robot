@@ -961,6 +961,68 @@
       ROS/DDS functionality, no RViz replacement, no remote GUI management, no web UI, no
       daemonisation, **no G4 cleanup**. **Stopping for F3 review.**
 
+  - **Phase 7 R8 Architecture Review: COMPLETED (review only, no code, no F4).**
+    - [R8 Architecture Review](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/r8-architecture-review.md)
+    - Questions R8 (future multi-target execution, resource allocation, scheduling) against what
+      F1–F3 actually proved, using the two real heterogeneous targets as evidence, without
+      hardcoding either machine.
+    - **Headline finding: most of R8's preconditions already exist.** Four of the six things a
+      scheduler would need are already solved and required **no new state**:
+      * what work needs (F1 `requires`), what a target offers (live discovery), does X satisfy Y
+        (F1 `target select`), **what is running where** (derivable from existing `RunRecord`s —
+        verified: `local` 24 succeeded/3 failed/6 stopped, `u24-307` 5/3/1), where results go
+        (E1/R9 per-artifact routing), and provenance across the chain.
+      * **The occupancy result matters most**: a scheduling system is usually justified by needing
+        to know what is busy — and that fact is *already recorded*. A future allocator can be a
+        **query over existing records**, not new state.
+      * **So the missing piece is not "a scheduler"** — it is narrow: expressing *"run this where
+        it fits"* as an explicit, inspectable decision instead of a hand-typed target name.
+    - **Four categories distinguished**:
+      1. **Solved by F1–F3**: requirement declaration/merging, live discovery, per-target
+         compatibility, the composed chain, independent artifact destinations, provenance,
+         target-aware tool invocation.
+      2. **Genuinely missing** — **M1: workload identity is absent from provenance.** Verified on a
+         real composed run: a run records `kind: workload` and `name: hello2` (the *experiment*),
+         but the **workload name appears nowhere** — the first link of the chain is missing, so
+         "which workload produced this?" cannot be answered once more than one exists. **Small, a
+         correctness gap, and a prerequisite** for anything keying on the chain. **M2**: no way to
+         express "run this where it fits" (the gap R8 names — but the answer is a selector, not a
+         scheduler). **M3**: occupancy is derivable but not exposed (a presentation gap, not a
+         state gap).
+      3. **Useful but premature**: capacity *booking* (declared resource constraints already work
+         — `gpu: {count, memory_gb}` is implemented and tested; what is missing is reserving
+         against totals), concurrency admission control, reservations/leases, submit-and-forget
+         (needs a destination to submit *to*).
+      4. **Deferred until a real multi-target case requires it**: **queues, scheduling, automatic
+         allocation, multi-target execution, resource claims, cross-target aggregation, fleet.**
+    - **Why queues specifically are deferrable — argued, not assumed**: a queue solves
+      *contention*, and none has been observed (one developer, two targets, ad-hoc runs). The
+      input for *detecting* contention already exists, so the cheapest honest answer is a query
+      saying "target X is busy with run Y" — strictly less machinery than a queue and strictly
+      more honest, since it silently reorders no one's work. A queue without a scheduler is
+      meaningless, and a scheduler designed without evidence would be designed against a guess.
+    - **Minimum abstraction recommended**: an **explicit, explained `--where` policy**
+      (`any` / `idle` / `prefer:<tag>`) over the existing verdict machinery — opt-in, always
+      naming the chosen target and the eliminated ones **with reasons**, **no queue, no waiting,
+      no new state**, and `--target` unchanged as the default. If nothing satisfies, it **fails
+      with reasons; it never enqueues**. This does not breach "automatic target selection" because
+      it is a *query the operator asks*, not a *policy applied unbidden*.
+    - **Open items: before or after?** **F1 ladder consolidation → BEFORE** (the proposed stage
+      extends *selection*, which is exactly the duplicated code; building on the duplicate would
+      widen the divergence while `check.strict` remains broken). **F2 local build/run destination
+      semantics → BEFORE, or explicitly scoped** (a `--where` policy could select `local`, and
+      `local` + a `build` step is currently broken by that pre-existing mismatch; selection must
+      not be able to choose a broken path). **G4 → AFTER** (independent cleanup; `list_targets`
+      already imports the legacy entries so selection correctness is unaffected). **DDS-over-
+      Tailscale → AFTER / probably permanently deferred** (environmental; affects remote GUI tool
+      use, not multi-target execution or scheduling; working around it would breach the agreed
+      boundary).
+    - **Recommended order**: (1) close **M1** workload identity; (2) **consolidate the F1 ladder**
+      and **decide the F2 `local` build/run semantics**; (3) implement the minimum `--where`
+      abstraction; (4) **do not** implement queues/scheduling/allocation/multi-target execution.
+    - **All four open items remain exactly as recorded** — none removed, none treated as solved.
+      **No code changed. F4 not implemented.**
+
   - **Current State**: Nine threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**
