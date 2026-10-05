@@ -867,6 +867,52 @@
     - **Next: F3 NOT started** (per instruction). Carried forward, neither blocking F3: the
       **build/run destination mismatch** for `--target local`, and **G4** (`remotes:` retirement).
 
+  - **Phase 7 F1 Acceptance Review + F3 Design: COMPLETED (review/design only, no implementation).**
+    - [F1 Acceptance Review](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f1-acceptance-review.md) |
+      [F3 Design](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f3-design.md) |
+      [Traceability](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/traceability.md)
+    - **Gap statuses formally recorded**: **G1 CLOSED**; **G2 CLOSED on capability**
+      (with a recorded consolidation item); **G3 CLOSED**; **G4 OPEN / cleanup**;
+      **G5 CLOSED**.
+    - **G1 closure verified against its agreed definition**, live on the real remote target:
+      requirement-driven (merges project + workload `requires:`, matches via
+      `requirements.satisfies`), inspectable (every verdict carries required/detected/note),
+      **advisory (returns a *set*, never a choice)**, and **no ranking/scoring/preference
+      logic exists** — `compose` uses `select_target` only as a *gate* on a named target.
+    - **G2 closure verified live on `u24-307`**: §57 out-of-range → `untested` (not
+      `incompatible`), `missing`, and `unmeasured` all behave per the Check Contract, with
+      facts sourced from the target's own discovery.
+    - **One genuine remaining gap REPORTED, not smoothed over** (per instruction): the F1
+      *design* said `target select` would be another **entry point of the existing
+      CheckEngine**; the implementation instead left `check.py` unchanged and
+      **re-implemented the requirement ladder in `selection.py`** (11 verdict constructions
+      vs 7 in the contract's equivalent ladder). For default projects the two **agree**, so
+      the F1 evidence stands. They are **not identical**: `selection.py` calls
+      `summarize(..., strict=False)` unconditionally, so under `check.strict: true`
+      `caasi check` reports `incompatible` (exit 3) while `target select` reports only a
+      `warning` (exit 0). Recorded as an **open consolidation item**; **not** fixed in a
+      review pass, and **does not block F3**.
+    - **F1 implementation was NOT changed to make status appear closed.**
+    - **F3 design written (NOT implemented)**: *target-aware tool invocation*, principle
+      **"caasi supplies context, then gets out of the way."** One generic declarative
+      mechanism `caasi <tool> --target <t>` (`rviz2`, `rqt`, `rosbag record` as eventual
+      proof cases, chosen to prove generality, not to build a subsystem). Design covers:
+      what "target context" is; authoritative-vs-unverified target facts; the
+      **domain-ID hazard** (the empty-graph trap — explicit `--domain` > target-reported >
+      **refuse, never silently defaulted**); how a *local* GUI tool consumes a *remote* ROS
+      graph (caasi's job ends at a correct environment; **cross-machine DDS discovery is the
+      DDS implementation's responsibility**); pass-through of unrecognised tool arguments;
+      error/exit-code reporting (the tool's own code); and explicit scope boundaries.
+    - **F3 explicitly excludes**: automatic selection/forwarding/queues/scheduling/
+      multi-target orchestration, new ROS/DDS functionality, an RViz replacement, remote GUI
+      management, a web UI, **G4 cleanup**, and daemonising the launched tool.
+    - **Honest expectation recorded up front**: for a remote GUI tool across Tailscale, DDS
+      discovery **may not work** even with a correct environment; that would be reported as
+      a network/DDS fact, **not worked around and not claimed as working**. Negative cases
+      (refusals) carry the validation weight, not the positive "a window appeared" case.
+    - **F3 NOT started.** No F3 code exists.
+    - No implementation changes of any kind in this pass.
+
   - **Current State**: Eight threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**

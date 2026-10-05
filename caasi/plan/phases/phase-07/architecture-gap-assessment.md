@@ -84,8 +84,10 @@ This is the substance of the assessment. Ordered by architectural weight.
 ### G1. Nothing decides a target — work names one
 
 **Addressed by stage F1** via an advisory, requirement-driven, inspectable
-`caasi target select`. **Open** — closes when F1's evidence is recorded. See
-[traceability](traceability.md#g1--nothing-decides-a-target--f1).
+`caasi target select`. **Status: CLOSED** (accepted) — verdicts from real targets,
+no ranking or preference logic, and `select_all` returns a set rather than a
+choice. See [traceability](traceability.md#g1--nothing-decides-a-target--f1) and
+[the F1 acceptance review](stage-f1-acceptance-review.md).
 
 `find_target` resolves **by exact name or unique prefix only**:
 
@@ -116,10 +118,13 @@ set of targets to *choose* among them. That is the single largest conceptual gap
 
 ### G2. `caasi check` is local-only, so compatibility is asymmetric
 
-**Addressed by stage F1** via target-aware fact sourcing that **reuses the
-existing `CheckEngine` / Check Contract** rather than replacing it. **Open** —
-closes when remote-target evaluation including the §57 case is demonstrated. See
-[traceability](traceability.md#g2--check-is-local-only--f1).
+**Addressed by stage F1** via target-aware fact sourcing. **Status: CLOSED on
+capability** (accepted), **with a recorded consolidation item**: remote-target
+evaluation including the §57 case is demonstrated live, but `check.py` was left
+local-only and the requirement ladder is now implemented **twice**, so
+`check.strict` is honoured by `caasi check` and **not** by `target select`. See
+[traceability](traceability.md#g2--check-is-local-only--f1) and
+[the F1 acceptance review](stage-f1-acceptance-review.md).
 
 `check` answers *"can this project/run work on **this machine**"*. Given how the
 tool now treats targets as first-class, the natural question — *"can this project
@@ -307,3 +312,7 @@ target. Implement nothing until reviewed.
 **Stage mapping (see [traceability.md](traceability.md)):** F1 addresses G1, G2 and
 the first half of G5; F2 addresses G3 and completes G5; F3 adds R2 (no gap — a new
 capability); G4 is independent outstanding cleanup.
+
+**Status after F1 acceptance:** **G1 CLOSED**, **G2 CLOSED on capability** (with a
+consolidation item — the duplicated requirement ladder and the `check.strict`
+divergence), **G3 CLOSED**, **G4 OPEN / cleanup**, **G5 CLOSED**.

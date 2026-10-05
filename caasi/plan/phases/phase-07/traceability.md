@@ -25,12 +25,12 @@ end-goal requirement (R1–R10)  →  architectural gap (G1–G5)
 
 | End-goal req. | Architectural gap | Stage | Status |
 | :--- | :--- | :--- | :--- |
-| **R1** workstation as control plane | G1, G2, G3 | F1, F2 | **F1+F2 complete** |
-| **R2** target-aware existing tools | *(no gap — new capability)* | F3 | Not started |
+| **R1** workstation as control plane | G1, G2, G3 | F1, F2 | **F1+F2 complete** (G1/G2 accepted) |
+| **R2** target-aware existing tools | *(no gap — new capability)* | F3 | **Designed, not implemented** — [`stage-f3-design.md`](stage-f3-design.md) |
 | **R3** domain owners | *(cross-cutting; held throughout)* | all | **Held** |
 | **R4** target-aware execution | G2, G3 | F1, F2 | **F1+F2 complete** |
 | **R5** workload abstraction | **G5** | **F1, F2** | **F1+F2 complete** |
-| **R6** target selection | **G1, G2** | **F1** | Planned |
+| **R6** target selection | **G1, G2** | **F1** | **Accepted** — G1 closed; G2 closed on capability, with a recorded consolidation item |
 | **R7** lifecycle composition | **G3** | **F2** | **F2 complete** |
 | **R8** multi-target control plane | *(deliberately deferred)* | — | Deferred |
 | **R9** result/artifact flow | *(partial; no gap)* | — | Partial |
@@ -54,10 +54,15 @@ requirement-driven selection exists, even though the ingredients all do.
 - **no hidden automatic choice** — execution still names an explicit target, and an
   undiscovered fact is reported as `untested` rather than guessed.
 
-**Closes when:** F1's evidence is recorded, showing verdicts from real targets
-including at least one `untested`/`missing` case. **Not closed by** selection
-existing alone — the prohibition on hidden policy is part of the gap remaining
-closed.
+**Status: CLOSED** (accepted — see
+[`stage-f1-acceptance-review.md`](stage-f1-acceptance-review.md)).
+
+F1's evidence shows requirement-driven verdicts from real targets including
+`untested`/`missing` cases, verified live against `u24-307`, and inspection confirms
+there is no ranking, scoring or preference logic: `select_all` returns a **set** of
+verdicts, never a choice, and `compose` uses `select_target` only as a **gate** on
+an already-named target. The prohibition on hidden policy therefore remains
+satisfied.
 
 ### G2 — `check` is local-only → **F1**
 
@@ -72,9 +77,23 @@ local machine. "Can this project work on *that target*" has no answer.
   verdict ladder, §57 evidence-not-guarantees, and the exit policy stay owned by
   the one engine. `target select` is a new **entry point**, not a new semantics.
 
-**Closes when:** requirement evaluation against a remote target's facts is
-demonstrated, including the §57 case (out-of-range version reported `untested`,
-**not** `incompatible`).
+**Status: CLOSED on capability** (accepted) — **with a recorded consolidation
+item**. See [`stage-f1-acceptance-review.md`](stage-f1-acceptance-review.md).
+
+Demonstrated live against `u24-307`: §57 out-of-range → `untested` (not
+`incompatible`), `missing`, and `unmeasured` all behave per the contract, with facts
+sourced from the target's own discovery.
+
+**The caveat, recorded rather than smoothed over:** the design intended
+`target select` to be *another entry point of the existing CheckEngine*, but
+`check.py` was left unchanged and the requirement ladder is now **implemented
+twice**. For projects without `check.strict` the paths agree. With
+`check.strict: true` they **diverge**: `caasi check` escalates a warning to
+`incompatible` (exit 3) while `target select` calls `summarize(..., strict=False)`
+unconditionally and reports only a warning (exit 0).
+
+**Consolidation item (open):** move the ladder into one shared function called by
+both paths and propagate `strict`. Does not block F3.
 
 ### G3 — Lifecycle is independent commands → **F2**
 
@@ -159,3 +178,7 @@ unchanged.
    this record only supplies the middle links.
 6. **Deferral is not closure.** R8 and R10 are deliberately deferred and remain
    requirements.
+7. **A closed gap may still carry a recorded item.** G2 is closed on capability
+   but carries an open **consolidation item** (the duplicated requirement ladder
+   and the `check.strict` divergence). Closing a gap does not erase a known
+   follow-up; it records that the follow-up does not block the capability.
