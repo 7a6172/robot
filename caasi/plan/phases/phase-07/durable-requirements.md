@@ -79,6 +79,50 @@ machines and other execution nodes** as instances of one concept.
 should compose into a coherent workflow** rather than a set of commands the
 developer must sequence by hand.
 
+## R4a. Heterogeneous targets are a first-class, evidenced requirement
+
+caasi must work across **heterogeneous targets**: CPU-only robots, GPU-capable
+compute/simulation machines, and everything between.
+
+This is **durable evidence**, not an aspiration, and it is proven against two real
+machines rather than synthetic fixtures:
+
+| | **`u24-307`** — CPU-only robot/target | **`u24-z690p`** — GPU workstation |
+| :--- | :--- | :--- |
+| Transport | `ssh` over Tailscale | `local` |
+| ROS 2 | jazzy | jazzy |
+| Python | 3.12.3 | 3.12.3 |
+| **GPUs** | **0** | **1 (RTX 3080, 10 GB)** |
+| CUDA | **none** | 13.0 |
+| Docker | no | yes |
+| Isaac Sim / Lab | not detected | present |
+
+`u24-307` represents the CPU-only robot/target that will commonly exist;
+`u24-z690p` represents a GPU-capable compute/simulation target.
+
+**The requirement:** the same workload must be evaluable against both, and the
+difference must come from **measured facts**, not from special cases:
+
+- a CPU-only workload may be satisfiable by both;
+- a GPU-required workload must be reported **incompatible** on a machine with zero
+  GPUs, and potentially satisfiable on the GPU machine;
+- ROS 2 and Isaac/CUDA workloads must be evaluated according to what each target
+  actually reports.
+
+**Explicitly NOT required yet:** automatically moving work from one target to
+another. Allocation, forwarding, scheduling and queues remain deferred (R8). The
+requirement here is that the architecture **does not prevent** them.
+
+### R4b. Work starts at the workstation and runs on the target
+
+The developer must **not** need to be physically or interactively logged into a
+target. A workload is initiated from the workstation and executed on the selected
+target, over non-interactive transport.
+
+This already holds for remote execution (SSH with `BatchMode=yes`, governed by
+`target.ssh_timeout`) and must remain true as composition is added. Any step that
+required an interactive session on the target would defeat the control-plane goal.
+
 ## R5. Workload abstraction
 
 A workload abstraction should be designed **broadly enough** to cover:
@@ -205,6 +249,8 @@ detailed gap analysis.
 | R2 | Target-aware existing tools | **Designed as a general pattern, not implemented** — thin declarative `invoke` + environment, `rviz2` as the first example only. See `workload-and-selection-design.md` §6 |
 | R3 | Domain owners | **Held throughout** — no domain re-implemented; E3/E4 invoke and verify only |
 | R4 | Target-aware execution | **Mostly proven** — deploy/build/run/observe/collect work per target; composition missing |
+| R4a | Heterogeneous targets | **Evidenced** — proven against two real machines (`u24-307` CPU-only, `u24-z690p` GPU) |
+| R4b | Start at workstation, run on target | **Holds** — remote execution is non-interactive SSH; must stay true under composition |
 | R5 | Workload abstraction | **Designed, not implemented** — `Experiment` is local-only; the proposed `Workload` carries requirements/steps/outputs. See `workload-and-selection-design.md` §3 |
 | R6 | Target selection | **Designed, not implemented** — `find_target` resolves by name only; the matching semantics and the Check Contract ladder exist but are unused for choice. See `workload-and-selection-design.md` §4 |
 | R7 | Lifecycle composition | **Designed, not implemented** — steps exist as independent commands; composition proposed as a fixed operation sequence, not a workflow engine. See `workload-and-selection-design.md` §5 |

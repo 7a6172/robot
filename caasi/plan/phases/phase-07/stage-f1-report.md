@@ -111,6 +111,33 @@ A second, smaller defect was found the same way: a workload file using the
 work needs nothing". The parser now accepts that spelling *and* **rejects unknown
 keys**, so a typo is reported instead of quietly weakening the requirement set.
 
+### 4.1 A third defect, found using the real heterogeneous pair
+
+Validating the two real machines as a heterogeneous pair surfaced a third defect
+in the **fact mapping**, and it was the same class of error as the GPU one.
+
+On the workstation, target discovery reports Isaac Sim as
+``{"status": "ok", "detail": "Isaac Sim at /home/zar/isaacsim"}`` — **present, with
+no version key**. The F1 mapping reduced that to ``None``, which the ladder reads
+as **absent**, so a machine that genuinely has Isaac Sim was reported as *not
+having it at all*.
+
+The Check Contract already had the right convention: ``check._isaac_version``
+returns the literal string ``"installed"`` when a tool is present without a
+version. F1 had broken that convention by mapping presence-without-version to
+``None``. Fixed to return ``INSTALLED``, so:
+
+- present without a version, no range declared → ``untested`` ("version is not
+  recorded"), not ``missing``;
+- present without a version, range declared → ``untested`` with a note naming the
+  cause, matching what ``requirements.satisfies("installed", ">=5.0")`` returns
+  (``None`` = unverifiable) and therefore what local ``check`` does;
+- status ``fail`` → genuinely absent.
+
+This is the third instance of the same underlying rule — **"not measured" and
+"absent" must never be collapsed** — and it was only visible against a real
+machine whose tool is installed but whose version discovery does not report.
+
 ---
 
 ## 5. Validation
@@ -146,6 +173,46 @@ Merging the project's `ros2: jazzy` with a workload's `gpu: count>=1, memory_gb 
 
 **This is the capability the stage exists to add:** *"where can this workload go,
 and why?"* — answered per target, with reasons, from real discoverable facts.
+
+### 5.2b Heterogeneous targets: the real CPU-only robot vs the GPU workstation
+
+The two real machines are a genuinely heterogeneous pair, measured rather than
+assumed:
+
+| | **`u24-307`** | **`local`** (= `u24-z690p`) |
+| :--- | :--- | :--- |
+| Transport | `ssh` over Tailscale | `local` |
+| ROS 2 / Python | jazzy / 3.12.3 | jazzy / 3.12.3 |
+| **GPUs** | **0** | **1 (RTX 3080, 10 GB)** |
+| CUDA | **none** | 13.0 |
+| Docker | no | yes |
+| Isaac Sim / Lab | not detected | present |
+| Capabilities | `ros2:jazzy` | `cuda, docker, gpu, isaac_lab, isaac_sim, ros2:jazzy` |
+
+The same workload requirements evaluated against both:
+
+| Workload | `u24-307` (CPU-only) | `local` (GPU) |
+| :--- | :--- | :--- |
+| `python>=3.10` + `ros2 jazzy` (CPU-only) | `ready` | `ready` |
+| `gpu count>=1, 8GB` + `ros2 jazzy` | **`incompatible`** — *"gpu: target reports no GPUs"* | **`ready`** |
+| `isaac_sim>=5.0` + `cuda` + `ros2 jazzy` | `incompatible` (cuda/isaac absent) | `warning` (isaac present, version unrecorded) |
+
+This is the architecture the requirement asks for:
+
+```text
+workload → evaluate targets → u24-307  incompatible
+                            → local     ready
+```
+
+**and explicitly not:**
+
+```text
+u24-307 → automatically forward → local      (allocation/scheduling: deferred, R8)
+```
+
+Every difference comes from **measured facts on the real machines**, not from
+special cases, and the CPU-only machine is correctly satisfiable for CPU-only work
+while being correctly incompatible for GPU work.
 
 ### 5.3 The real OpenMover project
 
@@ -192,7 +259,7 @@ Isaac project — the behaviour is unchanged.
 
 ## 7. Tests
 
-**39 new tests** in `tests/test_selection.py`: fact mapping (including that absent
+**45 new tests** in `tests/test_selection.py`: fact mapping (including that absent
 facts are never invented); every verdict path — satisfied, range-satisfied,
 out-of-range warning, probed-but-absent `missing`, unprobed `untested`,
 no-version `untested`; the GPU paths — met, measured absence, not-inspected,
@@ -218,7 +285,7 @@ ambiguous prefix, requirement merge, collision precedence, and that F1 records
 | `src/caasi/core/workload.py` | **new** — minimal Workload model (F1 scope) |
 | `src/caasi/cli/target_cmd.py` | `caasi target select` |
 | `src/caasi/i18n/en.py` | 12 new strings |
-| `tests/test_selection.py` | **new** — 39 tests |
+| `tests/test_selection.py` | **new** — 45 tests |
 | `plan/phases/phase-07/traceability.md` | **new** — requirement → gap → stage → evidence |
 | `plan/phases/phase-07/architecture-gap-assessment.md` | G1–G5 annotated as live, each mapped to its stage |
 

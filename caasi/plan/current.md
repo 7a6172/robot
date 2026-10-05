@@ -758,6 +758,55 @@
     - **Next: Stage F2** (workload `steps`/`outputs` + lifecycle composition → G3, completes G5),
       then stop for review. Do not auto-proceed.
 
+  - **Phase 7 Heterogeneous Targets + Stage F2 Design: COMPLETED (design/evidence only).**
+    - [F2 Design](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f2-design.md) |
+      [Durable Requirements](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/durable-requirements.md) |
+      [Stage F1 Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f1-report.md)
+    - **Heterogeneous real targets recorded durably as R4a/R4b.** The two real machines are a
+      genuinely heterogeneous pair (measured, not assumed):
+      | | **`u24-307`** CPU-only robot | **`local`** (= `u24-z690p`) GPU workstation |
+      |---|---|---|
+      | Transport | ssh/Tailscale | local |
+      | ROS 2 / Python | jazzy / 3.12.3 | jazzy / 3.12.3 |
+      | **GPUs** | **0** | **1 (RTX 3080, 10 GB)** |
+      | CUDA | **none** | 13.0 |
+      | Docker | no | yes |
+      | Isaac Sim/Lab | not detected | present |
+      `u24-307` stands for the commonly-expected CPU-only robot/target; `local` (= `u24-z690p`)
+      for a GPU-capable compute/simulation target.
+    - **Decided (via ask): keep `local` as the built-in; do not add a duplicate name.** The
+      workstation hostname is `u24-z690p` but caasi already exposes it as `local`; a second
+      name for the same machine would make a heterogeneous demo confusing. The config was
+      restored to its original state.
+    - **R4b recorded**: work starts at the workstation and runs on the target — the developer
+      must never need to be interactively logged into the target. This **already holds**
+      (remote runs use non-interactive SSH, `BatchMode=yes`) and must remain true under
+      composition.
+    - **Third F1 defect found using the real pair** (same class as the GPU one): discovery
+      reports the workstation's Isaac Sim as `{"status": "ok", ...}` with **no version key**;
+      the fact mapping turned that into `None`, which the ladder reads as **absent** — so a
+      machine that *has* Isaac Sim was reported as not having it. The Check Contract's own
+      convention (`check._isaac_version` → the literal `"installed"`) had been broken. Fixed;
+      6 regression tests added. This is the third instance of one rule: **"not measured" and
+      "absent" must never be collapsed.**
+    - **Validated on the real pair** — every difference comes from measured facts:
+      | workload | `u24-307` | `local` |
+      |---|---|---|
+      | python>=3.10 + ros2 jazzy (CPU-only) | **ready** | **ready** |
+      | gpu>=1, 8GB + ros2 jazzy | **incompatible** ("target reports no GPUs") | **ready** |
+      | isaac_sim>=5.0 + cuda + ros2 jazzy | incompatible | warning (isaac present, version unrecorded) |
+      Architecture demonstrated: `workload → evaluate targets → u24-307 incompatible / local
+      ready`. **NOT** demonstrated (correctly): automatic forwarding/allocation (R8, deferred).
+    - **F2 design written** (not implemented): `steps` as a **fixed ordered vocabulary of
+      existing operations**, not a DAG/scripting engine; unknown steps rejected; compose
+      `deploy→build→run→collect→provenance`; **a failing step stops the chain** and reports
+      which link failed; **composition records the same provenance** as the manual path (no
+      parallel "workflow record"); target is **required** (`--target`), never defaulted or
+      forwarded. §6 records explicitly how F2 **does not prevent** later allocation/forwarding/
+      queues. Validation plan targets the **two real machines**, not synthetic GPU fixtures.
+    - **Full suite: 1099 passed, 1 failed** (pre-existing `test_perception_cmd.py` artifact).
+    - **Next: implement F2** → G3, completes G5. Then stop for review.
+
   - **Current State**: Six threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**
