@@ -542,17 +542,95 @@
     - The documented E1 `required:` limitation was **left as documented**, not
       expanded — E3 did not demonstrate a need for it.
 
-  - **Current State**: Five threads closed and committed — the three-way equivalence
+  - **Phase 7 Stage E4 (Persistent Runtime Lifecycle): COMPLETED.**
+    - [Stage E4 Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-e4-report.md) |
+      [Discovery](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-e4-discovery.md)
+    - Answers: *if caasi deploys to a long-lived target such as a robot, how does caasi
+      install / configure / enable / verify / manage that deployment over time?*
+      Lifecycle: `deploy → install → enable → start → operate → update → verify → rollback`.
+    - **Boundary held**: **caasi owns identity, declaration, invocation, verification and
+      provenance; systemd owns running the service.** caasi renders a unit from the
+      project's declaration, invokes `systemctl`, then *asks systemd* for state. No
+      restart loop, no dependency graph, no process table — not a supervisor.
+    - **Two declarations, because they are two problems** (this is the central design
+      finding). The ROS 1 reference (`install.sh`) established **environment persistence
+      only**, via five `~/.bashrc` appends; it never installed a service (grepping it for
+      `systemd|rc.local|autostart|cron` returns nothing). Copying that would be wrong:
+      shell-specific, not idempotent, not verifiable. So:
+      | concern | reference | caasi |
+      |---|---|---|
+      | environment persistence | `~/.bashrc` appends | declared → systemd `EnvironmentFile` + login shell |
+      | service persistence | **not done** | declared entrypoint → unit, enablement delegated to systemd |
+    - **New**: `caasi.core.lifecycle`, `caasi runtime install|enable|start|status|verify|update|rollback`.
+      `install` writes exactly three things (env fragment, unit, revision marker) and
+      deliberately does **not** enable or start, so a partial failure is visible instead
+      of half-applied invisibly.
+    - **Revision identity**: each install records deployment id, git revision, timestamp
+      and the *previous* revision on the target, so rollback has a real target.
+    - **Validated on the real target `u24-307`** (fixture = a trivial long-running service;
+      this stage proves the *mechanism*, not the robot stack): install → env/unit/marker
+      read back; enable → systemd symlink; start → `active (running)` + MainPID; **env
+      reaches the process** (`CAASI_E4_MARKER` in `/proc/<pid>/environ`, 0 invalid-assignment
+      warnings); status; verify; update A→B (new PID, app reports `revision=rB`, chain
+      records previous=A); rollback; drift detection (stopped service → verify fails, rc 1);
+      failed update (bad entrypoint → `state=failed`, exit 127, rc 1, names the retained
+      previous revision and the recovery command); recovery via rollback.
+    - **Four real defects found by real validation** (the substance of the stage):
+      1. `deploy` uses `rsync --delete` and **deleted caasi's own runtime state**, silently
+         destroying the rollback point. Found by tracing `read previous=None`. Both files
+         now excluded; verified the marker survives a deploy.
+      2. **Rollback as a marker rewrite was a lie** — measured: marker said r5, files on
+         disk were r6, process ran r6. Put to the user as a design fork rather than patched
+         silently; decided: **rollback = redeploy the previous revision from the
+         workstation**, and `verify` compares the *revision* (a `-dirty` suffix is the same
+         content identity) while reporting a changed deployment id as evidence, not drift.
+      3. Rollback now **refuses** when content is not honestly restorable (workstation at a
+         different revision, or substantive uncommitted changes) and leaves the target
+         untouched. Subtlety: `git status` counts caasi's own `.caasi/` bookkeeping as dirt,
+         which told the operator to check out the revision they were already on; caasi's
+         bookkeeping is now excluded from that judgement.
+      4. `update` on a **reinstall** overwrote the rollback point with the revision being
+         installed (self-referential marker). Found by a unit test; update now distinguishes
+         a genuine update from a reinstall.
+      5. Related: systemd's `EnvironmentFile` is **not shell syntax** — `export A=1` was
+         logged as "Ignoring invalid environment assignment" and dropped, leaving the
+         service running with the variable missing. Only checking `/proc/<pid>/environ`
+         caught this; the service *ran* and looked healthy.
+    - **NOT claimed** (stated before implementation, still true): **no physical reboot
+      recovery** — `Linger=no` on the measured target meant user units did not survive
+      logout/reboot; all preconditions were then established and observed (`Linger=yes`,
+      `default.target.wants` symlink, `UnitFileState=enabled`) but **the machine was never
+      rebooted**, so survival is untested. The lingering probe was reverted afterwards to
+      leave the target as found. Also: no physical robot bringup persistence; no claim the
+      OpenMover stack runs persistently (its real entrypoint/environment rendering was
+      exercised, but not on hardware); system scope untested; only systemd implemented.
+    - **Tests**: 55 new in `tests/test_lifecycle.py`. Full suite **1054 passed, 1 failed**
+      (the pre-existing `test_perception_cmd.py` terminal-width artifact). One real
+      regression was introduced and fixed: `runtime` had to be added to `HELP_PANELS`,
+      caught by `test_help_panels_cover_every_root_command`.
+    - **Version**: Phase 7 is the **caasi 0.4.0** milestone (*target and control-plane
+      capabilities*). `pyproject.toml` + `__version__` set to `0.4.0`; `CHANGELOG.md`
+      records remote targets, deployment/execution, observability, result collection and
+      the runtime lifecycle under that version.
+    - Fixtures removed from `u24-307` (unit stopped/disabled/deleted, deployment root
+      removed, lingering reverted) and locally. Reference trees unchanged.
+    - **Next, no auto-proceed.** Fleet scheduling and larger control-plane features were
+      explicitly out of scope for this bounded stage.
+
+  - **Current State**: Six threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**
     (result/output collection with the ephemeral-vs-persistent distinction);
-    **Stage E2** (remote ROS 2 observability via `caasi ros … --target`); and
-    **Stage E3** (non-ROS runtime adapters for process, systemd and container,
-    observe-only).
-    Next, no auto-proceed: the **persistent runtime lifecycle** (install/configure,
-    enable, durability verification, update/redeploy, rollback) — still requiring
-    real robot evidence, and deliberately not started. Optional extensions exist
-    (E1 artifact destinations, E3 container logs/inspect, multi-target aggregation)
-    but none are required.
+    **Stage E2** (remote ROS 2 observability via `caasi ros … --target`); **Stage E3**
+    (non-ROS runtime adapters for process, systemd and container, observe-only); and
+    **Stage E4** (persistent runtime lifecycle: install/enable/start/status/verify/
+    update/rollback, with revision identity and an honest rollback).
+    These stages together are the **caasi 0.4.0** milestone (*target and control-plane
+    capabilities*).
+    Next, no auto-proceed. Natural next validations each need something this
+    environment lacks: **actual reboot survival** (a target that may be rebooted),
+    **system-scope units** (privileges), and **running the real robot stack as a managed
+    service** (robot hardware). Optional extensions exist (E1 artifact destinations,
+    E3 container logs/inspect, multi-target aggregation) but none are required.
     (Carried-forward reproducibility gap, unrelated to these stages: no committed ROS 1
     Dockerfile for the legacy reference environment.)
