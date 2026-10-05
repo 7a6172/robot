@@ -146,6 +146,70 @@ Intentional in the non-reservation model. Stays documented.
 
 ---
 
+## 3a. Runnable examples — a 0.4.0 requirement
+
+**Added to the release before the documentation checkpoint.**
+
+### The purpose
+
+Not artificial "hello caasi" demos. A **new user should be able to work through the
+examples and learn most — ideally all — of the basic caasi workflow**, through
+progressively more realistic cases.
+
+### The philosophy: the ecosystem owns the technology
+
+**caasi does not invent technology examples where a canonical one exists.** The
+underlying technology stays the ecosystem's example; **caasi demonstrates managing,
+configuring, executing, observing, deploying and collecting it.**
+
+Examples should **reference or adapt a small canonical ecosystem example** and
+supply the caasi project, config and workflow around it — **not duplicate whole
+upstream projects.**
+
+### What was verified as actually available (not assumed)
+
+| Ecosystem | Canonical example | Status |
+| :--- | :--- | :--- |
+| **ROS 2** | **`turtlesim`** — *the* standard teaching example | installed at `/opt/ros/jazzy`, ships a launch file |
+| **ROS 2** | `demo_nodes_py` / `demo_nodes_cpp` | installed; the standard pub/sub and service teacher |
+| **ROS 2** | `examples_rclpy_*` / `examples_rclcpp_minimal_*` | installed; minimal, deterministic |
+| **Isaac Lab** | **`cartpole`** — the canonical minimal RL task | present under `isaaclab_tasks/manager_based/classic/cartpole` |
+| **Isaac Lab** | `scripts/reinforcement_learning/` entry point | present; **`caasi train` already wraps it** |
+
+`turtlesim` and `cartpole` are the right anchors: both are canonical, small, and
+**safe** (no physical robot, no hazardous operation).
+
+### Existing infrastructure the examples should reuse
+
+| Finding | Consequence |
+| :--- | :--- |
+| `examples/` **already exists** with one baseline file (`navigation.yaml`) | extend it rather than inventing a parallel structure |
+| **`caasi project init`** scaffolds a project | examples can be real projects, not bespoke layouts |
+| **CI runs `pytest -q`** on release tags (`.github/workflows/release.yml`) | **examples written as tests get automatic CI validation** — the stated "tested in CI where practical" requirement is achievable without new infrastructure |
+| No `examples` framework exists | **do not build one** — the simplest structure that makes examples discoverable, runnable and maintainable |
+
+### Required properties
+
+Runnable · small for a first-time user · self-contained or with clearly documented
+prerequisites · deterministic where practical · **safe** (no physical robot motion
+or hazardous operations) · **validated automatically where practical** · clearly
+labelled with required software/hardware · **explicit about what caasi provides
+versus what the ecosystem provides**.
+
+### Explicit non-goals
+
+- **Not** a checkbox for every CLI subcommand — the goal is the real basic workflow.
+- **Not** a new example framework.
+- **Not** re-implementing upstream examples; they are referenced or adapted.
+- **No** physical-robot or hazardous examples.
+
+### Proposed set
+
+See [`examples-proposal.md`](examples-proposal.md) — awaiting review before
+implementation.
+
+---
+
 ## 4. Release hardening
 
 | Area | Planned action |
