@@ -350,6 +350,8 @@ def build_step_runner(
     backend: str | None = None,
     workload_outputs: list[Any] | None = None,
     workload_name: str | None = None,
+    selection_policy: str | None = None,
+    selection_reason: str | None = None,
     workload_config: str | None = None,
     on_poll: Callable[[str], None] | None = None,
     json_output: bool = False,
@@ -440,6 +442,13 @@ def build_step_runner(
         provenance_extra: dict[str, Any] = {"workload": workload_name}
         if workload_config:
             provenance_extra["workload_config"] = str(workload_config)
+        # How this target came to be chosen is part of the run's provenance, not
+        # just console output -- otherwise a run selected by policy is
+        # indistinguishable from one the operator named by hand.
+        if selection_policy:
+            provenance_extra["selected_by"] = selection_policy
+            if selection_reason:
+                provenance_extra["selection_reason"] = selection_reason
         if experiment_path is not None:
             provenance_extra["experiment"] = str(experiment_path)
 

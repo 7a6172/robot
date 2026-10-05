@@ -165,6 +165,7 @@ def evaluate_requirement(
     entry: Any,
     detected: str | None,
     tested: list[Any] | None = None,
+    scope: str = "machine",
 ) -> CheckItem:
     """The §16 requirement ladder, in ONE place (Phase 7 F1 consolidation).
 
@@ -188,7 +189,14 @@ def evaluate_requirement(
     verified = _is_verified(tested or [], name, detected)
 
     if detected is None:
-        return CheckItem(name, spec, None, "missing", _("check.note.not_detected"))
+        # The ladder is shared, but the phrase must not claim "this machine" when the
+        # fact came from a remote target -- that would misstate where the check ran.
+        note = (
+            _("check.note.not_detected")
+            if scope == "machine"
+            else _("check.note.not_detected_target")
+        )
+        return CheckItem(name, spec, None, "missing", note)
 
     if not spec:
         if verified:

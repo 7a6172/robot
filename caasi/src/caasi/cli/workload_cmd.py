@@ -132,21 +132,38 @@ def workload_inspect(
 @app.command("run", help=_("workload.run_help"))
 def workload_run(
     name: str = typer.Argument(..., help=_("workload.arg.name")),
-    target: str = typer.Option(..., "--target", "-t", help=_("workload.flag.target")),
+    target: Optional[str] = typer.Option(None, "--target", "-t", help=_("workload.flag.target")),
+    where: Optional[str] = typer.Option(None, "--where", help=_("workload.flag.where")),
     dry_run: bool = typer.Option(False, "--dry-run", help=_("workload.flag.dry_run")),
     skip_check: bool = typer.Option(
         False, "--skip-check", help=_("workload.flag.skip_check")
     ),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
-    """Compose a workload's steps on an explicitly named target.
+    """Compose a workload's steps on a named target, or one chosen by policy.
+
+    `--target` names a target explicitly. `--where` asks caasi to choose among the
+    targets that currently satisfy the workload, and always explains the choice.
+    The two are mutually exclusive and one is required: there is no implicit
+    default.
 
     The chain stops at the first failing step and names it, leaving the ids already
     produced so the run can be continued with the individual commands. Nothing is
     ever deleted, and no other target is chosen on your behalf.
     """
     root = _require_project_root()
-    target_obj = _require_target(target)
+
+    # Either/only-one-of. Enforced here rather than in the parser so `--target`
+    # keeps exactly its previous semantics for every existing caller.
+    if target and where:
+        output.fail(_("workload.target_and_where"))
+        raise typer.Exit(1)
+    if not target and not where:
+        output.fail(_("workload.needs_target_or_where"))
+        raise typer.Exit(1)
+
+    target_obj = None
+    selection_decision = None
 
     try:
         workload, requirements, tested = compose_core.load_composition_context(root, name)
@@ -159,6 +176,28 @@ def workload_run(
         raise typer.Exit(1)
 
     cfg = state.cfg()
+
+    # Resolve the target: named explicitly, or chosen by policy among the targets
+    # that currently satisfy the workload. Either way the operator is told which one
+    # that is, and why.
+    if where:
+        selection_decision = _select_by_policy(
+            workload.name, where, requirements, tested, cfg
+        )
+        if not selection_decision.ok:
+            if output.wants_json(json_output):
+                output.echo_json(selection_decision.to_dict())
+            else:
+                _report_decision(selection_decision)
+            # Failing is the required behaviour: no deploy, no queue, no waiting.
+            # `output.fail` raises its own exit, so the code must be passed to it;
+            # a later `raise` would never be reached (the same trap as F3).
+            output.fail(_("workload.nothing_fits"), exit_code=3)
+        if not output.wants_json(json_output):
+            _report_decision(selection_decision)
+        target_obj = _require_target(selection_decision.selected)
+    else:
+        target_obj = _require_target(target)
 
     # --dry-run reports the plan and the compatibility verdict, and touches nothing.
     if dry_run:
@@ -213,6 +252,8 @@ def workload_run(
         workload_outputs=workload.outputs,
         workload_name=workload.name,
         workload_config=str(workload.config_path) if workload.config_path else None,
+        selection_policy=selection_decision.policy_raw if selection_decision else None,
+        selection_reason=selection_decision.reason if selection_decision else None,
     )
 
     def on_step(result) -> None:
@@ -261,3 +302,78 @@ def _version_hint(entry) -> str:
             return f" {entry}"
         return ""
     return f" {entry}" if entry else ""
+
+
+def _select_by_policy(workload_name, where, requirements, tested, cfg):
+    """Evaluate every target and apply the policy. Never waits, never queues."""
+    from ..core import runs as runs_core
+    from ..core import selection as selection_core
+    from ..core import where as where_core
+
+    try:
+        where_core.parse_policy(where)
+    except where_core.SelectionError as err:
+        output.fail(str(err))
+        raise typer.Exit(1)
+
+    config = state.cfg()
+    targets = targets_core.list_targets(config)
+    inspections = {}
+    for t in targets:
+        try:
+            inspections[t.name] = targets_core.discover_target(t, config=config)
+        except Exception:  # noqa: BLE001 - an uninspectable target is a verdict
+            inspections[t.name] = None
+
+    reports = selection_core.select_all(
+        targets, requirements, inspections, tested,
+        strict=bool(config.get("check.strict", False)),
+    )
+
+    # Tag lookup for `prefer:<tag>`; taken from the targets themselves.
+    tags_by_target = {t.name: list(t.tags or []) for t in targets}
+    unmeasured_by_target = {}
+    for t in targets:
+        inspection = inspections.get(t.name)
+        if inspection is None:
+            continue
+        unmeasured_by_target[t.name] = compose_core.unmeasured_requirements(
+            t, requirements, inspection, tested, config=config
+        )
+
+    occupancy = where_core.occupancy_by_target(config)
+
+    decision = where_core.decide(
+        workload_name, where, reports,
+        occupancy=occupancy,
+        unmeasured_by_target=unmeasured_by_target,
+        tags_by_target=tags_by_target,
+    )
+    return decision
+
+
+def _report_decision(decision) -> None:
+    """Always-visible explanation of the choice. Never silent."""
+    output.echo(f"[bold]{_('workload.select_title', workload=decision.workload)}[/bold]")
+    output.echo(f"  {_('workload.select.policy')}: {decision.policy_raw}")
+    output.echo(f"  {_('workload.select.ordering')}: {decision.ordering_note}")
+    output.echo("")
+
+    if decision.selected:
+        output.echo(f"  [green]✔ SELECTED[/green]   {decision.selected}")
+        output.echo(f"      [dim]{decision.reason}[/dim]")
+    for eliminated in decision.eliminated:
+        evidence = f" — {eliminated.evidence}" if eliminated.evidence else ""
+        output.echo(f"  [red]✖ eliminated[/red] {eliminated.target}  {eliminated.reason}{evidence}")
+
+    if decision.unmeasured:
+        output.echo("")
+        output.echo(f"  [yellow]{_('workload.select.unmeasured')}[/yellow]")
+        for note in decision.unmeasured:
+            output.echo(f"      · {note}")
+    if decision.unknown_occupancy:
+        output.echo("")
+        output.echo(f"  [yellow]{_('workload.select.unknown')}[/yellow]")
+        for note in decision.unknown_occupancy:
+            output.echo(f"      · {note}")
+    output.echo("")

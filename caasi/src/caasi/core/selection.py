@@ -254,7 +254,7 @@ def evaluate_requirements(
             )
             continue
 
-        item = check_core.evaluate_requirement(name, entry, detected, tested)
+        item = check_core.evaluate_requirement(name, entry, detected, tested, scope="target")
         note = item.note
         if detected == INSTALLED and item.compatibility == "untested":
             # Name the actual cause; the generic ladder note would be misleading.
