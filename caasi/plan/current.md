@@ -1023,6 +1023,52 @@
     - **All four open items remain exactly as recorded** — none removed, none treated as solved.
       **No code changed. F4 not implemented.**
 
+  - **Phase 7 `--where` Selection Design: COMPLETED (design only, nothing implemented).**
+    - [Design](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/where-selection-design.md) |
+      [R8 Review](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/r8-architecture-review.md) |
+      [Prerequisites Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/prerequisites-m1-f1-f2-report.md)
+    - **The distinction the design protects**: `--where` answers *"which currently suitable target
+      should I use?"* — **a query the operator asks**. A scheduler would answer *"when and where
+      should this run?"* — **a policy the system applies unbidden**.
+    - **Policies**: `--where any` / `idle` / `prefer:<tag>`, plus `--target` unchanged as the
+      explicit default. Mutually exclusive; **omitting both is an error** (no implicit default).
+    - **Nothing here is new machinery**: `select_all` *already* returns the candidate set of
+      reports (ranks nothing), tags already exist on real targets (`cpu-only`, `workstation`,
+      `remote`, `gpu`…), and **occupancy is already derivable** from `list_runs` +
+      `effective_status`. The new work is a *stated, inspectable decision over an existing
+      result*, plus recording it in provenance.
+    - **Evaluation**: evaluate all targets → eligible = reachable AND not `incompatible`
+      (`warning`-grade is **eligible**, because absence of evidence is not evidence of absence,
+      and its note is printed) → order by the policy → choose the first → **if none, FAIL**.
+    - **The tie-break is stated, not hidden**: lexicographic on the policy key then **target
+      name**, so the choice is predictable and reproducible. There is **no scoring, weighting,
+      cost model or load balancing** — `prefer:<tag>` is filter-then-name-order, not a score.
+    - **The choice is never silent**: an always-printed report naming the **selected** target,
+      every **eliminated** target with its failing requirement and the **measured evidence**
+      (e.g. *"reports no GPUs"*), and any **unmeasured** notes. Same content in `--json`.
+    - **Failure is the required behaviour when nothing fits**: fail immediately with every
+      target's reason, non-zero exit, **nothing deployed, nothing queued, no waiting, no retry,
+      no forwarding**. This is the design's most important property — a queue would turn
+      "nothing fits now" into "something might happen later", which is exactly the scheduling
+      semantics this stage must not add.
+    - **Occupancy used only where honest**: `running`/`paused` occupy; terminal states do not;
+      **`lost` is an unknown** — not counted as busy, **and reported**, never silently treated as
+      either busy or free. Occupancy is a **preference, never a guarantee** — two simultaneous
+      submissions can both see a target as idle, and that race is **not** fixed here because
+      closing it would require the queue (no reservation exists today; multiple runs per target
+      are already the norm).
+    - **Validation plan**: 13 cases against the two real targets, weighted toward **refusal and
+      explanation** rather than the happy path. Case 4 (**nothing fits**) is the explicit
+      anti-scheduler test — it must deploy nothing and leave nothing pending. Case 9 (`--target`
+      alone) is the **no-regression guard**. Case 12 records the choice in provenance, which M1
+      makes possible.
+    - **Explicitly NOT done**: wait for a free target, reserve/hold, retry elsewhere, run on
+      several targets, reorder/batch, score/rank/balance, default to a policy, aggregate across
+      targets.
+    - **Data model**: only a `SelectionDecision` reporting type and two provenance fields — **no
+      new persistent state, no registry, no queue table**.
+    - **Nothing implemented.** Awaiting review before `--where` implementation.
+
   - **Current State**: Nine threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**
