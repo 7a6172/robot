@@ -617,6 +617,45 @@
     - **Next, no auto-proceed.** Fleet scheduling and larger control-plane features were
       explicitly out of scope for this bounded stage.
 
+  - **Phase 7 Architecture Gap Assessment: COMPLETED (read-only, no implementation).**
+    - [Assessment](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/architecture-gap-assessment.md)
+    - Pauses feature work to measure caasi against its stated end goal rather than
+      adding capability because it is possible.
+    - **Headline finding**: the *target-operation* half of the end goal is complete and
+      validated (deploy, build, execute, observe, collect, lifecycle, provenance). The
+      *control-plane* half — describe/submit work, **determine an appropriate target**,
+      and run the chain as one step — is where the gaps are. The provenance spine already
+      carries `target`/`destination`/`deployment_id`/`build_id`/`git_revision`, so
+      *linking* is solved; what is missing is *deciding* and *sequencing*.
+    - **Five genuine gaps**:
+      * **G1 — nothing decides a target.** `find_target` resolves by name/prefix only.
+        Yet every ingredient for requirement-driven selection already exists and is
+        unconnected: manifest `requires:`, target `discovered_capabilities`/resources,
+        and `requirements.satisfies()` with its three-valued verdict where **`None` means
+        UNVERIFIED**. It is currently called only from `check.py`, and only for the local
+        machine. Largest conceptual gap.
+      * **G2 — `check` is local-only**, so incompatibility is found *after* choosing a
+        target rather than before.
+      * **G3 — the lifecycle is independent commands**, not a sequence; the developer
+        hand-carries `deployment_id`/`build_id`/`run_id` between them.
+      * **G4 — a legacy `remotes:` shim coexists with `targets:`.** Smaller than it looks:
+        `list_targets` already documents it as legacy and *imports* those entries, so this
+        is a retirement task, not a duplication.
+      * **G5 — no workload object.** `Experiment` is local-only (no target/deployment);
+        `RunRecord` is execution-only. Nothing expresses "the work, its requirements and
+        its outputs" in a form that can be pointed at a target. This is why G1/G3 are hard.
+    - **Recommendation (smallest next step, not yet started)**: a workload declaration plus
+      a **read-only, requirement-driven `target select`** that reports a per-target verdict
+      including UNVERIFIED — **advisory and inspectable, with execution still taking an
+      explicit target**. This reconciles the stated goal ("determine an appropriate
+      target") with the standing prohibition on "automatic target selection": selection
+      advises and validates, it does not silently choose. Explicitly deferred:
+      multi-target execution, queues, scheduling, resource claims.
+    - Re-affirmed **not caasi's job** (domain tools own them): systemd, docker/podman,
+      colcon/rosdep, ros2/rclpy, Isaac Sim/Lab, nvidia-smi, images/OS, target capability
+      discovery. Test applied: *is caasi deciding and recording, or re-implementing?*
+    - No code changed; nothing implemented.
+
   - **Current State**: Six threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**
