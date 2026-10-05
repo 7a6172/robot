@@ -69,8 +69,13 @@ OCCUPYING_STATES = ("running", "paused")
 def occupancy_by_target(config) -> dict[str, dict[str, Any]]:
     """Live occupancy per target, derived from the existing run records.
 
-    Returns, per target, how many occupying runs there are plus any runs whose
-    state is **unknown** (``lost``).
+    Returns, per target, how many occupying runs there are, how many are in an
+    **unknown** state, and the detail of each run that is actually occupying (or
+    unknown) -- enough for a caller to show *what* is running, not only how much.
+
+    This is the **only** occupancy implementation: both ``--where`` (which needs the
+    counts) and the read-only ``target occupancy`` query (which needs the detail)
+    read from it, so the two can never disagree about what is busy.
 
     ``lost`` is deliberately reported separately and counted as neither busy nor
     free. An unknown state must not be silently resolved into either -- the same
@@ -86,19 +91,32 @@ def occupancy_by_target(config) -> dict[str, dict[str, Any]]:
 
     for record in records:
         bucket = summary.setdefault(
-            record.target, {"occupying": 0, "unknown": 0, "run_ids": []}
+            record.target,
+            {"occupying": 0, "unknown": 0, "run_ids": [], "runs": [], "unknown_runs": []},
         )
         try:
             status = runs_core.effective_status(record, config)
         except Exception:  # noqa: BLE001
             status = None
 
+        detail = {
+            "run_id": record.run_id,
+            "name": record.name,
+            "kind": record.kind,
+            "backend": record.backend,
+            "status": status,
+            "project": record.project,
+            "deployment_id": record.deployment_id,
+        }
+
         if status in OCCUPYING_STATES:
             bucket["occupying"] += 1
             bucket["run_ids"].append(record.run_id)
+            bucket["runs"].append(detail)
         elif status == runs_core.LOST:
             # Unknown, not busy. Recorded so it can be reported rather than hidden.
             bucket["unknown"] += 1
+            bucket["unknown_runs"].append(detail)
 
     return summary
 

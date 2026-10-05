@@ -337,3 +337,142 @@ def test_where_module_imports_no_runtime_scheduler_machinery():
     source = _inspect.getsource(mod)
     for forbidden in ("threading", "asyncio", "queue.Queue", "sleep("):
         assert forbidden not in source
+
+
+# ---------------------------------------------------------------------------
+# Occupancy detail -- the single implementation behind both surfaces
+#
+# M3 exposes occupancy as a read-only query. It must NOT become a second
+# implementation: `target occupancy` and `--where idle` both read
+# `occupancy_by_target`, so they cannot disagree about what is busy.
+# ---------------------------------------------------------------------------
+
+
+def _run_record(**kw):
+    from caasi.core.runs import RunRecord
+
+    base = dict(
+        run_id="20260101-000000-t", name="t", backend="python", kind="experiment",
+        command=["python3", "x.py"], cwd="/tmp", created="2026-01-01T00:00:00+08:00",
+        pid=None, directory=None, target="robot",
+    )
+    base.update(kw)
+    return RunRecord(**base)
+
+
+def _occupancy_with(monkeypatch, records, statuses):
+    """Drive occupancy_by_target with scripted records and statuses."""
+    from caasi.core import runs as runs_core
+
+    monkeypatch.setattr(runs_core, "list_runs", lambda config: records)
+    status_iter = iter(statuses)
+    monkeypatch.setattr(runs_core, "effective_status",
+                        lambda record, config: next(status_iter))
+    return W.occupancy_by_target(None)
+
+
+def test_occupancy_records_per_run_detail(monkeypatch):
+    """'What is running' needs identity, not only a count."""
+    from caasi.core import runs as runs_core
+
+    occ = _occupancy_with(
+        monkeypatch,
+        [_run_record(run_id="r1", name="hold", kind="experiment",
+                     project="demo", deployment_id="dep-1")],
+        [runs_core.RUNNING],
+    )
+    entry = occ["robot"]
+    assert entry["occupying"] == 1
+    assert entry["runs"][0]["run_id"] == "r1"
+    assert entry["runs"][0]["name"] == "hold"
+    assert entry["runs"][0]["kind"] == "experiment"
+    assert entry["runs"][0]["status"] == runs_core.RUNNING
+
+
+def test_paused_also_occupies(monkeypatch):
+    from caasi.core import runs as runs_core
+
+    occ = _occupancy_with(monkeypatch, [_run_record()], [runs_core.PAUSED])
+    assert occ["robot"]["occupying"] == 1
+
+
+def test_terminal_states_do_not_occupy(monkeypatch):
+    from caasi.core import runs as runs_core
+
+    occ = _occupancy_with(
+        monkeypatch,
+        [_run_record(run_id="a"), _run_record(run_id="b"), _run_record(run_id="c")],
+        [runs_core.TERMINAL_OK, runs_core.TERMINAL_FAIL, runs_core.STOPPED],
+    )
+    assert occ["robot"]["occupying"] == 0
+    assert occ["robot"]["runs"] == []
+
+
+def test_lost_is_recorded_separately_and_never_as_busy(monkeypatch):
+    """Unknown is neither busy nor free -- and the detail is kept for reporting."""
+    from caasi.core import runs as runs_core
+
+    occ = _occupancy_with(monkeypatch, [_run_record(run_id="ghost")], [runs_core.LOST])
+    entry = occ["robot"]
+    assert entry["occupying"] == 0
+    assert entry["unknown"] == 1
+    assert entry["unknown_runs"][0]["run_id"] == "ghost"
+    assert entry["runs"] == []
+
+
+def test_occupancy_counts_and_detail_stay_consistent(monkeypatch):
+    """The count and the detail list must never disagree."""
+    from caasi.core import runs as runs_core
+
+    occ = _occupancy_with(
+        monkeypatch,
+        [_run_record(run_id="a"), _run_record(run_id="b"), _run_record(run_id="c")],
+        [runs_core.RUNNING, runs_core.LOST, runs_core.RUNNING],
+    )
+    entry = occ["robot"]
+    assert entry["occupying"] == len(entry["runs"]) == 2
+    assert entry["unknown"] == len(entry["unknown_runs"]) == 1
+
+
+def test_unreadable_run_state_does_not_raise(monkeypatch):
+    """A broken run state must not block the query."""
+    from caasi.core import runs as runs_core
+
+    monkeypatch.setattr(runs_core, "list_runs", lambda config: (_ for _ in ()).throw(RuntimeError("boom")))
+    assert W.occupancy_by_target(None) == {}
+
+
+def test_where_idle_and_the_query_share_one_implementation():
+    """M3 must not create a second occupancy implementation."""
+    import inspect as _inspect
+
+    from caasi.cli import workload_cmd
+    from caasi.cli import target_cmd
+
+    workload_src = _inspect.getsource(workload_cmd)
+    target_src = _inspect.getsource(target_cmd)
+    assert "occupancy_by_target" in workload_src
+    assert "occupancy_by_target" in target_src
+
+
+def test_no_persistent_occupancy_state_exists():
+    """Occupancy is derived per query; there is no registry or stored state.
+
+    Checked against the module's imports and code rather than its prose, since the
+    docstring deliberately names the things this module does *not* do.
+    """
+    import ast
+    import caasi.core.where as mod
+    import inspect as _inspect
+
+    tree = ast.parse(_inspect.getsource(mod))
+    imported: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported += [a.name for a in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            imported.append(node.module or "")
+
+    blob = " ".join(imported).lower()
+    for forbidden in ("sqlite", "shelve", "pickle", "dbm", "redis"):
+        assert forbidden not in blob

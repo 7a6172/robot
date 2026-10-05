@@ -439,3 +439,109 @@ def _first_problem(report) -> str:
         if verdict.verdict in ("missing", "untested") and verdict.note:
             return f"{verdict.name}: {verdict.note}"
     return report.summary
+
+
+@app.command("occupancy", help=_("target.occupancy_help"))
+def target_occupancy(
+    target: Optional[str] = typer.Argument(None, help=_("target.arg.name_optional")),
+    json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
+) -> None:
+    """Show what is currently running on each target.
+
+    Read-only. Occupancy is an **observation** derived from the existing run
+    records, not a reservation: nothing is held, nothing is queued, and two
+    submissions may both see a target as idle. A run whose state cannot be
+    determined is reported as unknown rather than counted as either busy or free.
+    """
+    from ..core import runs as runs_core
+    from ..core import where as where_core
+
+    config = state.cfg()
+    if target:
+        targets = [_require_target(target)]
+    else:
+        targets = targets_core.list_targets(config)
+
+    occupancy = where_core.occupancy_by_target(config)
+
+    # Note which configured targets have no run records at all -- "idle" and
+    # "never used" are different things and should not be conflated.
+    payload = []
+    for tgt in targets:
+        entry = occupancy.get(tgt.name) or {
+            "occupying": 0, "unknown": 0, "run_ids": [], "runs": [], "unknown_runs": [],
+        }
+        payload.append({
+            "target": tgt.name,
+            "transport": tgt.transport,
+            "tags": list(tgt.tags or []),
+            "occupying": entry["occupying"],
+            "unknown": entry["unknown"],
+            "running": entry.get("runs", []),
+            "unknown_runs": entry.get("unknown_runs", []),
+            "state": _occupancy_state(entry),
+        })
+
+    if output.wants_json(json_output):
+        output.echo_json({"targets": payload})
+        return
+
+    table = Table(title=_("target.occupancy_title"), header_style="bold", **output.table_styles())
+    table.add_column(_("target.col.name"))
+    table.add_column(_("target.occupancy.col.state"))
+    table.add_column(_("target.occupancy.col.runs"))
+
+    for item in payload:
+        if item["state"] == "occupied":
+            marker = "[red]●[/red]"
+        elif item["state"] == "unknown":
+            marker = "[yellow]?[/yellow]"
+        else:
+            marker = "[green]○[/green]"
+        table.add_row(
+            item["target"],
+            f"{marker} {item['state']}",
+            _occupancy_summary(item),
+        )
+    output.echo(table)
+
+    # Detail for anything not simply idle, so "what is it running?" is answerable.
+    for item in payload:
+        if not item["running"] and not item["unknown_runs"]:
+            continue
+        output.echo(f"[bold]{item['target']}[/bold]")
+        for run in item["running"]:
+            output.echo(
+                f"  [red]running[/red]  {run['run_id']}  {run['name']}"
+                f" [dim]({run['kind']}/{run['backend']})[/dim]"
+                + (f" [dim]{run['project']}[/dim]" if run.get("project") else "")
+            )
+        for run in item["unknown_runs"]:
+            output.echo(
+                f"  [yellow]unknown[/yellow]  {run['run_id']}  {run['name']}"
+                f" [dim](state could not be determined; neither busy nor free)[/dim]"
+            )
+        output.echo("")
+
+    if any(item["unknown"] for item in payload):
+        output.echo(f"[dim]{_('target.occupancy.unknown_note')}[/dim]")
+
+
+def _occupancy_state(entry: dict) -> str:
+    """One word for the target's state, keeping unknown distinct from idle."""
+    if entry.get("occupying"):
+        return "occupied"
+    if entry.get("unknown"):
+        return "unknown"
+    return "idle"
+
+
+def _occupancy_summary(item: dict) -> str:
+    if item["state"] == "idle":
+        return _("target.occupancy.idle")
+    parts = []
+    if item["occupying"]:
+        parts.append(_("target.occupancy.n_running", n=item["occupying"]))
+    if item["unknown"]:
+        parts.append(_("target.occupancy.n_unknown", n=item["unknown"]))
+    return ", ".join(parts)

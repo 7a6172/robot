@@ -38,6 +38,8 @@ htmlcov/
 # Ignore editor caches while preserving documents
 .trae/*
 !.trae/documents/
+.reasonix
+.trae
 
 # ------------------------------------------------------------------------------
 # Media and Generated Videos
