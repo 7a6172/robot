@@ -155,6 +155,32 @@ version is a config change, not a code change.
 
 ## Examples
 
+A catalog of **runnable examples** lives in [`examples/`](examples/README.md) — real
+projects you can work through, not snippets. They cover the basic CLI progressively, from
+a first project to the full control-plane chain.
+
+| Example | Teaches | Prerequisites | Validated |
+| :--- | :--- | :--- | :--- |
+| **[01 — Your first project](examples/01-python-project/README.md)** | project, workload, run, logs, artifacts, provenance | Python 3.10+ | **CI** |
+| **[02 — Targets and selection](examples/02-targets-and-selection/README.md)** | `target *`, `select`, `occupancy`, `--where` | none (works with `local`) | **CI** |
+| **[03 — ROS 2 observation](examples/03-ros2-demo-nodes/README.md)** | `ros *`, `tools`, `pipeline` | ROS 2, no display needed | **CI** |
+| **[04 — Containers and runtimes](examples/04-container/README.md)** | `container *`, `target runtime` | Docker or Podman | **CI** |
+| **[05 — `turtlesim`](examples/05-ros2-turtlesim/README.md)** | the ROS 2 example everyone knows, plus `rviz2`/`rqt`, bags | ROS 2 + a display | **manual** |
+| **[06 — Isaac / Isaac Lab](examples/06-isaac-lab-cartpole/README.md)** | `train`, `lab`, `sim`, GPU-aware selection | GPU + Isaac Sim + Isaac Lab | **opt-in** |
+| **[07 — Control plane end to end](examples/07-control-plane-end-to-end/README.md)** | `select → deploy → build → run → collect → provenance` | ROS 2; a target to deploy to | **CI** (local) / opt-in |
+| **[Cookbook](examples/cookbook/README.md)** | the read-only inspection commands | none | **CI** |
+
+**Suggested order for a new user:** 01 → 02 → then 03 or 04 → then 07. Examples 05 and 06
+need a display or a GPU and are best left until the basics are clear.
+
+The examples reference canonical upstream examples (ROS 2 `demo_nodes_py` and `turtlesim`,
+Isaac Lab `cartpole`, Docker images) rather than duplicating them — each README states what
+caasi contributes and what the underlying tool provides.
+
+[`examples/COVERAGE.md`](examples/COVERAGE.md) maps **every command in the CLI** to the
+example that demonstrates it, including the commands that have no runnable example and
+why. It is generated from the live command tree and checked by the test suite.
+
 [`examples/navigation.yaml`](examples/navigation.yaml) is a commented experiment config —
 the input format shared by `sim run`, `train`, `benchmark start` and `dataset generate`:
 
