@@ -242,8 +242,12 @@ def workload_run(
             target_obj, requirements, inspection, tested, config=cfg
         )
         if not proceed:
-            output.fail(reason or _("workload.incompatible", target=target_obj.name))
-            raise typer.Exit(3)
+            # `output.fail` raises its own exit, so the code must be passed to it;
+            # a following `raise` is unreachable and the refusal would exit 1.
+            output.fail(
+                reason or _("workload.incompatible", target=target_obj.name),
+                exit_code=3,
+            )
 
     runner = compose_core.build_step_runner(
         project_root=root,

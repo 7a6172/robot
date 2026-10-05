@@ -152,3 +152,48 @@ def test_subgroup_help_keeps_its_own_order(monkeypatch):
     names = gpu.list_commands(typer.Context(gpu, info_name="caasi gpu"))
     assert names[0] == "status"
     assert names != sorted(names)
+
+
+# ---------------------------------------------------------------------------
+# `output.fail()` raises its own exit, so anything after it is unreachable.
+#
+# This trap has been hit three times while building the target/workload commands
+# (F3, --where, and the incompatible-target refusal), each time producing the
+# correct error MESSAGE with the WRONG exit code -- invisible unless the code is
+# measured, because the human-readable output looks right. This guard checks the
+# whole CLI statically so a fourth occurrence fails here instead of shipping.
+# ---------------------------------------------------------------------------
+
+
+def test_no_unreachable_exit_after_output_fail():
+    """`output.fail(...)` never returns, so a following `raise Exit(N != 1)` is dead code.
+
+    A dead `Exit(1)` is merely misleading; a dead `Exit(N)` for any other N is a
+    real defect, because the refusal exits 1 while the author intended N.
+    """
+    import pathlib
+
+    offenders: list[str] = []
+    cli_dir = pathlib.Path(__file__).resolve().parent.parent / "src" / "caasi" / "cli"
+
+    for path in sorted(cli_dir.glob("*.py")):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for index, line in enumerate(lines):
+            if "output.fail(" not in line:
+                continue
+            # Skip past a multi-line call.
+            cursor = index + 1
+            depth = line.count("(") - line.count(")")
+            while depth > 0 and cursor < len(lines):
+                depth += lines[cursor].count("(") - lines[cursor].count(")")
+                cursor += 1
+            if cursor >= len(lines):
+                continue
+            following = lines[cursor].strip()
+            if following.startswith("raise typer.Exit(") and "Exit(1)" not in following:
+                offenders.append(f"{path.name}:{index + 1} -> {following}")
+
+    assert not offenders, (
+        "unreachable `raise typer.Exit(N)` after `output.fail(...)`; pass "
+        "exit_code=N to fail() instead:\n  " + "\n  ".join(offenders)
+    )
