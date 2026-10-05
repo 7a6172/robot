@@ -1069,6 +1069,61 @@
       new persistent state, no registry, no queue table**.
     - **Nothing implemented.** Awaiting review before `--where` implementation.
 
+  - **Phase 7 `--where` Explicit Target Selection: COMPLETED.**
+    - [Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-where-report.md) |
+      [Design](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/where-selection-design.md)
+    - **The boundary held throughout**: `--where` answers *"which currently suitable target
+      should I use?"* (**a query the operator asks**). A scheduler answers *"when and where
+      should this run?"* (**a policy applied unbidden**). No queue, no reservation, no waiting,
+      no retry, no forwarding, no scoring.
+    - **Built**: `caasi.core.where` (policies, occupancy, decision + report), a
+      `SelectionDecision` **reporting type only**, and two provenance fields. **No new
+      persistent state, no registry, no queue table.**
+    - **Reused, not rebuilt**: `select_all` (already evaluates all targets, already ranks
+      nothing), `list_runs`/`effective_status` (occupancy **derived**, not tracked), real
+      `Target.tags`, and the shared Check Contract ladder from the F1 consolidation.
+    - **All 13 validation cases passed on the two real targets**, with attention on the refusal
+      and regression cases:
+      * `--where prefer:gpu` → selected `local`, **eliminated `u24-307` with "target reports no
+        GPUs"**;
+      * `--where prefer:cpu-only` → **selected `u24-307`** (it carries the tag), ordering
+        explained as "matched";
+      * `--where any` → **deterministic across 3 runs** (target-name tie-break);
+      * **NOTHING FITS → failed, exit 3, per-target evidence, and NO deployment was created**
+        (the anti-scheduler property, independently verified);
+      * `--where idle` with a real 600s run occupying `local` → **selected `u24-307`** — the
+        occupancy preference demonstrably changed the outcome;
+      * `--target` alone → **byte-for-byte previous behaviour, no selection block** (the
+        no-regression guard);
+      * `--target` + `--where` → refused; neither → refused (no implicit default);
+      * provenance recorded `selected_by: prefer:workstation` + `selection_reason`;
+      * `lost` reported as *"unknown run state (neither busy nor free)"*, never resolved.
+    - **Two defects found**:
+      1. **F3's trap recurred**: `output.fail()` raises its own `Exit(1)`, so "nothing fits"
+         exited 1 instead of 3. Only **measuring the exit code** revealed it (the message was
+         already correct). Noted as a recurring hazard in this CLI helper.
+      2. **Introduced earlier, found here**: the F1 consolidation made **target** verdicts
+         inherit the local check's *"not detected on **this machine**"* — **factually wrong for
+         a remote target**. The shared ladder now takes a `scope`, so a target verdict says
+         *"not detected on this target"* while `caasi check` keeps *"this machine"*. The ladder
+         stays single; only the phrase adapts. Caught by reading real remote output, not tests.
+    - **Concurrency (documented, NOT solved)**: two simultaneous submissions can both see a
+      target as idle and both select it. Occupancy is an **observation and preference, never a
+      reservation**. Fixing that race belongs to a future allocation layer, and would require
+      exactly the reservation machinery this stage must not add. Verified no reservation/lock
+      exists and multiple runs per target are already normal.
+    - **Tests**: 31 new in `tests/test_where.py`, including two structural guards — one inspects
+      the **code** (not the docstring) for scoring/weighting/balancing vocabulary, one asserts
+      no threading/asyncio/queue/sleep machinery. Full suite **1215 passed, 1 failed**
+      (pre-existing `test_perception_cmd.py` artifact).
+    - **NOT done**: queue, reservation, resource booking, waiting, retry, automatic forwarding,
+      multi-target execution, scheduling, ranking/scoring, fleet, web UI. **G4 untouched.
+      DDS-over-Tailscale untouched.** `.trae`/`.reasonix` untouched.
+    - **Stopping for review** — not proceeding into queues, reservations, allocation or
+      scheduling. Justification for any future stage: **observed contention** (queues solve
+      contention; none seen) plus a real second-target use case. Until then `--where` is the
+      whole of the R8 capability caasi needs.
+
   - **Current State**: Nine threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**
