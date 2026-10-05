@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Observability — Caasi CLI Documentation</title>
+<title>Observability — Caasi CLI 0.4.0 Documentation</title>
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/theme.js"></script>
 </head>
 <body>
 <header class="topbar">
   <a class="brand" href="index.html">Caa<span>si</span></a>
-  <span class="badge">v0.3.0</span>
+  <span class="badge">v0.4.0</span>
   <span class="tagline">Observability: monitor · logs · audit · provenance</span>
   <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
 </header>
@@ -19,6 +19,13 @@
 <main>
 
 <h1>Observability</h1>
+
+<div class="callout note">
+  <strong>Also useful here:</strong> <code>caasi target occupancy</code> answers <em>what is running
+  where</em> — read-only, per target, distinguishing <code>occupied</code>, <code>idle</code> and
+  <code>unknown</code>. <code>caasi target runtime</code> reports what runtimes a target exposes.
+  See <a href="targets.html#occupancy">Targets &amp; Selection</a>.
+</div>
 <p class="lead">
 Once a run is going you need to <strong>watch it</strong>, <strong>read its logs</strong>,
 <strong>account for what happened</strong> and <strong>prove you can reproduce it</strong>.
@@ -252,7 +259,7 @@ checks this bundle for completeness; <code>env fingerprint</code> and <code>env 
 </div>
 
 <footer class="doc-footer">
-  Caasi CLI 0.3.0 — these pages live in <code>docs/</code> and need no build step.
+  Caasi CLI 0.4.0 — these pages live in <code>docs/</code> and need no build step.
   Source: <a href="https://github.com/7a6172/caasi">github.com/7a6172/caasi</a>.
 </footer>
 </main>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Limitations &amp; What's Deferred — Caasi CLI 0.4.0 Documentation</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/theme.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html">Caa<span>si</span></a>
+  <span class="badge">v0.4.0</span>
+  <span class="tagline">What caasi does not do — and why that is deliberate</span>
+  <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
+</header>
+<div class="layout">
+<aside id="sidebar"></aside>
+<main>
+
+<h1>Limitations &amp; What's Deferred</h1>
+<p class="lead">
+Knowing what a tool <em>does not</em> do is as useful as knowing what it does. This page
+separates three genuinely different things that are easy to blur together:
+<strong>environmental limitations</strong>, which are facts about the world;
+<strong>deliberate deferrals</strong>, which are choices caasi has made with reasons; and
+<strong>current boundaries</strong>, which describe the shape of the implementation.
+</p>
+
+<div class="callout note">
+  <strong>None of the deferrals below is half-finished work.</strong> Each was assessed and
+  left out on evidence. Caasi does not implement a capability merely because it appears on a
+  roadmap — see <a href="#justification">what would justify revisiting them</a>.
+</div>
+
+<h2 id="environmental">Environmental limitations</h2>
+
+<p>Facts about the world that caasi reports but does not paper over.</p>
+
+<table>
+  <thead><tr><th>Limitation</th><th>What it means</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>DDS discovery across a VPN</strong></td>
+      <td>
+        A local GUI tool attaching to a <em>remote</em> ROS 2 graph depends on DDS multicast
+        discovery traversing the network between the two machines. Across some topologies —
+        two hosts on different LANs joined only by Tailscale, for instance — it does not, and
+        the graph appears empty <strong>even though caasi resolved the context correctly</strong>.
+        <br><br>
+        <strong>Measured, not assumed:</strong> with a node genuinely running on the remote
+        target (confirmed visible from the target itself) and a matching domain, a local query
+        found <em>no</em> remote nodes — while local discovery on the same domain worked
+        normally. The two machines were confirmed to be on different LANs, reachable only over
+        the VPN.
+        <br><br>
+        This is a <strong>network and DDS fact, not a caasi defect</strong>. Caasi implements no
+        DDS discovery, no tunnels and no multicast relays, and deliberately does not work around
+        it — "fixing" it inside caasi would breach the boundary that keeps caasi thin.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="deferred">Deliberately deferred</h2>
+
+<p>Capabilities that are <strong>not implemented and not planned for now</strong>, with the
+reason. These are decisions, taken against evidence.</p>
+
+<table>
+  <thead><tr><th>Deferred</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Queues, scheduling, reservations, allocation</strong></td>
+      <td>
+        A queue solves <em>contention</em>, and no contention has been observed: one developer,
+        a small number of targets, ad-hoc runs. The inputs needed to <em>detect</em> contention
+        already exist — <code>caasi target occupancy</code> reads live run state — so the
+        cheapest honest answer is to <em>report</em> that a target is busy rather than to build
+        machinery that reorders work invisibly. A queue without a scheduler is meaningless, and
+        a scheduler designed without evidence would be designed against a guess.
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Multi-target execution</strong></td>
+      <td>One workload, one target. Splitting a workload across machines needs a workload that genuinely must span them, which has not yet appeared.</td>
+    </tr>
+    <tr>
+      <td><strong>Automatic forwarding</strong></td>
+      <td>If a target fails, nothing is silently re-run elsewhere. <code>--where</code> chooses <em>before</em> starting, never moves work mid-flight.</td>
+    </tr>
+    <tr>
+      <td><strong>Retries and waiting</strong></td>
+      <td>When nothing satisfies a workload, caasi <strong>fails immediately with the reasons</strong>. Waiting would turn "nothing fits right now" into "something might happen later" — which is scheduling.</td>
+    </tr>
+    <tr>
+      <td><strong>Ranking, scoring, load balancing</strong></td>
+      <td>Target ordering is deterministic and stated (policy key, then target name). There is no cost model and no hidden preference.</td>
+    </tr>
+    <tr>
+      <td><strong>Fleet management</strong></td>
+      <td>Operating many machines as a fleet is a different problem from running a workload on a chosen one.</td>
+    </tr>
+    <tr>
+      <td><strong>A monitoring web UI</strong></td>
+      <td>Planned as a small, observation-only interface. When it arrives, the CLI remains the control plane and it will have <em>no</em> deploy/build/run/stop controls. Not implemented yet.</td>
+    </tr>
+    <tr>
+      <td><strong>Artifact destinations beyond two</strong></td>
+      <td>Results either return to the workstation or stay on the target. A third destination (an archive, a shared store, another machine) needs a transport that actually moves files; a name without a transport would receive nothing. See <a href="runs.html">Runs &amp; Logs</a>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="boundaries">Current boundaries</h2>
+
+<p>Where the implementation is deliberately narrower than it could be.</p>
+
+<table>
+  <thead><tr><th>Boundary</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Occupancy is an observation, not a reservation</strong></td>
+      <td>
+        <code>--where idle</code> <em>prefers</em> an unoccupied target. Two commands started at
+        the same moment can both see a target as idle and both select it. That race is
+        intentional and unresolved: closing it would require exactly the reservation machinery
+        that is out of scope.
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Runtime lifecycle is user-scope</strong></td>
+      <td>The <code>runtime</code> commands target user-scope units. System-scope management is not implemented.</td>
+    </tr>
+    <tr>
+      <td><strong>Reboot survival is not claimed</strong></td>
+      <td>Caasi can record and verify that a unit is <em>enabled</em>. Whether it actually comes
+      back after a reboot is a fact about your target's configuration that caasi does not
+      assert without observing it.</td>
+    </tr>
+    <tr>
+      <td><strong>Unmeasured facts stay unmeasured</strong></td>
+      <td>A target fact that could not be discovered is reported as <code>untested</code>, never
+      as satisfied or failed. This is a feature, but it means some verdicts are honestly
+      inconclusive.</td>
+    </tr>
+    <tr>
+      <td><strong><code>caasi remote</code> is deprecated</strong></td>
+      <td>
+        The legacy <code>remote</code> group predates targets. <code>caasi target</code> is the
+        canonical model and <code>remotes:</code> configuration entries are imported as targets
+        automatically. The group is retained rather than removed because
+        <code>remote connect</code> and its <code>path</code> handling have no direct
+        equivalent yet — removing it now would take away capability. Treat it as deprecated and
+        prefer <code>caasi target</code>.
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Not every command has a runnable example</strong></td>
+      <td>Destructive, physical, display-dependent and GPU-dependent commands are documented rather than demonstrated. See <a href="examples.html">Examples</a>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="justification">What would justify revisiting the deferrals</h2>
+
+<p>So a future expansion is driven by evidence rather than by the wish to fill a roadmap:</p>
+
+<ul>
+  <li><strong>Observed contention</strong> — queues and scheduling become worth discussing when
+  machines are actually contended, which the occupancy query can show.</li>
+  <li><strong>A genuine multi-target workload</strong> — work that truly must span machines.</li>
+  <li><strong>A second real project</strong> — proof that the model generalises beyond one
+  codebase.</li>
+  <li><strong>Real artifact needs</strong> — a concrete requirement for a destination beyond
+  the two that exist.</li>
+  <li><strong>Real monitoring needs</strong> — usage that shows what a read-only view should
+  show.</li>
+</ul>
+
+<h2 id="ownership">What caasi owns, and what it does not</h2>
+
+<table>
+  <thead><tr><th>Caasi manages</th><th>Caasi delegates to the ecosystem</th></tr></thead>
+  <tbody>
+    <tr><td>Project identity and layout</td><td>ROS 2 / DDS — the middleware itself</td></tr>
+    <tr><td>Target identity, discovery and selection</td><td><code>ssh</code>, the network, the remote shell</td></tr>
+    <tr><td>Lifecycle intent, verification and provenance</td><td>systemd — running and restarting services</td></tr>
+    <tr><td>Sequencing the steps of a workload</td><td><code>colcon</code> / CMake — building</td></tr>
+    <tr><td>Artifact routing and collection</td><td>Docker/Podman — containers</td></tr>
+    <tr><td>Observation through native interfaces</td><td>Isaac Sim / Isaac Lab — simulation and learning</td></tr>
+    <tr><td>Recording what happened</td><td><code>nvidia-smi</code>, RViz, <code>ros2</code> — devices and tools</td></tr>
+  </tbody>
+</table>
+
+<p>Caasi is not a ROS 2 replacement, a build system, a container runtime, a service manager or
+a simulator. When an existing tool already solves something well, caasi exposes and invokes it
+rather than rebuilding it.</p>
+
+<div class="page-nav">
+  <a class="prev" href="examples.html"><span class="pn-label">Previous</span><span class="pn-title">← Examples &amp; command index</span></a>
+  <a class="next" href="native.html"><span class="pn-label">Next</span><span class="pn-title">native &amp; shell →</span></a>
+</div>
+
+<footer class="doc-footer">
+  Caasi CLI 0.4.0 — these pages live in <code>docs/</code> and need no build step.
+  Source: <a href="https://github.com/7a6172/caasi">github.com/7a6172/caasi</a>.
+</footer>
+</main>
+</div>
+<script src="assets/copy.js"></script>
+<script src="assets/sidebar.js"></script>
+</body>
+</html>

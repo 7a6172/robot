@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workloads &amp; Execution — Caasi CLI 0.4.0 Documentation</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/theme.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html">Caa<span>si</span></a>
+  <span class="badge">v0.4.0</span>
+  <span class="tagline">Workloads: declare the work, then let caasi run the chain</span>
+  <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
+</header>
+<div class="layout">
+<aside id="sidebar"></aside>
+<main>
+
+<h1>Workloads &amp; Execution</h1>
+<p class="lead">
+A <strong>workload</strong> is the work a project wants done, written as data: what it needs,
+and the steps that carry it out. Running one composes operations caasi already has —
+<code>deploy</code>, <code>build</code>, <code>run</code>, <code>collect</code> — on a target,
+and records what happened.
+</p>
+
+<h2 id="why">Why a workload, not just a command</h2>
+
+<p>Without a workload declaration you would type each step by hand and carry the ids between
+them. A workload makes the sequence explicit, checkable, recordable and repeatable — and it
+is still only <em>sequencing</em>. It is not a workflow engine.</p>
+
+<pre><code>caasi workload run &lt;name&gt; --target &lt;target&gt;
+caasi workload run &lt;name&gt; --where &lt;policy&gt;</code></pre>
+
+<h2 id="declaring">Declaring a workload</h2>
+
+<pre><code># workloads/bringup.yaml
+name: bringup
+requires:                    # what this work needs, beyond the project's own requires:
+  gpu:
+    count: 1
+    memory_gb: 8
+steps:
+  - deploy
+  - build
+  - run:
+      config: experiments/bringup.yaml
+  - collect
+outputs:
+  - path: "*.log"
+    kind: logs
+    destination: workstation</code></pre>
+
+<p><code>requires</code> extends the project's own <code>requires:</code> from
+<code>caasi.yaml</code>. The two are merged, and the workload wins on a collision because it
+is the more specific statement of what this particular work needs.</p>
+
+<h2 id="steps">The steps: a closed vocabulary</h2>
+
+<table>
+  <thead><tr><th>Step</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>deploy</code></td><td>Synchronises the project to the target's deployment destination.</td></tr>
+    <tr><td><code>build</code></td><td>A target-native build — invokes <code>colcon</code> where the project has ROS packages.</td></tr>
+    <tr><td><code>run</code></td><td>Executes an experiment as a tracked run on the target.</td></tr>
+    <tr><td><code>collect</code></td><td>Fetches the artifacts routed to the workstation.</td></tr>
+  </tbody>
+</table>
+
+<p>Two spellings are accepted — bare, or a single-key mapping for steps that take
+configuration:</p>
+
+<pre><code>steps:
+  - deploy                                  # no configuration needed
+  - run:                                    # configuration as a mapping
+      config: experiments/job.yaml</code></pre>
+
+<div class="callout note">
+  <strong>The vocabulary is closed on purpose.</strong> An unknown step is <em>rejected when
+  the workload is parsed</em>, not ignored — silently skipping a step you wrote would run a
+  different sequence than your declaration says. There are no conditionals, loops, retries or
+  branching. If a workload needs real control flow, that is a program, and the workload invokes
+  it through <code>run</code>.
+</div>
+
+<h2 id="chain">The composed chain</h2>
+
+<pre class="term"><code>$ caasi workload run report --target local
+Running workload 'report' on local
+  ✔ deploy   — deployed deploy-demo-20261005-... (verified)
+  ✔ build    — built on local
+  ✔ run      — 20261006-...-report succeeded on local
+  ✔ collect  — collected 1 artifact(s)
+
+  produced: build_id=build-local-... deployment_id=deploy-...
+            git_revision=... run_id=... run_status=succeeded run_target=local
+✔ workload 'report' completed</code></pre>
+
+<h3 id="failure">A failing step stops the chain</h3>
+
+<p>The chain halts at the first failure and <strong>names the step</strong>, leaving the ids
+already produced visible so you can continue with the individual commands. Partial success is
+never reported as success:</p>
+
+<pre class="term"><code>$ caasi workload run failing --target local
+  ✔ deploy — deployed deploy-demo-... (verified)
+  ✖ run — run 20261006-...-broken failed (exit code 7)
+✖ workload stopped at step 'run': run ... failed (exit code 7)
+  the steps above it already ran; continue with the individual commands
+  (caasi deploy/build/run)</code></pre>
+
+<p>Note the script's own exit code (<code>7</code>) is reported unchanged. If the run cannot be
+<em>launched</em> at all, that fails immediately — "the process was launched" and "the run
+succeeded" are different things, and caasi never conflates them.</p>
+
+<h2 id="prerequisites">Prerequisites the run step imposes</h2>
+
+<div class="callout warn">
+  <p><strong><code>run</code> requires an active deployment, even on the
+  <code>local</code> target.</strong> A run executes a deployed copy of the project, so a
+  workload that intends to run must include <code>deploy</code> first (or you must have
+  deployed previously).</p>
+  <p>A <code>build</code> step likewise expects a deployment: it builds <em>at</em> the
+  deployment destination, which is where <code>run</code> then looks for the build record.</p>
+</div>
+
+<h2 id="individual">The same thing, step by step</h2>
+
+<p>Composition is a convenience, not a replacement. Every step remains available on its own —
+which is what you use when something breaks:</p>
+
+<pre><code>caasi deploy &lt;target&gt;
+caasi build --target &lt;target&gt;
+caasi run start experiments/job.yaml --target &lt;target&gt;
+caasi run artifacts &lt;run-id&gt; --collect</code></pre>
+
+<p>See <a href="lifecycle.html">Deploy &amp; runtime lifecycle</a> for the deployment and
+build steps in detail, and <a href="runs.html">Runs &amp; Logs</a> for the run model.</p>
+
+<h2 id="inspect">Inspecting workloads</h2>
+
+<pre><code>caasi workload list                # what work this project declares
+caasi workload inspect &lt;name&gt;      # one workload's requirements and steps
+caasi workload run &lt;name&gt; --dry-run --target &lt;t&gt;   # plan, without running anything</code></pre>
+
+<h2 id="responsibility">Who owns what</h2>
+
+<table>
+  <thead><tr><th>Caasi manages</th><th>The ecosystem owns</th></tr></thead>
+  <tbody>
+    <tr><td>The workload declaration and its validation</td><td>Your program and what it computes</td></tr>
+    <tr><td>Sequencing the steps and stopping on failure</td><td><code>colcon</code> and the build system</td></tr>
+    <tr><td>Target selection, verification and provenance</td><td>ROS 2 / DDS, Isaac, the runtime</td></tr>
+    <tr><td>Artifact routing and collection</td><td>What the files mean</td></tr>
+  </tbody>
+</table>
+
+<p>The steps name operations caasi already has. There is no caasi build system, no caasi
+simulator and no caasi task runner underneath — see
+<a href="examples.html">Examples</a> to see the whole chain on real projects.</p>
+
+<div class="page-nav">
+  <a class="prev" href="targets.html"><span class="pn-label">Previous</span><span class="pn-title">← Targets &amp; selection</span></a>
+  <a class="next" href="lifecycle.html"><span class="pn-label">Next</span><span class="pn-title">Deploy &amp; runtime lifecycle →</span></a>
+</div>
+
+<footer class="doc-footer">
+  Caasi CLI 0.4.0 — these pages live in <code>docs/</code> and need no build step.
+  Source: <a href="https://github.com/7a6172/caasi">github.com/7a6172/caasi</a>.
+</footer>
+</main>
+</div>
+<script src="assets/copy.js"></script>
+<script src="assets/sidebar.js"></script>
+</body>
+</html>

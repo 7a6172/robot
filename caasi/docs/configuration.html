@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Configuration — Caasi CLI Documentation</title>
+<title>Configuration — Caasi CLI 0.4.0 Documentation</title>
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/theme.js"></script>
 </head>
 <body>
 <header class="topbar">
   <a class="brand" href="index.html">Caa<span>si</span></a>
-  <span class="badge">v0.3.0</span>
+  <span class="badge">v0.4.0</span>
   <span class="tagline">Configuration: files, precedence, tool registry, environment variables</span>
   <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
 </header>
@@ -113,6 +113,14 @@ moment (a fixed baseline plus the manifest's <code>requires</code> keys). It is 
 guarantee — a snapshot for audits and reproduction discussions, never a freeze — and feeds the
 <a href="observability.html#provenance">provenance</a> story. An annotated example lives under
 <a href="projects.html#lock">Projects</a>.</p>
+
+<div class="callout note">
+  <strong><code>tools:</code> has two jobs.</strong> The <em>tool registry</em> below pins
+  versions of ecosystem tools. The same block also declares <strong>target-aware invocation</strong>
+  — <code>caasi rviz2 --target &lt;t&gt;</code> and friends, where caasi supplies the target's ROS 2
+  context and then executes the real tool. See
+  <a href="examples.html">Examples</a> and <a href="targets.html">Targets</a>.
+</div>
 
 <h2 id="tools">The tool registry</h2>
 <p>The registry is how you tell Caasi <em>where your installs are</em> — and which version to use
@@ -466,7 +474,7 @@ check:
 </div>
 
 <footer class="doc-footer">
-  Caasi CLI 0.3.0 — these pages live in <code>docs/</code> and need no build step.
+  Caasi CLI 0.4.0 — these pages live in <code>docs/</code> and need no build step.
   Source: <a href="https://github.com/7a6172/caasi">github.com/7a6172/caasi</a>.
 </footer>
 </main>

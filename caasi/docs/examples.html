@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Examples &amp; Command Index — Caasi CLI 0.4.0 Documentation</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/theme.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html">Caa<span>si</span></a>
+  <span class="badge">v0.4.0</span>
+  <span class="tagline">Runnable examples, and where to find a real one for any command</span>
+  <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
+</header>
+<div class="layout">
+<aside id="sidebar"></aside>
+<main>
+
+<h1>Examples &amp; Command Index</h1>
+<p class="lead">
+The repository ships a catalog of runnable examples — real caasi projects, not snippets.
+If you want to know how to use <code>caasi X</code>, this is where the smallest real example
+lives.
+</p>
+
+<div class="callout tip">
+  <strong>Find a command's example two ways:</strong>
+  <ul>
+    <li>the <a href="#index">command index</a> below maps command families to examples;</li>
+    <li><a href="https://github.com/7a6172/caasi/blob/main/examples/COVERAGE.md"><code>examples/COVERAGE.md</code></a>
+    is the <strong>auditable matrix</strong> — every command in the CLI, mapped to its example
+    and validation tier.</li>
+  </ul>
+</div>
+
+<h2 id="catalog">The catalog</h2>
+
+<table>
+  <thead><tr><th>Example</th><th>Teaches</th><th>Prerequisites</th><th>Validated</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>01 — Your first project</strong></td>
+      <td>project, workload, run, logs, artifacts, provenance, environment, configuration</td>
+      <td>Python 3.10+</td>
+      <td><span class="pill">CI</span></td>
+    </tr>
+    <tr>
+      <td><strong>02 — Targets and selection</strong></td>
+      <td><code>target *</code>, <code>select</code>, <code>occupancy</code>, <code>--where</code></td>
+      <td>none — works with <code>local</code></td>
+      <td><span class="pill">CI</span></td>
+    </tr>
+    <tr>
+      <td><strong>03 — ROS 2 observation</strong></td>
+      <td><code>ros *</code>, <code>tools</code>, <code>pipeline</code></td>
+      <td>ROS 2, <em>no display needed</em></td>
+      <td><span class="pill">CI</span></td>
+    </tr>
+    <tr>
+      <td><strong>04 — Containers and runtimes</strong></td>
+      <td><code>container *</code>, <code>target runtime</code></td>
+      <td>Docker or Podman</td>
+      <td><span class="pill">CI</span></td>
+    </tr>
+    <tr>
+      <td><strong>05 — <code>turtlesim</code></strong></td>
+      <td>the ROS 2 example everyone knows, plus <code>rviz2</code>/<code>rqt</code> and bags</td>
+      <td>ROS 2 + <strong>a display</strong></td>
+      <td><span class="pill">manual</span></td>
+    </tr>
+    <tr>
+      <td><strong>06 — Isaac / Isaac Lab</strong></td>
+      <td><code>train</code>, <code>lab</code>, <code>sim</code>, GPU-aware selection</td>
+      <td><strong>GPU + Isaac Sim + Isaac Lab</strong></td>
+      <td><span class="pill">opt-in</span></td>
+    </tr>
+    <tr>
+      <td><strong>07 — Control plane end to end</strong></td>
+      <td><code>select → deploy → build → run → collect → provenance</code></td>
+      <td>ROS 2; a target to deploy to</td>
+      <td><span class="pill">CI</span> (local) / <span class="pill">opt-in</span></td>
+    </tr>
+    <tr>
+      <td><strong>Cookbook</strong></td>
+      <td>the read-only inspection commands</td>
+      <td>none</td>
+      <td><span class="pill">CI</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Suggested order for a new user:</strong> 01 → 02 → then 03 or 04 → then 07.
+Examples 05 and 06 need a display or a GPU and are best left until the basics are clear.</p>
+
+<h2 id="tiers">What the validation tiers mean</h2>
+
+<table>
+  <thead><tr><th>Tier</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill">CI</span></td><td>Run automatically by the test suite. If it breaks, the build fails.</td></tr>
+    <tr><td><span class="pill">opt-in</span></td><td>Run when the prerequisite exists, and <strong>skipped automatically</strong> when it does not. Never claimed as validated when it was not run.</td></tr>
+    <tr><td><span class="pill">manual</span></td><td>Needs a display, a terminal, or hardware. Documented with its prerequisites rather than presented as covered.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="index">Command index</h2>
+
+<p>Where to find a working example for each part of the CLI:</p>
+
+<table>
+  <thead><tr><th>I want to know about…</th><th>Go to</th></tr></thead>
+  <tbody>
+    <tr><td><code>caasi project *</code></td><td><strong>01</strong> · <a href="projects.html">Projects</a></td></tr>
+    <tr><td><code>caasi workload *</code>, <code>caasi run *</code></td><td><strong>01</strong> · <strong>07</strong> · <a href="workloads.html">Workloads</a></td></tr>
+    <tr><td><code>caasi env *</code>, <code>caasi check</code></td><td><strong>01</strong> · <a href="environment.html">Environment</a></td></tr>
+    <tr><td><code>caasi target *</code>, <code>--where</code>, <code>occupancy</code></td><td><strong>02</strong> · <a href="targets.html">Targets</a></td></tr>
+    <tr><td><code>caasi ros *</code>, <code>caasi tools *</code>, <code>pipeline</code></td><td><strong>03</strong> · <strong>05</strong> · <a href="ros.html">ROS Ecosystem</a></td></tr>
+    <tr><td><code>caasi container *</code>, <code>target runtime</code></td><td><strong>04</strong> · <a href="remote.html">Remote &amp; Container</a></td></tr>
+    <tr><td><code>caasi deploy</code>, <code>build</code>, <code>runtime *</code></td><td><strong>07</strong> · <a href="lifecycle.html">Lifecycle</a></td></tr>
+    <tr><td><code>caasi rviz2</code>, <code>rqt</code>, <code>replay</code>, <code>dataset</code></td><td><strong>05</strong> · <a href="data.html">Data &amp; Review</a></td></tr>
+    <tr><td><code>caasi sim *</code>, <code>train</code>, <code>lab</code>, <code>benchmark</code></td><td><strong>06</strong> · <a href="simulation.html">Simulation &amp; Training</a></td></tr>
+    <tr><td><code>caasi isaac-ros</code>, <code>perception</code>, <code>nitros</code>, <code>slam</code></td><td><strong>06</strong> · <a href="accelerated.html">GPU-Accelerated Robotics</a></td></tr>
+    <tr><td><code>caasi version</code>, <code>info</code>, <code>gpu</code>, <code>system</code>, <code>config</code></td><td><strong>Cookbook</strong> · <a href="environment.html">Environment</a></td></tr>
+  </tbody>
+</table>
+
+<p>For the <strong>complete</strong> listing — all 57 root commands and 253 command paths,
+including the ones with no runnable example and the reason — see
+<a href="https://github.com/7a6172/caasi/blob/main/examples/COVERAGE.md"><code>examples/COVERAGE.md</code></a>.
+It is generated from the live command tree and checked by the test suite, so it cannot drift
+silently.</p>
+
+<h2 id="philosophy">How the examples treat the ecosystem</h2>
+
+<p>Each example states which parts caasi contributes and which belong to the underlying tool.
+The catalog <strong>references</strong> canonical upstream examples rather than duplicating
+them:</p>
+
+<table>
+  <thead><tr><th>Example</th><th>The ecosystem provides</th><th>Caasi provides</th></tr></thead>
+  <tbody>
+    <tr><td>03</td><td><code>demo_nodes_py</code> — the canonical ROS 2 talker/listener</td><td>The project, the target context, the observation commands, the provenance</td></tr>
+    <tr><td>04</td><td>The Docker runtime, images and container lifecycle</td><td>Observation through the container CLI, and a reason when none is installed</td></tr>
+    <tr><td>05</td><td><code>turtlesim</code>, <code>rviz2</code>, <code>rqt</code>, <code>ros2 bag</code></td><td>Target context so a local GUI can attach to a remote graph</td></tr>
+    <tr><td>06</td><td>Isaac Sim, the Isaac Lab tasks and its training entry point</td><td>Requirements, GPU-aware target selection, run tracking</td></tr>
+    <tr><td>01</td><td>Your program (deliberately trivial)</td><td>Everything around it: the workflow being taught</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <strong>No example moves hardware, deletes data, or invents safety flags.</strong>
+  <code>teleop start</code>/<code>record</code>, <code>nav launch</code>,
+  <code>moveit launch</code>, <code>motion execute</code>, <code>run delete</code>,
+  <code>project remove</code> and <code>setup</code> are <em>documented but never executed</em>
+  — and neither of the destructive pair has a <code>--dry-run</code>, so there is no safe
+  demonstration to fake. A test enforces this.
+</div>
+
+<div class="page-nav">
+  <a class="prev" href="synthetic.html"><span class="pn-label">Previous</span><span class="pn-title">← Synthetic Data &amp; Teleop</span></a>
+  <a class="next" href="limitations.html"><span class="pn-label">Next</span><span class="pn-title">Limitations &amp; what's deferred →</span></a>
+</div>
+
+<footer class="doc-footer">
+  Caasi CLI 0.4.0 — these pages live in <code>docs/</code> and need no build step.
+  Source: <a href="https://github.com/7a6172/caasi">github.com/7a6172/caasi</a>.
+</footer>
+</main>
+</div>
+<script src="assets/copy.js"></script>
+<script src="assets/sidebar.js"></script>
+</body>
+</html>

@@ -66,8 +66,55 @@ defined by that set rather than by a date.
   cannot honestly restore that content, rather than rewriting a marker to claim a rollback
   that did not occur.
 
+### Added — workload model and selection
+
+* **Workloads** (`caasi workload list|inspect|run`) declare the work a project wants done
+  as data: what it needs (`requires:`) and the steps that carry it out.
+* **A closed step vocabulary** — `deploy`, `build`, `run`, `collect`. An unknown step is
+  rejected when the workload is parsed rather than silently skipped, and there are no
+  conditionals, loops or retries: a workload needing control flow is a program.
+* **`caasi target select`** — requirement-driven, per-target verdicts **with reasons**,
+  read-only and advisory. Three states are kept distinct: satisfied, asked-and-absent, and
+  **unmeasured** (which is not evidence of absence).
+* **`caasi target occupancy`** — read-only, showing what is running where and distinguishing
+  `occupied`, `idle` and **`unknown`** (a run whose state could not be determined).
+* **`--where any|idle|prefer:<tag>`** — an explicit, explained choice among currently
+  suitable targets. Mutually exclusive with `--target`, and one is required. Ordering is
+  deterministic (policy key, then target name) — no scoring, ranking or load balancing.
+  When nothing fits it **fails with the reasons** rather than queueing or waiting.
+* **`caasi rviz2|rqt|rosbag --target <t>`** — target-aware invocation of existing tools
+  (R2). Caasi resolves the target's ROS 2 context and then executes the **real** tool; the
+  domain is resolved explicitly (explicit option > target-reported > **refuse**), never
+  silently defaulted. `caasi tools list|run` exposes the same mechanism.
+
+### Changed — local target semantics
+
+* **`local` is now a deployed target like any other.** Previously `build` recorded in the
+  project root while `run` looked at the deployment destination, so `caasi build --target
+  local` followed by `caasi run --target local` failed. The discriminator is now whether a
+  deployment exists, not whether the target is named `local`; the standalone workspace
+  build is preserved.
+
+### Documentation
+
+* A **runnable example catalog** (`examples/`): seven coherent projects plus a cookbook
+  covering the whole basic CLI, with `examples/README.md` as the command index and
+  `examples/COVERAGE.md` as an auditable command → example matrix checked by the test
+  suite. Where a canonical ecosystem example exists (ROS 2 `demo_nodes_py` and `turtlesim`,
+  Isaac Lab `cartpole`, Docker) it is **referenced, not duplicated**.
+* Documentation for the control plane: targets and selection, workloads and execution,
+  deploy and runtime lifecycle, the examples catalog, and a page on limitations and
+  deliberately deferred capabilities.
+
 ### Fixed
 
+* **Workload identity is recorded in run provenance.** A composed run previously recorded
+  the experiment name but not *which workload* produced it, so two workloads sharing an
+  experiment were indistinguishable. Runs now record `workload`, `selected_by` and
+  `selection_reason`.
+* **Refusal exit codes.** `output.fail()` raises its own exit, so a `raise` written after it
+  was unreachable and several refusals exited `1` instead of the intended `3`. A CLI-wide
+  test now guards against the class.
 * `caasi deploy` used `rsync --delete`, which removed caasi's own runtime state
   (`.caasi-runtime.json`, `.caasi-env.sh`) from the destination and silently destroyed the
   rollback point of a persistent installation. Both are now excluded.

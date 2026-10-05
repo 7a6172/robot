@@ -67,6 +67,27 @@
       ]
     },
     {
+      title: "Control plane",
+      items: [
+        { href: "targets.html", label: "Targets & selection" },
+        { href: "targets.html#model", label: "The target model", sub: true },
+        { href: "targets.html#select", label: "target select & verdicts", sub: true },
+        { href: "targets.html#where", label: "--where policies", sub: true },
+        { href: "targets.html#occupancy", label: "Occupancy", sub: true },
+        { href: "targets.html#runtimes", label: "Runtimes", sub: true },
+        { href: "workloads.html", label: "Workloads & execution" },
+        { href: "workloads.html#declaring", label: "Declaring a workload", sub: true },
+        { href: "workloads.html#steps", label: "The step vocabulary", sub: true },
+        { href: "workloads.html#chain", label: "The composed chain", sub: true },
+        { href: "workloads.html#prerequisites", label: "Run prerequisites", sub: true },
+        { href: "lifecycle.html", label: "Deploy & runtime lifecycle" },
+        { href: "lifecycle.html#deploy", label: "deploy", sub: true },
+        { href: "lifecycle.html#build", label: "build", sub: true },
+        { href: "lifecycle.html#runtime", label: "runtime lifecycle", sub: true },
+        { href: "lifecycle.html#revisions", label: "Revisions & rollback", sub: true }
+      ]
+    },
+    {
       title: "Simulation & Training",
       items: [
         { href: "simulation.html", label: "sim & lab" },
@@ -133,6 +154,19 @@
         { href: "platform.html#groot", label: "groot", sub: true },
         { href: "platform.html#cosmos", label: "cosmos", sub: true },
         { href: "platform.html#scene-reconstruct", label: "project scene reconstruct", sub: true }
+      ]
+    },
+    {
+      title: "Examples & reference",
+      items: [
+        { href: "examples.html", label: "Examples & command index" },
+        { href: "examples.html#catalog", label: "The catalog", sub: true },
+        { href: "examples.html#tiers", label: "CI / opt-in / manual", sub: true },
+        { href: "examples.html#index", label: "Command index", sub: true },
+        { href: "limitations.html", label: "Limitations & what's deferred" },
+        { href: "limitations.html#environmental", label: "Environmental", sub: true },
+        { href: "limitations.html#deferred", label: "Deliberately deferred", sub: true },
+        { href: "limitations.html#boundaries", label: "Current boundaries", sub: true }
       ]
     },
     {

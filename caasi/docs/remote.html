@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Remote &amp; Container — Caasi CLI Documentation</title>
+<title>Remote &amp; Container — Caasi CLI 0.4.0 Documentation</title>
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/theme.js"></script>
 </head>
 <body>
 <header class="topbar">
   <a class="brand" href="index.html">Caa<span>si</span></a>
-  <span class="badge">v0.3.0</span>
+  <span class="badge">v0.4.0</span>
   <span class="tagline">Advanced: remote · container</span>
   <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
 </header>
@@ -20,12 +20,36 @@
 
 <h1>Remote &amp; Container</h1>
 <p class="lead">
-Same workflows, different machine. <code>caasi remote</code> drives the system <code>ssh</code>
-client to run experiments on a GPU box; <code>caasi container</code> drives <code>docker</code> or
-<code>podman</code> to run them inside an official image. Caasi implements no protocol and links no
-SDK — it builds command lines, and every long-running one becomes a
+Same workflows, different machine. <code>caasi target</code> is the canonical model for a remote
+machine — declaring it, discovering what it has, checking requirements against it, deploying to
+it and choosing among targets. <code>caasi container</code> drives <code>docker</code> or
+<code>podman</code> to run experiments inside an official image. Caasi implements no protocol and
+links no SDK — it builds command lines, and every long-running one becomes a
 <a href="runs.html">tracked run</a>.
 </p>
+
+<div class="callout warn">
+  <p><strong>For remote machines, use <code>caasi target</code>.</strong> The
+  <code>caasi remote</code> group below <strong>predates targets and is deprecated</strong> — it
+  is retained only because two of its capabilities have no direct equivalent yet
+  (<code>remote connect</code>, and its <code>path</code> handling for a remote working
+  directory).</p>
+  <p>Legacy <code>remotes:</code> entries in your configuration are still
+  <strong>imported automatically as targets</strong>, so nothing is lost by moving to the target
+  model. See <a href="targets.html">Targets &amp; Selection</a> for the canonical workflow, and
+  <a href="limitations.html#boundaries">Limitations</a> for the retirement prerequisites.</p>
+</div>
+
+<div class="callout note">
+  <strong>Which page do I want?</strong>
+  <ul>
+    <li><a href="targets.html">Targets &amp; Selection</a> — declaring, inspecting, selecting and
+    deploying to a remote machine. <strong>Start here.</strong></li>
+    <li><a href="lifecycle.html">Deploy &amp; Runtime Lifecycle</a> — deploying, building on the
+    target, and persistent runtime management.</li>
+    <li>This page — the legacy <code>remote</code> shim and container execution.</li>
+  </ul>
+</div>
 
 <h2 id="remote">caasi remote</h2>
 <div class="callout note">
@@ -484,7 +508,7 @@ commands.</p>
 </div>
 
 <footer class="doc-footer">
-  Caasi CLI 0.3.0 — these pages live in <code>docs/</code> and need no build step.
+  Caasi CLI 0.4.0 — these pages live in <code>docs/</code> and need no build step.
   Source: <a href="https://github.com/7a6172/caasi">github.com/7a6172/caasi</a>.
 </footer>
 </main>

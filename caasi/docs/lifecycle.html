@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deploy &amp; Runtime Lifecycle — Caasi CLI 0.4.0 Documentation</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/theme.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html">Caa<span>si</span></a>
+  <span class="badge">v0.4.0</span>
+  <span class="tagline">Deploy, build, and a persistent runtime that survives you</span>
+  <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
+</header>
+<div class="layout">
+<aside id="sidebar"></aside>
+<main>
+
+<h1>Deploy &amp; Runtime Lifecycle</h1>
+<p class="lead">
+Getting software <em>onto</em> a target is one thing; making the target bring it up
+<em>itself</em>, and keeping track of which revision is running, is another. This page covers
+both: <code>caasi deploy</code>, target-native <code>caasi build</code>, and the
+<code>caasi runtime</code> lifecycle for a long-lived installation.
+</p>
+
+<h2 id="deploy">Deploy: getting the project onto the target</h2>
+
+<pre><code>caasi deploy &lt;target&gt;                     # synchronise the project to the target
+caasi deploy &lt;target&gt; --status             # what is deployed there now</code></pre>
+
+<p>The project is synchronised to the target's <code>deployment_root</code>. For the built-in
+<code>local</code> target, the destination is a dedicated sandbox
+(<code>~/.caasi/deployments/local/&lt;project&gt;</code>) rather than your working tree — which
+is why a local run still needs a deploy.</p>
+
+<div class="callout note">
+  <strong>Deployment and your source tree are separate.</strong> Deploying does not modify your
+  checkout, and caasi does not delete anything it did not put there. It also never
+  <code>rsync --delete</code>s caasi's own runtime state, so a redeploy cannot silently destroy
+  a deployment's rollback point.
+</div>
+
+<h2 id="build">Build: target-native, via colcon</h2>
+
+<pre><code>caasi build --target &lt;target&gt;              # build the workspace ON the target
+caasi build --target &lt;target&gt; --packages-select pkg_a pkg_b
+caasi build --target &lt;target&gt; --jobs 4</code></pre>
+
+<p>The build runs <strong>on the target</strong>, in its own environment, using
+<code>colcon</code> — so it produces binaries for the machine that will run them. The build
+record is written at the <em>deployment destination</em>, which is where <code>run</code> then
+looks for it.</p>
+
+<table>
+  <thead><tr><th>Caasi manages</th><th>The ecosystem owns</th></tr></thead>
+  <tbody>
+    <tr><td>Where the build happens and which record it writes</td><td><code>colcon</code>, CMake, package discovery</td></tr>
+    <tr><td>Worker count derived from the target's resources</td><td>Compilers and the toolchain</td></tr>
+    <tr><td>Recording build identity alongside the deployment</td><td>Whether the code compiles</td></tr>
+  </tbody>
+</table>
+
+<h2 id="runtime">The runtime lifecycle</h2>
+
+<p>A deployment puts files on a machine. A <strong>runtime</strong> is what makes those files an
+<em>operational installation</em> — something the machine brings up itself, without you logged
+in. That is a different problem, and it has its own commands.</p>
+
+<pre><code>caasi runtime install  &lt;target&gt;    # render the unit + environment, record the revision
+caasi runtime enable   &lt;target&gt;    # systemctl --user enable
+caasi runtime start    &lt;target&gt;    # systemctl --user start
+caasi runtime status   &lt;target&gt;    # ask systemd what the state is
+caasi runtime verify   &lt;target&gt;    # is the ACTIVE revision what caasi thinks it is?
+caasi runtime update   &lt;target&gt;    # move to the newly deployed revision
+caasi runtime rollback &lt;target&gt;    # return to the previous revision</code></pre>
+
+<h3 id="declaring-runtime">Declaring one</h3>
+
+<pre><code># caasi.yaml
+lifecycle: persistent
+runtime:
+  kind: systemd
+  unit: my-robot.service
+  entrypoint: ros2 launch my_robot bootloader.launch.py
+  working_dir: .
+  environment:                 # what the process needs to find ROS and the overlay
+    - source /opt/ros/jazzy/setup.bash
+    - source install/setup.bash
+    - export ROBOT_MODE=real
+  restart: on-failure</code></pre>
+
+<p>Two persistent concerns are declared separately, because they are genuinely different
+problems and conflating them makes an installation unverifiable:</p>
+
+<table>
+  <thead><tr><th>Concern</th><th>How caasi handles it</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Environment persistence</strong></td><td>Declared and rendered into the form the target needs, rather than appended to a shell profile.</td></tr>
+    <tr><td><strong>Service persistence</strong></td><td>Declared as an entrypoint; enablement and startup are delegated to the native mechanism.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="boundary">Caasi is not a supervisor</h3>
+
+<div class="callout note">
+  <strong>Caasi renders the unit, installs it, and then <em>asks systemd</em> what the state
+  is.</strong> It has no restart loop, no dependency graph and no process table of its own.
+  systemd owns running the service; caasi owns identity, declaration, invocation,
+  verification and provenance.
+</div>
+
+<h3 id="revisions">Revision identity, and an honest rollback</h3>
+
+<p>Each install records the deployment id, git revision and timestamp on the target, and
+<strong>retains the previous revision</strong> so rollback has something real to return to.</p>
+
+<div class="callout warn">
+  <p><strong>Rollback restores content; it does not merely relabel.</strong> It redeploys the
+  recorded previous revision from your workstation, and it <strong>refuses</strong> when it
+  cannot honestly restore that content:</p>
+  <pre class="term"><code>$ caasi runtime rollback &lt;target&gt;
+✖ rollback on &lt;target&gt;: workstation is at 5acfa0d... but the rollback target is
+  3f06b5a...; rollback redeploys the previous revision from the workstation,
+  so check out 3f06b5a... first</code></pre>
+  <p>A rollback that could not restore the files but reported success anyway would leave the
+  revision marker lying about what is running. caasi refuses instead.</p>
+</div>
+
+<h2 id="limits">What the runtime lifecycle does not do</h2>
+
+<ul>
+  <li><strong>It does not test your reboot.</strong> Whether a unit actually comes back after a
+  reboot is a fact about your target's configuration; caasi can record and verify enablement,
+  but it does not claim reboot survival it has not observed.</li>
+  <li><strong>It is not a system-scope manager.</strong> The lifecycle targets user-scope
+  units.</li>
+  <li><strong>It does not delete.</strong> Rollback reinstalls a previous revision; nothing in
+  the lifecycle removes a revision or a deployment.</li>
+</ul>
+
+<p>See <a href="limitations.html">Limitations &amp; what's deferred</a> for the full list, and
+<a href="examples.html">Examples</a> (07) for the chain end to end.</p>
+
+<div class="page-nav">
+  <a class="prev" href="workloads.html"><span class="pn-label">Previous</span><span class="pn-title">← Workloads &amp; execution</span></a>
+  <a class="next" href="observability.html"><span class="pn-label">Next</span><span class="pn-title">Observability →</span></a>
+</div>
+
+<footer class="doc-footer">
+  Caasi CLI 0.4.0 — these pages live in <code>docs/</code> and need no build step.
+  Source: <a href="https://github.com/7a6172/caasi">github.com/7a6172/caasi</a>.
+</footer>
+</main>
+</div>
+<script src="assets/copy.js"></script>
+<script src="assets/sidebar.js"></script>
+</body>
+</html>

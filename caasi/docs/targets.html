@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Targets &amp; Selection — Caasi CLI 0.4.0 Documentation</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/theme.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html">Caa<span>si</span></a>
+  <span class="badge">v0.4.0</span>
+  <span class="tagline">Targets: where work runs, and why caasi chose it</span>
+  <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
+</header>
+<div class="layout">
+<aside id="sidebar"></aside>
+<main>
+
+<h1>Targets &amp; Selection</h1>
+<p class="lead">
+A <strong>target</strong> is anywhere work can run: this workstation, a robot, a GPU
+server, a simulation machine. Targets are declared in your configuration and addressed
+by name. Caasi discovers what each one actually <em>has</em>, checks it against what your
+work <em>needs</em>, and can choose among the ones that fit — always explaining the choice.
+</p>
+
+<h2 id="model">The target model</h2>
+
+<p>A target is a small block in <code>~/.config/caasi/config.yaml</code>:</p>
+
+<pre><code>targets:
+  my-robot:
+    transport: ssh              # "local" or "ssh"
+    host: 192.0.2.10
+    port: 22
+    user: someone
+    deployment_root: /home/someone/caasi-deployments
+    ssh_timeout: 20.0           # raise this on a relayed / VPN link
+    tags: [robot, cpu-only, ros2]
+
+  gpu-box:
+    transport: ssh
+    host: 192.0.2.20
+    user: someone
+    tags: [gpu, cuda]</code></pre>
+
+<p>The built-in <code>local</code> target always exists, so caasi is useful with no
+configuration at all. <strong><code>local</code> is a deployed target like any
+other</strong> — see <a href="#run-prerequisite">the deployment prerequisite for
+<code>run</code></a> below.</p>
+
+<div class="callout note">
+  <strong>Tags are labels, not capabilities.</strong> A tag such as <code>gpu</code> is
+  something you declare. Capabilities are <em>discovered</em> from the machine. Both are
+  used, but they are not the same thing — and caasi never trusts a tag in place of a
+  measured fact when checking requirements.
+</div>
+
+<h2 id="verbs">The target commands</h2>
+
+<table>
+  <thead><tr><th>Command</th><th>Question it answers</th></tr></thead>
+  <tbody>
+    <tr><td><code>caasi target list</code></td><td>What targets are configured?</td></tr>
+    <tr><td><code>caasi target inspect &lt;t&gt;</code></td><td>What does that machine actually have — hardware, OS, ecosystem versions?</td></tr>
+    <tr><td><code>caasi target check &lt;t&gt;</code></td><td>Is it reachable, and does it match what was declared about it?</td></tr>
+    <tr><td><code>caasi target select</code></td><td>Which targets satisfy <em>this project's</em> requirements — and why not the others?</td></tr>
+    <tr><td><code>caasi target occupancy</code></td><td>What is running where, right now?</td></tr>
+    <tr><td><code>caasi target runtime</code></td><td>What runtimes does it expose — processes, systemd, containers, ROS 2?</td></tr>
+  </tbody>
+</table>
+
+<p><code>caasi node</code> is an alias for <code>caasi target</code>.</p>
+
+<h2 id="select">Selection, and the three verdicts</h2>
+
+<p>Given a project whose manifest declares what it needs (<code>requires:</code>),
+<code>target select</code> evaluates <strong>every</strong> configured target and prints a
+verdict per target, with the measured fact behind it:</p>
+
+<pre class="term"><code>$ caasi target select
+  Requires: ros2 jazzy, gpu
+
+┏━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Target    ┃ Verdict        ┃ Why                         ┃
+┡━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ u24-307   │ ✖ incompatible │ gpu: target reports no GPUs │
+│ local     │ ● ready        │ 2 compatible                │
+└───────────┴────────────────┴─────────────────────────────┘</code></pre>
+
+<p>Three outcomes are possible, and they are deliberately distinct:</p>
+
+<table>
+  <thead><tr><th>Verdict</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>compatible</code></td><td>The requirement is satisfied by a discovered fact.</td></tr>
+    <tr><td><code>missing</code> / <code>incompatible</code></td><td>The target <strong>was asked</strong>, and does not have it.</td></tr>
+    <tr><td><code>untested</code></td><td>The fact <strong>could not be measured</strong> — which is <em>not</em> evidence of absence.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <strong>The <code>untested</code> row is the most important idea in caasi.</strong> A fact
+  nobody measured is reported as unmeasured. It is never silently rendered as a satisfied
+  requirement or a failed one. Likewise, an out-of-range version produces a
+  <em>warning</em>, not an outright incompatibility — caasi does not assert incompatibility
+  from a version range alone.
+</div>
+
+<p><code>target select</code> is <strong>read-only and advisory</strong>. It reports; it does
+not choose. Nothing is deployed and no target is picked on your behalf.</p>
+
+<h2 id="where">Choosing with <code>--where</code></h2>
+
+<p>Naming a target explicitly is the default and never changes:</p>
+
+<pre><code>caasi workload run &lt;name&gt; --target &lt;target&gt;</code></pre>
+
+<p>If you would rather let caasi choose among the targets that <em>currently</em> satisfy the
+workload, use <code>--where</code>:</p>
+
+<pre><code>caasi workload run &lt;name&gt; --where any           # any suitable target
+caasi workload run &lt;name&gt; --where idle          # prefer one with no live runs
+caasi workload run &lt;name&gt; --where prefer:gpu    # prefer a tag, among suitable ones</code></pre>
+
+<p><code>--target</code> and <code>--where</code> are <strong>mutually exclusive</strong>, and
+one of them is required — there is no implicit default.</p>
+
+<p>Every policy is <strong>explained</strong>. The decision report names the selected target,
+the policy and how it ordered the candidates, every eliminated target with the requirement
+and measured evidence that eliminated it, and any unmeasured or unknown conditions:</p>
+
+<pre class="term"><code>$ caasi workload run report --where prefer:cpu-only --dry-run
+Selection for workload 'report'
+  policy: prefer:cpu-only
+  ordering: targets carrying tag 'cpu-only' first, then target name (matched)
+
+  ✔ SELECTED   u24-307
+     selected 'u24-307'; it satisfies the requirements
+  ✖ eliminated local  suitable, but not chosen by this policy</code></pre>
+
+<div class="callout note">
+  <strong>Ordering is deterministic and stated, not hidden.</strong> Eligible targets are
+  ordered by the policy key and then by <strong>target name</strong>. There is no scoring, no
+  weighting and no load balancing — <code>prefer:&lt;tag&gt;</code> is a filter followed by
+  name order, not a preference score.
+</div>
+
+<h3 id="nothing-fits">When nothing fits</h3>
+
+<p>Caasi <strong>fails immediately</strong>, naming why each target was eliminated. It does
+<strong>not</strong> queue, wait, retry, or quietly pick something else:</p>
+
+<pre class="term"><code>$ caasi workload run impossible --where any
+Selection for workload 'impossible'
+  policy: any
+  ordering: no eligible targets
+
+  ✖ eliminated u24-307  does not satisfy 'gpu' — target reports no GPUs
+  ✖ eliminated local    does not satisfy 'gpu' — target reports 1 GPU(s), 4 required
+
+Error: no target satisfies this workload (nothing was deployed or queued)</code></pre>
+
+<p>This is the boundary between <strong>selection</strong> and <strong>scheduling</strong>.
+Selection answers <em>"which currently suitable target should I use?"</em> A scheduler would
+answer <em>"when and where should this eventually run?"</em> Caasi implements only the
+former.</p>
+
+<h2 id="run-prerequisite">The deployment prerequisite for <code>run</code></h2>
+
+<div class="callout warn">
+  <p><strong>A run executes a <em>deployed copy</em> of the project, so <code>run</code>
+  requires an active deployment — even when the target is <code>local</code>.</strong></p>
+  <p>If you skip the deploy step, caasi refuses:</p>
+  <pre class="term"><code>$ caasi workload run analyse --target local
+✖ run — No active deployment found on target 'local' at
+  '~/.caasi/deployments/local/my-project'. Run 'caasi deploy local' first.</code></pre>
+  <p>This is deliberate. A workload that includes <code>deploy</code> before
+  <code>run</code> is correct; a bare <code>run</code> is not. The refusal is informative on
+  purpose — and the individual commands remain available so you can carry on
+  by hand.</p>
+</div>
+
+<h2 id="occupancy">Occupancy: an observation, not a reservation</h2>
+
+<p><code>caasi target occupancy</code> is read-only and answers <em>what is running where</em>:</p>
+
+<table>
+  <thead><tr><th>State</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>occupied</code></td><td>At least one <code>running</code> or <code>paused</code> run (a paused process is still resident and still holding the target).</td></tr>
+    <tr><td><code>unknown</code></td><td>No occupying run, but at least one whose state could not be determined. Counted as <strong>neither busy nor free</strong>, and reported as such.</td></tr>
+    <tr><td><code>idle</code></td><td>Genuinely nothing.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <strong>Occupancy does not reserve anything.</strong> Two commands started at the same moment
+  can both see a target as idle and both select it. That is intentional: making
+  <code>--where idle</code> a guarantee would require the reservation and scheduling machinery
+  caasi deliberately does not have. See <a href="limitations.html">Limitations</a>.
+</div>
+
+<h2 id="runtimes">Runtimes: what the target exposes</h2>
+
+<p><code>caasi target runtime</code> reports what a target is running, through each runtime's
+<strong>own native interface</strong>:</p>
+
+<table>
+  <thead><tr><th>Runtime</th><th>Caasi asks</th></tr></thead>
+  <tbody>
+    <tr><td><code>process</code></td><td><code>ps</code>, falling back to <code>/proc</code></td></tr>
+    <tr><td><code>systemd</code></td><td><code>systemctl</code>, <code>journalctl</code></td></tr>
+    <tr><td><code>container</code></td><td><code>docker</code>, or <code>podman</code></td></tr>
+    <tr><td><code>ros2</code></td><td>the <code>ros2</code> CLI</td></tr>
+  </tbody>
+</table>
+
+<p>When a runtime is absent, caasi says so <em>and why</em> rather than returning an empty
+list. You should never have to infer "there is nothing here" from "I got no rows back".
+The observability is read-only: caasi starts, stops and restarts nothing.</p>
+
+<h2 id="responsibility">Who owns what</h2>
+
+<table>
+  <thead><tr><th>Caasi manages</th><th>The ecosystem owns</th></tr></thead>
+  <tbody>
+    <tr><td>Target identity and configuration</td><td>SSH, the network, the remote shell</td></tr>
+    <tr><td>Discovering and comparing capabilities</td><td>The hardware, the OS, the driver stack</td></tr>
+    <tr><td>Requirement checking and per-target verdicts</td><td>ROS 2 / DDS, systemd, Docker, <code>nvidia-smi</code></td></tr>
+    <tr><td>Choosing among suitable targets, explained</td><td>The meaning of the facts it reports</td></tr>
+  </tbody>
+</table>
+
+<p>Caasi does not invent hardware facts. It asks each machine and reports what it was told —
+including, plainly, when it could not get an answer. Next:
+<a href="workloads.html">Workloads &amp; execution</a>, where these targets are actually used.</p>
+
+<div class="page-nav">
+  <a class="prev" href="projects.html"><span class="pn-label">Previous</span><span class="pn-title">← Project workflow</span></a>
+  <a class="next" href="workloads.html"><span class="pn-label">Next</span><span class="pn-title">Workloads &amp; execution →</span></a>
+</div>
+
+<footer class="doc-footer">
+  Caasi CLI 0.4.0 — these pages live in <code>docs/</code> and need no build step.
+  Source: <a href="https://github.com/7a6172/caasi">github.com/7a6172/caasi</a>.
+</footer>
+</main>
+</div>
+<script src="assets/copy.js"></script>
+<script src="assets/sidebar.js"></script>
+</body>
+</html>

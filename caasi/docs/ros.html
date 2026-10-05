@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ROS Ecosystem — Caasi CLI Documentation</title>
+<title>ROS Ecosystem — Caasi CLI 0.4.0 Documentation</title>
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/theme.js"></script>
 </head>
 <body>
 <header class="topbar">
   <a class="brand" href="index.html">Caa<span>si</span></a>
-  <span class="badge">v0.3.0</span>
+  <span class="badge">v0.4.0</span>
   <span class="tagline">ROS Ecosystem: ros · nav · moveit · control</span>
   <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
 </header>
@@ -19,6 +19,16 @@
 <main>
 
 <h1>ROS Ecosystem</h1>
+
+<div class="callout note">
+  <strong>Observing another machine.</strong> <code>caasi ros … --target &lt;t&gt;</code> queries a
+  <em>remote</em> ROS 2 graph, and <code>--domain</code> is required for that so an empty graph
+  cannot be mistaken for a healthy but idle system. The same target context powers
+  <a href="examples.html">target-aware tool invocation</a> —
+  <code>caasi rviz2 --target &lt;t&gt;</code> runs the <em>real</em> local <code>rviz2</code> against
+  the target's graph. See <a href="targets.html">Targets &amp; Selection</a>, and
+  <a href="limitations.html#environmental">Limitations</a> for the DDS-across-a-VPN caveat.
+</div>
 <p class="lead">
 Orchestrate ROS 2, Nav2, MoveIt 2 and ros2_control <strong>by delegating to the real
 <code>ros2</code> CLI</strong> of your installed distro. Caasi never imports rclpy and never
@@ -518,7 +528,7 @@ it tells you whether <code>ros2 control list_controllers</code> can work at all 
 </div>
 
 <footer class="doc-footer">
-  Caasi CLI 0.3.0 — these pages live in <code>docs/</code> and need no build step.
+  Caasi CLI 0.4.0 — these pages live in <code>docs/</code> and need no build step.
   Source: <a href="https://github.com/7a6172/caasi">github.com/7a6172/caasi</a>.
 </footer>
 </main>

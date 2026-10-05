@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Overview — Caasi CLI Documentation</title>
+<title>Overview — Caasi CLI 0.4.0 Documentation</title>
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/theme.js"></script>
 </head>
 <body>
 <header class="topbar">
   <a class="brand" href="index.html">Caa<span>si</span></a>
-  <span class="badge">v0.3.0</span>
+  <span class="badge">v0.4.0</span>
   <span class="tagline">CLI-first orchestration for Isaac Sim, Isaac Lab &amp; the ROS 2 ecosystem</span>
   <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
 </header>
@@ -66,7 +66,7 @@ located through a layered discovery process:</p>
      │ pip metadata     │  │ processes    │  │ docker · nvidia- │
      └──────────────────┘  └──────────────┘  │ smi …            │
                                              └──────────────────┘</code></pre>
-<p>The 0.3.0 ecosystem surface sits on the same three verbs. Layers, top to bottom:</p>
+<p>The 0.4.0 ecosystem surface sits on the same three verbs. Layers, top to bottom:</p>
 <pre><code>┌──────────────────────────────────────┐
 │               CAASI CLI              │
 │  Commands / Help / Completion / JSON │
@@ -141,7 +141,7 @@ ROS 2, PyTorch etc. are discovered, not installed, by Caasi.</p>
 <span class="dim"># or into the active environment:</span>
 <span class="in">pip install caasi</span>
 <span class="in">caasi version</span>
-<span class="ok">caasi 0.3.0</span></span></code></pre>
+<span class="ok">caasi 0.4.0</span></span></code></pre>
 <p>Both install the <code>caasi</code> console script into the environment's
 <code>bin/</code>; pipx additionally links it into <code>~/.local/bin</code> so it is
 available system-wide for your user (<code>pipx ensurepath</code> if that is not on your
@@ -221,6 +221,40 @@ args: ["--steps", "10000"]</span></span></code></pre>
 <span class="in">caasi benchmark report latest</span>
 <span class="in">caasi dataset generate experiments/collect.yaml --episodes 100 --record-images</span>
 <span class="in">caasi replay latest --viewer rviz</span></span></code></pre>
+
+<h4>6. Where it runs, and the whole chain</h4>
+<p>
+  Targets are where work runs: this machine, a robot, a GPU server. Declare them, discover what
+  each one actually has, and check them against what your project needs.
+</p>
+<pre class="term"><code><span class="t-head">shell</span><span class="t-body"><span class="in">caasi target list</span>
+<span class="out">local      local   ·  workstation
+u24-307    ssh     ·  robot, cpu-only, ros2</span>
+<span class="in">caasi target occupancy</span>
+<span class="out">u24-307  ○ idle     no runs
+local    ● occupied 1 running</span></span></code></pre>
+<p>
+  A <strong>workload</strong> declares the work and the steps that carry it out. Running one
+  composes operations caasi already has — and every step is still available on its own:
+</p>
+<pre class="term"><code><span class="t-head">shell</span><span class="t-body"><span class="in">caasi workload list</span>
+<span class="in">caasi workload run report --target local</span>
+<span class="ok">  ✔ deploy   — deployed deploy-demo-20261005-... (verified)</span>
+<span class="ok">  ✔ build    — built on local</span>
+<span class="ok">  ✔ run      — 20261006-...-report succeeded on local</span>
+<span class="ok">  ✔ collect  — collected 1 artifact(s)</span>
+<span class="dim"># or let caasi choose among suitable targets, and explain the choice:</span>
+<span class="in">caasi workload run report --where any</span>
+<span class="in">caasi workload run report --where prefer:gpu --dry-run</span></span></code></pre>
+<div class="callout warn">
+  <strong>A run needs a deployment, even on <code>local</code>.</strong> A run executes a
+  <em>deployed copy</em> of the project, so include <code>deploy</code> in the workload (or
+  deploy first). See <a href="workloads.html#prerequisites">Workloads &amp; execution</a>.
+</div>
+<p>
+  Ready to do this for real? <a href="examples.html">Examples &amp; command index</a> has runnable
+  projects for the whole basic CLI, starting with a five-minute Python example.
+</p>
 
 <h2 id="conventions">Global options &amp; output conventions</h2>
 <h3>Global options</h3>
@@ -327,6 +361,21 @@ gate:</p>
     <div class="cmds"><code>init</code> (alias) · <code>setup</code> · <code>project info|validate|add|remove|list|inspect|add-file|config</code> · <code>project robot|scene|task list|create|inspect|validate</code> · <code>project scene capture|reconstruct</code></div>
   </div>
   <div class="card">
+    <h3><a href="targets.html">Targets &amp; Selection</a></h3>
+    <p>Where work runs: declare targets, discover what each machine actually has, check requirements against measured facts, and choose among suitable targets — always explaining the choice.</p>
+    <div class="cmds"><code>target list|inspect|check|select|occupancy|runtime</code> · <code>node</code> (alias) · <code>workload run --where any|idle|prefer:&lt;tag&gt;</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="workloads.html">Workloads &amp; Execution</a></h3>
+    <p>Declare the work and the steps that carry it out, then run the chain — <code>deploy → build → run → collect</code> — on a chosen target, with the same provenance the individual commands record.</p>
+    <div class="cmds"><code>workload list|inspect|run</code> · <code>deploy</code> · <code>build</code> · <code>run artifacts</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="lifecycle.html">Deploy &amp; Runtime Lifecycle</a></h3>
+    <p>Getting software onto a target, building it there, and making a long-lived installation bring itself up — with revision identity and an honest rollback.</p>
+    <div class="cmds"><code>deploy &lt;target&gt; [--status]</code> · <code>build --target</code> · <code>runtime install|enable|start|status|verify|update|rollback</code></div>
+  </div>
+  <div class="card">
     <h3><a href="runs.html">Runs &amp; Logs</a></h3>
     <p>Every long process is a tracked, detached run with logs, status, a provenance bundle and lifecycle control.</p>
     <div class="cmds"><code>run start|restart|list|status|logs|attach|stop|pause|resume|delete|inspect</code> · <code>start</code> (alias) · <code>logs</code> (alias)</div>
@@ -377,6 +426,21 @@ gate:</p>
     <div class="cmds"><code>physics status|list|run|benchmark</code> · <code>warp status|test|benchmark</code> · <code>groot status|setup|run|train|evaluate</code> · <code>cosmos status|run|dataset</code></div>
   </div>
   <div class="card">
+    <h3><a href="ros.html">Target-aware tools</a></h3>
+    <p>Run the tools you already use against a target's ROS 2 system. Caasi resolves the target context, then executes the real tool — it implements no part of it.</p>
+    <div class="cmds"><code>rviz2 --target &lt;t&gt;</code> · <code>rqt --target &lt;t&gt;</code> · <code>rosbag --target &lt;t&gt;</code> · <code>tools list|run</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="examples.html">Examples &amp; command index</a></h3>
+    <p>Runnable examples for the whole basic CLI — real projects, not snippets — plus an auditable map from every command to the example that demonstrates it.</p>
+    <div class="cmds"><code>examples/</code> · <code>examples/COVERAGE.md</code></div>
+  </div>
+  <div class="card">
+    <h3><a href="limitations.html">Limitations &amp; deferred</a></h3>
+    <p>What caasi does not do: environmental limitations, deliberately deferred capabilities with the reasons, and the current boundaries.</p>
+    <div class="cmds">queues · scheduling · reservations · multi-target · web UI</div>
+  </div>
+  <div class="card">
     <h3><a href="native.html">Native &amp; Shell</a></h3>
     <p>Escape hatches: run raw <code>python.sh</code> / <code>isaaclab.sh</code> / <code>ros2</code> commands or open a shell with the environment wired up.</p>
     <div class="cmds"><code>native run|sim|lab|ros</code> · <code>shell</code></div>
@@ -400,7 +464,7 @@ gate:</p>
 </div>
 
 <footer class="doc-footer">
-  Caasi CLI 0.3.0 — these pages live in <code>docs/</code> and need no build step.
+  Caasi CLI 0.4.0 — these pages live in <code>docs/</code> and need no build step.
   Source: <a href="https://github.com/7a6172/caasi">github.com/7a6172/caasi</a>.
 </footer>
 </main>
