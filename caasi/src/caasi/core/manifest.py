@@ -43,6 +43,11 @@ class Manifest:
     requires: dict[str, Any] = field(default_factory=dict)
     tested: list[Any] = field(default_factory=list)
     project_layout: dict[str, str] = field(default_factory=dict)
+    # Declared persistent runtime (Phase 7 Stage E4). Empty means the project is
+    # not installed as a service; `deploy` alone remains correct for it.
+    runtime: dict[str, Any] = field(default_factory=dict)
+    # Lifecycle intent: "ephemeral" (compute, releasable) or "persistent" (robot).
+    lifecycle: str | None = None
     schema: int = SCHEMA
 
     @property
@@ -63,6 +68,10 @@ class Manifest:
             data["tested"] = list(self.tested)
         if self.project_layout:
             data["project_layout"] = dict(self.project_layout)
+        if self.runtime:
+            data["runtime"] = dict(self.runtime)
+        if self.lifecycle:
+            data["lifecycle"] = self.lifecycle
         return data
 
 
@@ -97,6 +106,8 @@ def read(root: Path) -> Manifest:
     if not isinstance(layout, dict):
         raw_layout = data.get("layout")
         layout = raw_layout if isinstance(raw_layout, dict) else {}
+    runtime = data.get("runtime")
+    lifecycle = data.get("lifecycle")
     schema = data.get("schema")
     return Manifest(
         name=str(data.get("name", "") or ""),
@@ -105,6 +116,8 @@ def read(root: Path) -> Manifest:
         requires=dict(requires) if isinstance(requires, dict) else {},
         tested=list(tested) if isinstance(tested, list) else [],
         project_layout=dict(layout) if isinstance(layout, dict) else {},
+        runtime=dict(runtime) if isinstance(runtime, dict) else {},
+        lifecycle=str(lifecycle) if isinstance(lifecycle, str) else None,
         schema=int(schema) if isinstance(schema, int) else SCHEMA,
     )
 

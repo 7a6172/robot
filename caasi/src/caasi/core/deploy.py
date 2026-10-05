@@ -47,6 +47,14 @@ DEFAULT_EXCLUDE_PATTERNS = [
     ".caasi/deployments",
     ".caasi/builds",
     ".caasi-build.json",
+    # Runtime-lifecycle state (Stage E4). These are written into the deployment
+    # destination by `caasi runtime install`, not shipped by the project, so
+    # `rsync --delete` would otherwise remove caasi's own revision marker and
+    # environment fragment on the next deploy -- silently destroying the rollback
+    # point of a persistent installation. Measured on a real target: the marker
+    # disappeared between deploy and update.
+    ".caasi-runtime.json",
+    ".caasi-env.sh",
     "*~",
     "*.swp",
     "*.swo",

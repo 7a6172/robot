@@ -2,6 +2,81 @@
 
 ## [Unreleased]
 
+## [0.4.0]
+
+Milestone: **target and control-plane capabilities**. Version 0.3.x described an
+environment-oriented tool; 0.4.0 makes targets — remote machines and robots — a handled
+concept end to end. Everything below is implemented and validated, and the release is
+defined by that set rather than by a date.
+
+### Added — remote targets
+
+* **Targets** are declared in configuration and addressed by name, with per-target
+  `transport`, `host`, `port`, `user`, `deployment_root` and `ssh_timeout`.
+* `caasi target list|check|info|add|remove` plus `caasi target runtime` for observing what
+  a target is running.
+* A **per-target SSH timeout** now drives both `ConnectTimeout` and the reachability probe.
+  Previously a hard-coded 3 s probe made a relayed target look unreachable; the error now
+  names the setting to raise.
+
+### Added — remote deployment and execution
+
+* `caasi deploy <target>` materializes a project on a target with provenance recording and
+  post-deploy verification, distinguishing `verified` from `verification_failed`.
+* Target-native builds and remote execution, so a run happens where the software lives.
+* Deployment records carry a **`lifecycle`** (`persistent` by default) separate from
+  `status`: `status` describes the deployment act, `lifecycle` describes intended
+  longevity. An undeclared project is never treated as disposable.
+
+### Added — observability
+
+* `caasi ros … --target <target>` queries a remote ROS 2 graph. `--domain` is required for
+  remote queries so an empty graph cannot be mistaken for a valid observation.
+* `caasi target runtime` generalizes observation beyond ROS 2 to **process**, **systemd**
+  and **container** runtimes, each delegating to its own native interface (`ps`,
+  `systemctl`/`journalctl`, `docker`/`podman`) and reporting absence with a reason rather
+  than as an empty success.
+
+### Added — result collection
+
+* Outputs are **declared** in `caasi.yaml`; a declaration acts as a filter, while an
+  undeclared project inventories every non-bookkeeping file.
+* `caasi collect` inventories, routes and collects results with provenance, hashing small
+  files by default (8 MiB) and large ones only with `--verify`.
+* Collected results are recorded for succeeded, failed **and** stopped runs — a stopped run
+  is never silently discarded.
+* Artifact collection never deletes a persistent deployment; `releasable` can only be set
+  for an `ephemeral` lifecycle, and it is a recording, not a deletion.
+
+### Added — persistent runtime lifecycle
+
+* A project may declare a `runtime:` block (unit, entrypoint, environment, restart policy).
+  caasi renders it into a systemd unit and writes an environment fragment.
+* `caasi runtime install|enable|start|status|verify|update|rollback`.
+* **caasi owns identity, declaration, invocation, verification and provenance; systemd owns
+  running the service.** caasi writes the unit and asks systemd for state — it has no
+  restart loop and no process table of its own, and is not a supervisor.
+* The declared `environment` replaces the ROS 1 reference's `~/.bashrc` appends with
+  something idempotent and verifiable. Assignments are normalized to the `KEY=VALUE` form
+  systemd accepts, and `source` lines are applied by the login shell that runs the
+  entrypoint, because `EnvironmentFile` cannot express them.
+* **Revision identity**: each install records the deployment, git revision and timestamp on
+  the target, retaining the previous revision so rollback has a real target.
+* **Rollback redeploys the previous revision from the workstation** and refuses when it
+  cannot honestly restore that content, rather than rewriting a marker to claim a rollback
+  that did not occur.
+
+### Fixed
+
+* `caasi deploy` used `rsync --delete`, which removed caasi's own runtime state
+  (`.caasi-runtime.json`, `.caasi-env.sh`) from the destination and silently destroyed the
+  rollback point of a persistent installation. Both are now excluded.
+* `update` on a reinstall no longer overwrites the rollback point with the revision being
+  installed, which previously left the marker pointing at itself.
+* `verify` treats a `-dirty` suffix as the same content identity (it describes the
+  workstation tree, not the deployed revision) and reports a changed deployment id as
+  evidence rather than as drift, since a rollback legitimately produces a new one.
+
 ## [0.3.0]
 
 ### Changed — information architecture
