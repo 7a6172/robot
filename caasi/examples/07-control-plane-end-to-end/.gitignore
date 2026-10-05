@@ -1,0 +1,6 @@
+.caasi/
+runs/
+src/build/
+src/install/
+src/log/
+report.out

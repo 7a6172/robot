@@ -1,0 +1,17 @@
+# A workload pairs "what this work needs" with "the steps that carry it out".
+# Every step names an operation caasi already has -- this is not a workflow engine.
+#
+#   caasi workload run analyse --target local
+#
+# `deploy` is included because `run` executes a *deployed* copy of the project, so
+# a run needs a deployment even when the target is this machine. The two steps can
+# also be run individually -- see README.md.
+name: analyse
+requires:
+  python:
+    version: ">=3.10"
+steps:
+  - deploy
+  - run:
+      config: experiments/analyse.yaml
+  - collect

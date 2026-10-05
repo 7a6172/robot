@@ -1,0 +1,11 @@
+schema: 1
+name: cp-demo
+version: 1.0.0
+components:
+  ros2: true
+requires:
+  ros2:
+    version: jazzy
+project_layout:
+  src: src
+  experiments: experiments

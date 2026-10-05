@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<!-- A minimal ROS 2 package, so `caasi build` has something real to build.
+     Deliberately tiny: the point of this example is the *chain*, not the package. -->
+<package format="3">
+  <name>cp_demo_pkg</name>
+  <version>0.1.0</version>
+  <description>Minimal package for the control-plane example</description>
+  <maintainer email="example@example.com">Example</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+</package>

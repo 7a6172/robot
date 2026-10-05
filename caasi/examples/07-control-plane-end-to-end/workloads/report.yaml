@@ -1,0 +1,15 @@
+# The whole chain, in one command:
+#   caasi workload run report --target <your-target>
+#
+# Each step is an operation caasi already has, and each can also be run alone.
+# This is sequencing, not a workflow engine -- no conditionals, loops or retries.
+name: report
+requires:
+  ros2:
+    version: jazzy
+steps:
+  - deploy
+  - build
+  - run:
+      config: experiments/report.yaml
+  - collect

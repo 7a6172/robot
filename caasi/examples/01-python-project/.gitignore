@@ -1,0 +1,6 @@
+# caasi's internal state for a project: fingerprints, locks, deployment and build
+# records. Never committed -- it describes *this machine's* history, not the project.
+.caasi/
+runs/
+data.csv
+mean.out

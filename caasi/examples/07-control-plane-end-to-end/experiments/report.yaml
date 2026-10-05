@@ -1,0 +1,7 @@
+name: report
+backend: python
+script: report.py
+outputs:
+  - path: report.out
+    kind: metrics
+    destination: workstation

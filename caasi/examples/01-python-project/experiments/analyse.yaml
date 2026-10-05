@@ -1,0 +1,10 @@
+# An "experiment" is how caasi runs *your* script as a tracked run.
+#   caasi run start experiments/analyse.yaml
+name: analyse
+backend: python
+script: ../scripts/analyse.py
+cwd: ..
+outputs:
+  - path: mean.out
+    kind: metrics
+    destination: workstation
