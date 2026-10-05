@@ -867,16 +867,43 @@
     - **Next: F3 NOT started** (per instruction). Carried forward, neither blocking F3: the
       **build/run destination mismatch** for `--target local`, and **G4** (`remotes:` retirement).
 
-  - **Current State**: Six threads closed and committed — the three-way equivalence
+  - **Current State**: Eight threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**
     (result/output collection with the ephemeral-vs-persistent distinction);
     **Stage E2** (remote ROS 2 observability via `caasi ros … --target`); **Stage E3**
-    (non-ROS runtime adapters for process, systemd and container, observe-only); and
+    (non-ROS runtime adapters for process, systemd and container, observe-only);
     **Stage E4** (persistent runtime lifecycle: install/enable/start/status/verify/
-    update/rollback, with revision identity and an honest rollback).
+    update/rollback, with revision identity and an honest rollback); **Stage F1**
+    (workload model + advisory, requirement-driven, inspectable `caasi target select`);
+    and **Stage F2** (workload `steps` and lifecycle composition
+    `deploy → build → run → collect`).
     These stages together are the **caasi 0.4.0** milestone (*target and control-plane
     capabilities*).
+
+    **Stage F2 is ACCEPTED as complete** (G3 closed, G5 closed with F1). Evidence:
+    the four-step composition validated end to end on the real CPU-only target
+    `u24-307`, a GPU workload on `local`, a plain Python workload proving the model
+    is not OpenMover-specific, and the real OpenMover workload correctly refused by
+    the compatibility gate. The defect/findings/evidence records are preserved in
+    [`stage-f2-report.md`](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f2-report.md).
+
+    **Architectural gap status**: **G1/G2 remain PENDING F1 acceptance** (not
+    closed), **G3 closed**, **G4 outstanding** (`remotes:` shim retirement),
+    **G5 closed**. See [traceability](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/traceability.md).
+
+    **Stage F3 has NOT started.** Target-aware tool invocation (R2,
+    `caasi rviz2 --target robot-01` as a general pattern) is designed but not
+    implemented, and no F3 code exists.
+
+    **Carried forward, neither blocking F3**:
+    * the **local build/run destination mismatch** (pre-existing, reported not fixed):
+      for `target: local`, `build` records against the project root while `run` looks
+      at the deployment destination, so `caasi build --target local` + `caasi run
+      --target local` already fails today, independent of F2. Needs a decision on the
+      intended contract (project-root vs destination vs explicit distinction);
+    * **G4**, the legacy `remotes:` shim retirement.
+
     Next, no auto-proceed. Natural next validations each need something this
     environment lacks: **actual reboot survival** (a target that may be rebooted),
     **system-scope units** (privileges), and **running the real robot stack as a managed

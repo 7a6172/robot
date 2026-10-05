@@ -1,6 +1,6 @@
 # Phase 7 Stage F2 Report: Workload Steps and Lifecycle Composition
 
-**Status:** Completed & Empirically Verified
+**Status:** Completed & Empirically Verified — **accepted as complete** (G3 closed, G5 closed with F1). G1/G2 remain pending F1 acceptance; G4 outstanding.
 **Date:** October 2026
 **Addresses gaps:** **G3** (lifecycle is independent commands), completes **G5** (workload object)
 **Requirements:** R1, R4, R5, R7 (and R4a/R4b heterogeneous + workstation-initiated)
