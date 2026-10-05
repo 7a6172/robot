@@ -21,7 +21,8 @@ from typing import Any
 
 import yaml
 
-from ..core.config import Config, ResolvedTool
+from . import artifacts as artifacts_mod
+from .config import Config, ResolvedTool
 from ..utils import shell
 
 VALID_BACKENDS = ("sim", "lab", "python")
@@ -43,6 +44,9 @@ class Experiment:
     cwd: str | None = None
     config_path: Path | None = None
     raw: dict[str, Any] = field(default_factory=dict)
+    # Declared run outputs (Phase 7 Stage E1). Empty means "route by policy",
+    # which leaves unclassified data on the target and records where it is.
+    outputs: list["artifacts_mod.OutputDeclaration"] = field(default_factory=list)
 
     @property
     def script_path(self) -> Path:
@@ -87,6 +91,13 @@ def load_experiment(path: Path | str) -> Experiment:
     if not isinstance(env, dict):
         raise ExperimentError("'env' must be a mapping")
 
+    # Declared outputs are optional; an invalid declaration is a config error
+    # surfaced here rather than silently producing an empty collection.
+    try:
+        declarations = artifacts_mod.parse_outputs(data.get("outputs"))
+    except artifacts_mod.ArtifactError as err:
+        raise ExperimentError(f"{path}: {err}") from err
+
     return Experiment(
         name=str(data.get("name") or path.stem),
         backend=backend,
@@ -98,6 +109,7 @@ def load_experiment(path: Path | str) -> Experiment:
         cwd=data.get("cwd"),
         config_path=path,
         raw=data,
+        outputs=declarations,
     )
 
 

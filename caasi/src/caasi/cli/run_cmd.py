@@ -19,6 +19,7 @@ import typer
 from rich.table import Table
 
 from .. import state
+from ..core import artifacts as artifacts_mod
 from ..core import experiment, provenance, runs
 from ..core.config import Config
 from ..i18n import _
@@ -570,6 +571,222 @@ def run_delete(
         output.echo(_("run.deleted", id=record.run_id))
         return
     output.fail(_("run.delete_running", id=record.run_id))
+
+
+def _resolve_run_root(record: runs.RunRecord, cfg: Config):
+    """Return (root, location, inventory_fn) for a run's output tree.
+
+    Kept separate so inventory, planning and collection all agree on where the
+    outputs live, for both local and remote runs.
+    """
+    if record.target != "local" and record.target_transport == "ssh" and record.remote_run_dir:
+        return record.remote_run_dir, "target", None
+    if record.remote_run_dir and record.target_transport == "local":
+        return record.remote_run_dir, "target", None
+    if record.directory:
+        return str(record.directory), "workstation", None
+    return None, "workstation", None
+
+
+def _load_output_declarations(config: Config):
+    """Declared outputs for the experiment this project last ran, if any.
+
+    Deliberately best-effort: a missing or unreadable experiment config must not
+    block collecting the outputs that do exist.
+    """
+    try:
+        from ..core import project as projects
+
+        root = projects.find_project_root()
+        if root is None:
+            return []
+        for exp_path in sorted((root / "experiments").glob("*.yaml")):
+            try:
+                return experiment.load_experiment(exp_path).outputs
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return []
+
+
+def _output_root(record: runs.RunRecord, cfg: Config):
+    """Where this run's *results* live.
+
+    Results are produced relative to the run's working directory (the experiment's
+    directory), not the run directory - the run directory holds caasi's
+    bookkeeping and provenance. Declared outputs are resolved against that same
+    working directory, so `results/*.json` means what the experiment author sees.
+
+    Returns (root, location) or (None, ...) when the working directory is gone.
+    """
+    if not record.cwd:
+        return None, "workstation"
+    root = Path(record.cwd)
+    if record.target != "local" and record.remote_run_dir:
+        return root, "target"
+    return root, "workstation"
+
+
+def _inventory_run(record: runs.RunRecord, cfg: Config, verify: bool = False):
+    """Inventory a run's produced files for either transport."""
+    from ..core import targets as targets_core
+
+    declarations = _load_output_declarations(cfg)
+    policy = artifacts_mod.RoutingPolicy.from_config(cfg)
+
+    root, location = _output_root(record, cfg)
+    if root is None:
+        return []
+
+    if record.target != "local" and record.target_transport == "ssh":
+        target = targets_core.find_target(cfg, record.target)
+        if target is None:
+            return []
+        return artifacts_mod.inventory_remote(
+            target, str(root), record.run_id,
+            declarations=declarations, policy=policy, verify=verify,
+        )
+
+    arts = artifacts_mod.inventory_directory(
+        Path(root), record.run_id, declarations=declarations, policy=policy, verify=verify
+    )
+    for art in arts:
+        art.location = location
+    return arts
+
+
+def _build_artifact_record(record: runs.RunRecord, cfg: Config, artifacts) -> artifacts_mod.ArtifactRecord:
+    return artifacts_mod.ArtifactRecord(
+        run_id=record.run_id,
+        project=record.project,
+        target_name=record.target,
+        target_transport=record.target_transport,
+        run_status=runs.effective_status(record, cfg),
+        deployment_id=record.deployment_id,
+        build_id=record.build_id,
+        git_revision=record.git_revision,
+        remote_run_dir=record.remote_run_dir,
+        artifacts=list(artifacts),
+    )
+
+
+@app.command("artifacts", help=_("run.artifacts_help"))
+def run_artifacts(
+    query: str = typer.Argument(..., help=_("run.arg.query")),
+    collect: bool = typer.Option(
+        False, "--collect", help=_("run.flag.collect")
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help=_("run.flag.artifacts_dry_run")),
+    verify: bool = typer.Option(
+        False, "--verify", help=_("run.flag.verify")
+    ),
+    json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
+) -> None:
+    """List, and optionally collect, a run's produced artifacts.
+
+    Unclassified artifacts are left where they were produced and their location is
+    recorded; only artifacts routed to the workstation are copied. Nothing is ever
+    deleted.
+    """
+    cfg = state.cfg()
+    record = _require_run(query)
+
+    inventory = _inventory_run(record, cfg, verify=verify)
+    art_record = _build_artifact_record(record, cfg, inventory)
+
+    if collect:
+        plan = artifacts_mod.plan_collection(inventory)
+        if output.wants_json(json_output) and dry_run:
+            output.echo_json({**art_record.to_dict(), "plan": plan.to_dict()})
+            return
+        if dry_run:
+            output.echo(f"[bold]{_('run.artifacts_plan')}[/bold] [dim]({record.run_id})[/dim]")
+            output.echo(f"  {_('run.artifacts_to_fetch')}: {len(plan.to_fetch)}")
+            for art in plan.to_fetch:
+                output.echo(f"    {art.path}", markup=False)
+            output.echo(f"  {_('run.artifacts_to_leave')}: {len(plan.to_leave)}")
+            for art in plan.to_leave:
+                output.echo(f"    {art.path}", markup=False)
+            output.echo(f"  [dim]{_('run.artifacts_dry_note')}[/dim]")
+            return
+
+        if plan.to_fetch:
+            if record.directory is None:
+                output.fail(_("run.artifacts_no_dir"))
+                raise typer.Exit(1)
+            from ..core import targets as targets_core
+
+            target = targets_core.find_target(cfg, record.target)
+            host_root = Path(record.directory) / "artifacts"
+            root = record.remote_run_dir or str(record.directory)
+            if target is not None and record.target_transport == "ssh":
+                artifacts_mod.collect_artifacts(
+                    target, root, inventory, host_root, dry_run=False
+                )
+            else:
+                # Local sandbox target: copy from its path into the run dir.
+                import shutil
+
+                written = []
+                for art in plan.to_fetch:
+                    src = Path(art.abs_path)
+                    dst = host_root / art.path
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    try:
+                        shutil.copy2(src, dst)
+                        art.collected_to = str(dst)
+                        written.append(str(dst))
+                    except OSError as err:
+                        art_record.errors.append(f"{art.path}: {err}")
+
+        # E1.5: after an ephemeral deployment's declared results are collected,
+        # record that the target MAY be released. Recording only - caasi never
+        # deletes or releases anything here.
+        releasable_note = None
+        if record.deployment_id and record.target != "local":
+            changed, detail = artifacts_mod.mark_deployment_releasable(art_record, cfg)
+            if changed:
+                releasable_note = detail
+
+        saved = artifacts_mod.save_artifact_record(art_record, Path(record.directory)) if record.directory else None
+        if output.wants_json(json_output):
+            output.echo_json({**art_record.to_dict(), "saved": str(saved) if saved else None})
+            return
+        output.echo(
+            f"[green]{_('run.artifacts_collected', id=record.run_id, count=len(plan.to_fetch))}[/green]"
+        )
+        if saved:
+            output.echo(f"  [dim]{_('run.artifacts_saved', path=str(saved))}[/dim]")
+        if releasable_note:
+            output.echo(f"  [dim]{_('run.artifacts_releasable', note=releasable_note)}[/dim]")
+        return
+
+    # Plain listing (no collection).
+    if output.wants_json(json_output):
+        output.echo_json(art_record.to_dict())
+        return
+    output.echo(f"[bold]{_('run.artifacts_title')}[/bold] [dim]({record.run_id})[/dim]")
+    output.echo(f"  {_('run.artifacts_location')}: {record.target} ({record.target_transport})")
+    if not inventory:
+        output.echo(f"  [dim]{_('run.artifacts_none')}[/dim]")
+        return
+    from ..utils.sysinfo import human_bytes
+
+    table = Table(header_style="bold", **output.table_styles())
+    table.add_column(_("run.col.artifact"))
+    table.add_column(_("run.col.kind"))
+    table.add_column(_("run.col.size"), justify="right")
+    table.add_column(_("run.col.route"))
+    for art in sorted(inventory, key=lambda a: a.path):
+        table.add_row(
+            art.path, art.kind, human_bytes(art.size_bytes),
+            art.route.destination,
+        )
+    output.echo(table)
+    output.echo(
+        f"  [dim]{_('run.artifacts_total', count=len(inventory), size=human_bytes(art_record.total_bytes))}[/dim]"
+    )
 
 
 @app.command("inspect", help=_("run.inspect_help"))

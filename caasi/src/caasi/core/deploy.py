@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from ..utils import shell
+from . import artifacts as artifacts_mod
 from . import manifest as manifests
 from . import project as projects
 from . import provenance
@@ -91,6 +92,16 @@ class DeploymentRecord:
     destination_path: str
     deployed_at: str
     status: str  # "verified", "active", "dry_run", "failed", "verification_failed"
+    # Lifecycle intent (Phase 7 Stage E1). `ephemeral` means the deployment exists
+    # to serve a job whose results are collected afterwards, so the target MAY be
+    # released once they are. `persistent` means the deployment is an operational
+    # installation that must remain. Kept separate from `status` because status
+    # describes the deployment act, while this describes its intended longevity.
+    lifecycle: str = "persistent"
+    # Recorded when an ephemeral deployment's declared outputs have been
+    # collected. This is a *recording* only: caasi never deletes anything, and a
+    # releasable deployment is not automatically removed.
+    releasable: bool = False
     target_environment: dict[str, Any] = field(default_factory=dict)
     file_count: int = 0
     total_bytes: int = 0
@@ -394,6 +405,9 @@ def execute_deployment(
         destination_path=spec.destination_path,
         deployed_at=timestamp,
         status="dry_run" if dry_run else "verified",
+        # Lifecycle intent is recorded with the deployment so a later reader (and
+        # the collection step) knows whether this target is disposable.
+        lifecycle=artifacts_mod.resolve_lifecycle(cfg),
         target_environment=inspection.environment.to_dict() if inspection.environment else {},
         file_count=file_count,
         total_bytes=total_bytes,

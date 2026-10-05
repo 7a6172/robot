@@ -187,3 +187,51 @@ def test_build_command_lab_launcher(tmp_path):
     assert command[2] == str(exp.script_path)
     assert command[3:] == ["--num_envs", "2"]
     assert env["ISAACLAB_PATH"] == str(labdir)
+
+
+# ---------------------------------------------------------------------------
+# Declared outputs (Phase 7 Stage E1)
+# ---------------------------------------------------------------------------
+
+
+def test_experiment_parses_declared_outputs(tmp_path) -> None:
+    """An experiment may declare what it produces, for routing."""
+    from caasi.core import experiment as exp_mod
+
+    path = tmp_path / "e.yaml"
+    path.write_text(
+        "name: demo\nbackend: python\nscript: ./r.py\n"
+        "outputs:\n"
+        "  - results/*.json\n"
+        "  - path: checkpoints/*.pt\n"
+        "    kind: model\n"
+        "    destination: target_local\n",
+        encoding="utf-8",
+    )
+    exp = exp_mod.load_experiment(path)
+    assert [(o.pattern, o.kind, o.destination) for o in exp.outputs] == [
+        ("results/*.json", "metrics", None),
+        ("checkpoints/*.pt", "model", "target_local"),
+    ]
+
+
+def test_experiment_without_outputs_declares_nothing(tmp_path) -> None:
+    from caasi.core import experiment as exp_mod
+
+    path = tmp_path / "e.yaml"
+    path.write_text("name: demo\nbackend: python\nscript: ./r.py\n", encoding="utf-8")
+    assert exp_mod.load_experiment(path).outputs == []
+
+
+def test_experiment_rejects_invalid_output_declaration(tmp_path) -> None:
+    """A malformed declaration is a config error, not a silent empty collection."""
+    from caasi.core import experiment as exp_mod
+
+    path = tmp_path / "e.yaml"
+    path.write_text(
+        "name: demo\nbackend: python\nscript: ./r.py\n"
+        "outputs:\n  - path: x/*\n    destination: nowhere\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(exp_mod.ExperimentError):
+        exp_mod.load_experiment(path)
