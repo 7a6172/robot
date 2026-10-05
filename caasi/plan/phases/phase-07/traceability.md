@@ -10,7 +10,8 @@ views, and between them and the [durable requirements](durable-requirements.md).
 
 **Reading the table.** A gap remains *open* until **all** its stages are complete
 **and** the stage's evidence has been recorded. Implementing a stage does not
-close a gap by itself.
+close a gap by itself — the closure of G3 and G5 below is claimed only because the
+F2 evidence is recorded, and G1/G2 await explicit acceptance of the F1 evidence.
 
 ---
 
@@ -24,13 +25,13 @@ end-goal requirement (R1–R10)  →  architectural gap (G1–G5)
 
 | End-goal req. | Architectural gap | Stage | Status |
 | :--- | :--- | :--- | :--- |
-| **R1** workstation as control plane | G1, G2, G3 | F1, F2 | **F1 complete** |
+| **R1** workstation as control plane | G1, G2, G3 | F1, F2 | **F1+F2 complete** |
 | **R2** target-aware existing tools | *(no gap — new capability)* | F3 | Not started |
 | **R3** domain owners | *(cross-cutting; held throughout)* | all | **Held** |
-| **R4** target-aware execution | G2, G3 | F1, F2 | **F1 complete** |
-| **R5** workload abstraction | **G5** | **F1, F2** | **F1 complete** (minimal model); F2 pending |
+| **R4** target-aware execution | G2, G3 | F1, F2 | **F1+F2 complete** |
+| **R5** workload abstraction | **G5** | **F1, F2** | **F1+F2 complete** |
 | **R6** target selection | **G1, G2** | **F1** | Planned |
-| **R7** lifecycle composition | **G3** | **F2** | Not started |
+| **R7** lifecycle composition | **G3** | **F2** | **F2 complete** |
 | **R8** multi-target control plane | *(deliberately deferred)* | — | Deferred |
 | **R9** result/artifact flow | *(partial; no gap)* | — | Partial |
 | **R10** monitoring web UI | *(deliberately deferred)* | — | Deferred |
@@ -90,9 +91,15 @@ deploy → build → run → collect
 **while preserving the individual commands** — composition is an addition, and an
 operator debugging a failure still needs each step separately (R7).
 
-**Closes when:** composition is demonstrated end to end on a real target and the
-individual commands are shown still to work unchanged. **F1 does not address this
-gap at all.**
+**Addressed and closed by F2** (see [`stage-f2-report.md`](stage-f2-report.md)):
+composition demonstrated end to end on the real CPU-only target `u24-307`
+(`deploy → build → run → collect`, all four steps), with the individual commands
+shown still to work unchanged and composed runs appearing in `caasi run list`
+exactly like manual ones.
+
+**Status: CLOSED** — with the documented limitation that a `build` step on
+`--target local` is blocked by a *pre-existing* build/run destination mismatch
+(recorded in the F2 report, not caused by F2).
 
 ### G4 — Legacy `remotes:` shim → **outstanding cleanup (not F1)**
 
@@ -128,8 +135,14 @@ done**:
 - **F2 extends it with steps/outputs and execution** — the composition vocabulary
   and the declared outputs that drive collection.
 
-**Closes when:** F2 has extended the model and it has been exercised across the
-generalized cases (R5), not only OpenMover.
+**Addressed and closed by F1+F2**: F1 introduced the minimal model (name,
+`requires`); F2 extended it with a closed `steps` vocabulary and `outputs`, and the
+model has been exercised on a general Python workload, a ROS 2 workload and the
+real OpenMover project.
+
+**Status: CLOSED** — the model was deliberately *not* designed around OpenMover:
+the same `Workload` carried a plain-Python workload and a ROS 2 build workload
+unchanged.
 
 ---
 

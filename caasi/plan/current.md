@@ -807,6 +807,66 @@
     - **Full suite: 1099 passed, 1 failed** (pre-existing `test_perception_cmd.py` artifact).
     - **Next: implement F2** → G3, completes G5. Then stop for review.
 
+  - **Phase 7 Stage F2 (Workload Steps + Lifecycle Composition): COMPLETED.**
+    - [F2 Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f2-report.md) |
+      [F2 Design](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f2-design.md) |
+      [Traceability](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/traceability.md)
+    - **Addresses G3 (closed) and completes G5 (closed)**; R1, R4, R5, R7. G1/G2 remain **open**
+      pending explicit acceptance of the F1 evidence; **G4 untouched**.
+    - **`steps` is a closed vocabulary** `("deploy","build","run","collect")` of **existing**
+      operations — not a DAG, not a scripting engine, no conditionals/loops/retries. Two spellings
+      (bare, single-key mapping); **unknown steps rejected at parse time**.
+    - **`caasi workload list|inspect|run`**; `--target` is **required**, no default, no forwarding.
+      `--dry-run` shows the plan + compatibility verdict and touches nothing.
+    - **Composition**: `compose()` runs steps in order through thin wrappers over the *same* core
+      functions the CLI uses. A failing step **stops the chain**, names it, and preserves the ids
+      already produced. `--skip-check` exists for debugging.
+    - **Synchronous composition semantics** (per decision): `start_target_run` stays detached and
+      unchanged, but composition **waits for a terminal state**. Only `succeeded` continues;
+      `failed` and `stopped` stop the chain. **"Launched" is never confused with "succeeded"**.
+    - **Real-machine validation**:
+      * CPU-only workload on **`u24-307`**: `deploy → run → collect` succeeded, artifact collected.
+      * **Full four-step** `deploy → build → run → collect` on **`u24-307`**: all ✔, rc=0, with
+        `build_id`/`deployment_id`/`run_id`/`git_revision` recorded.
+      * GPU workload on **`local`**: succeeded, GPU work delegated to `nvidia-smi` (never
+        reimplemented); reported `1 artifact(s) already on the workstation (local target, nothing
+        to copy)` — honest for a local target.
+      * **Workstation-initiated remote execution proven**: the collected artifact reads
+        `host=u24-307 rclpy ok, ROS_DISTRO=jazzy`.
+      * **Real OpenMover workload**: the gate correctly **refused** it on `u24-307` (project
+        requires `isaac_lab`, absent on the CPU-only target) — re-checked that **nothing was
+        deployed**.
+      * **General workload** (plain Python) carried by the same model → **not OpenMover-specific**.
+      * **Failure path**: chain stopped at `run`, `collect` did NOT run, exit 1, and the script's
+        own **exit code 7 surfaced**.
+    - **Provenance**: composed runs record the **same** records as the manual path — verified by
+      reading a composed run back through `caasi run list` and `caasi run artifacts`. No parallel
+      workflow record exists.
+    - **Defects**:
+      1. **Pre-existing, FIXED** (exposed by F2, confirmed identical at HEAD): `runs.effective_status`
+         returned **`lost`** for a `target: local` run executing in the deployed sandbox
+         (`remote_run_dir` set, `exit_code=0`), so composition **hung**. The discriminator is now the
+         **run directory**, not the target name. 3 regression tests.
+      2. **F2's own, fixed**: a *launched* run was treated as *succeeded* (detached primitive) —
+         fixed by waiting for terminal state.
+      3. **F2's own, fixed**: the build step read a non-existent `status` attribute; `BuildResult`
+         reports success via **`ok`**, so a *successful* build was reported `unknown` and wrongly
+         stopped the chain.
+      4. **F2's own, fixed**: `collect` inventoried the run *directory* (caasi bookkeeping) instead
+         of the run's **working** directory — the same trap E1 hit once already.
+      5. **F2's own, fixed**: workload `outputs` were passed unparsed, so the wrong files were
+         collected (the experiment config, not the result).
+      6. **Pre-existing, REPORTED NOT FIXED** (per decision): for `target: local`, `build` records
+         to the **project root** (`destination_path=str(project_root)` in `build.py`) while `run`
+         looks at the **deployment destination**, so `caasi build --target local` + `caasi run
+         --target local` **already fails today**. Needs a decision on the intended contract
+         (project-root vs destination vs explicit distinction). **No workaround logic added.**
+    - **Tests**: 41 new in `tests/test_compose.py`. Full suite **1140 passed, 1 failed** (the
+      pre-existing `test_perception_cmd.py` terminal-width artifact). One F1 test updated because
+      F2 legitimately replaced its placeholder contract.
+    - **Next: F3 NOT started** (per instruction). Carried forward, neither blocking F3: the
+      **build/run destination mismatch** for `--target local`, and **G4** (`remotes:` retirement).
+
   - **Current State**: Six threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**
