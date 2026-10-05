@@ -6,6 +6,8 @@ in a capability- and resource-driven manner.
 
 from __future__ import annotations
 
+from typing import Optional
+
 import typer
 from rich.table import Table
 
@@ -208,3 +210,97 @@ def target_check(
 
     c.print(f"\n[bold green]✔ Target '{target.name}' is ONLINE ({timing}) and fully COMPATIBLE.[/bold green]")
     c.print(f"  Capabilities: {', '.join(insp.discovered_capabilities) or 'standard'}\n")
+
+
+@app.command("runtime", help=_("target.runtime_help"))
+def target_runtime(
+    target: str = typer.Argument(..., help=_("target.arg.name")),
+    runtime: Optional[str] = typer.Option(
+        None, "--runtime", "-r", help=_("target.flag.runtime")
+    ),
+    match: Optional[str] = typer.Option(
+        None, "--match", "-m", help=_("target.flag.match")
+    ),
+    unit: Optional[str] = typer.Option(
+        None, "--unit", "-u", help=_("target.flag.unit")
+    ),
+    lines: int = typer.Option(50, "--lines", "-n", help=_("target.flag.lines")),
+    system_scope: bool = typer.Option(
+        False, "--system", help=_("target.flag.system_scope")
+    ),
+    json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
+) -> None:
+    """Observe the runtimes a target exposes, using their own native interfaces.
+
+    caasi asks the target's own tooling and presents the answer consistently; it
+    never implements a process manager, container runtime or init system. Omit
+    --runtime to see every detected runtime.
+    """
+    from ..core import runtimes as runtimes_core
+
+    tgt = _require_target(target)
+    cfg = state.cfg()
+
+    if runtime is not None:
+        if runtime not in runtimes_core.ALL_RUNTIMES:
+            output.fail(_("target.runtime_unknown", runtime=runtime,
+                          valid=", ".join(runtimes_core.ALL_RUNTIMES)))
+            raise typer.Exit(1)
+        kwargs: dict = {}
+        if runtime == runtimes_core.RUNTIME_PROCESS:
+            kwargs = {"match": match}
+        elif runtime == runtimes_core.RUNTIME_SYSTEMD:
+            kwargs = {"unit": unit, "user": not system_scope}
+        try:
+            report = runtimes_core.query_runtime(tgt, runtime, **kwargs)
+        except runtimes_core.RuntimeError_ as err:
+            output.fail(str(err))
+            raise typer.Exit(1)
+        reports = [report]
+        availability = None
+    else:
+        availability, reports = runtimes_core.query_all(tgt)
+
+    if output.wants_json(json_output):
+        payload: dict = {
+            "target": tgt.name,
+            "transport": tgt.transport,
+            "reports": [r.to_dict() for r in reports],
+        }
+        if availability is not None:
+            payload["availability"] = {k: v.to_dict() for k, v in availability.items()}
+        output.echo_json(payload)
+        return
+
+    c = output.console()
+    c.print(f"\n[bold cyan]{_('target.runtime_title', target=tgt.name)}[/bold cyan]")
+    c.print(f"  [dim]{_('target.row.transport')}:[/dim] {tgt.transport}\n")
+
+    for report in reports:
+        if not report.available:
+            c.print(f"  [yellow]○[/yellow] [bold]{report.runtime}[/bold] "
+                    f"[dim]- {report.error or 'unavailable'}[/dim]")
+            continue
+        c.print(f"  [green]●[/green] [bold]{report.runtime}[/bold] "
+                f"[dim]({report.tool or 'native'})[/dim]")
+        if report.error:
+            c.print(f"      [red]{report.error}[/red]")
+            continue
+        if report.detail.get("output"):
+            for line in str(report.detail["output"]).splitlines()[:lines]:
+                c.print(f"      {line}", markup=False)
+            continue
+        if not report.items:
+            c.print(f"      [dim]{_('target.runtime_empty')}[/dim]")
+            continue
+        for item in report.items[:lines]:
+            state_txt = f" [dim]{item.state}[/dim]" if item.state else ""
+            extra = ""
+            if report.runtime == runtimes_core.RUNTIME_PROCESS:
+                extra = f" [dim]pid={item.detail.get('pid')} pgid={item.detail.get('pgid')}[/dim]"
+            elif report.runtime == runtimes_core.RUNTIME_CONTAINER:
+                extra = f" [dim]{item.detail.get('image')} ({item.detail.get('status')})[/dim]"
+            c.print(f"      {item.name}{state_txt}{extra}", markup=False)
+        if len(report.items) > lines:
+            c.print(f"      [dim]… {len(report.items) - lines} more[/dim]")
+    c.print("")
