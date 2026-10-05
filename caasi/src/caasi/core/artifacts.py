@@ -26,6 +26,109 @@ Two destinations are supported, and they encode a real distinction:
 ``target_local``
     Data that belongs to the target - large checkpoints, persistent runtime data,
     site-specific maps - which is *recorded* but not moved.
+
+
+THE DESTINATION MODEL (authoritative reference)
+-----------------------------------------------
+
+**Execution and destination are independent.** Where a run executes (its target) and
+where its results end up are separate decisions: a workload on a remote robot can
+send its metrics home while leaving its maps on the robot.
+
+Resolution order, for each artifact
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every artifact gets exactly one :class:`ArtifactRoute`, decided in this order. The
+first rule that applies wins, and the route records **which** rule it was:
+
+===========================================  ==========================  ==========================
+Rule                                          Destination                 ``route.reason``
+===========================================  ==========================  ==========================
+a declaration matches **and** names a dest.   that destination            ``declared``
+a declaration matches, no destination          policy for the declared kind  ``declared-kind-policy``
+no declaration; the inferred kind has a rule   ``by_kind[kind]``           ``kind-policy``
+nothing applies                                ``policy.unclassified``     ``unclassified``
+===========================================  ==========================  ==========================
+
+``route.declared`` is ``True`` when a declaration was involved, so a reader can
+tell a deliberate instruction from a default.
+
+Per-kind defaults
+~~~~~~~~~~~~~~~~~
+
+Deliberately conservative - **nothing is copied by accident**:
+
+======================  ==================
+kind                    default destination
+======================  ==================
+``metrics``             ``workstation``
+``report``              ``workstation``
+``log``                 ``workstation``
+anything unclassified   ``target_local``
+======================  ==================
+
+A run emitting gigabytes therefore cannot silently saturate a slow link: anything
+unrecognised stays where it was produced and its location is **recorded**.
+
+Declarations
+~~~~~~~~~~~~
+
+A project declares outputs per workload or experiment::
+
+    outputs:
+      - {path: "runs/*/map.json", kind: map}                      # kind policy applies
+      - {path: "*.log",  kind: logs, destination: target_local}   # explicit override
+
+``path`` is a glob matched against the artifact's path relative to the run's working
+directory. ``kind`` feeds the per-kind policy when no destination is named.
+``destination`` overrides everything. ``required`` marks an output whose absence is
+worth reporting.
+
+Configuration
+~~~~~~~~~~~~~
+
+The policy is **configurable without code**, per project::
+
+    artifact_routing:
+      metrics: workstation      # by kind
+      default: target_local     # the fallback (also accepts "unclassified" or "*")
+
+Only names in :data:`DESTINATIONS` are accepted; an unknown destination in
+configuration is **ignored** rather than guessed, so a typo cannot silently route
+data somewhere unintended.
+
+Inspection
+~~~~~~~~~~
+
+Every routing decision is recorded with its reason, so an operator can ask *why* a
+file went where it did rather than inferring it. ``ArtifactRecord`` carries the
+routes for a run, and ``plan_collection`` splits artifacts into what will be
+fetched and what is left in place.
+
+What a third destination would require
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**None is implemented, deliberately.** ``target_local`` and ``workstation`` cover
+every case encountered so far: results either return to the developer or belong to
+the target. A third destination (an archive, a shared store, another machine) would
+need **all** of the following, and adding it without them would produce a name that
+cannot actually receive anything:
+
+1. **An entry in** :data:`DESTINATIONS` - the model's single source of truth.
+2. **A transport** that performs the copy. Today only ``workstation`` is *fetched*
+   (``collect_artifacts`` transfers from an SSH target); ``target_local`` is recorded
+   and never moved. A third destination needs its own transfer step.
+3. **A resolution rule** in :meth:`RoutingPolicy.for_artifact`, plus the ``reason``
+   string that explains it.
+4. **Configuration handling** - ``from_config`` already validates against
+   :data:`DESTINATIONS`, so a new name becomes configurable automatically.
+5. **Inspection and tests** - the decision must be visible in ``ArtifactRecord`` and
+   covered by tests, including the failure path when the destination is unreachable.
+
+**What it deliberately does NOT require:** a server, a content-addressed store, an
+object store, or a database. caasi routes copies between locations it already knows;
+it is not a storage system. A future destination should stay a *transfer target*,
+not become infrastructure - which is why none is built speculatively here.
 """
 
 from __future__ import annotations

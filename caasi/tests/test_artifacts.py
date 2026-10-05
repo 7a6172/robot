@@ -391,3 +391,113 @@ def test_declared_kind_drives_routing(tmp_path: Path) -> None:
     arts = A.inventory_directory(tmp_path, "run-1", declarations=decls)
     assert arts[0].kind == "map"
     assert arts[0].route.destination == "target_local"
+
+
+# ---------------------------------------------------------------------------
+# The destination model, as documented (0.4.0 R9)
+#
+# `artifacts.py`'s module docstring is the authoritative reference for the routing
+# model: the resolution order, the per-kind defaults, configuration, and what a
+# third destination would require. These tests keep that documentation honest --
+# prose that drifts from the code is worse than no prose.
+# ---------------------------------------------------------------------------
+
+
+def test_the_two_destinations_are_the_documented_ones() -> None:
+    assert A.DESTINATIONS == ("workstation", "target_local")
+
+
+def test_documented_resolution_order_holds() -> None:
+    """declared -> declared-kind-policy -> kind-policy -> unclassified, in order."""
+    policy = A.RoutingPolicy()
+    decls = A.parse_outputs([
+        {"path": "explicit.json", "kind": "metrics", "destination": "target_local"},
+        {"path": "kinded.json", "kind": "metrics"},
+    ])
+
+    # 1. A declaration naming a destination wins outright.
+    assert policy.for_artifact("log", decls, "explicit.json").reason == "declared"
+    assert policy.for_artifact("log", decls, "explicit.json").destination == "target_local"
+
+    # 2. A declaration without one falls back to its kind's policy.
+    r = policy.for_artifact("log", decls, "kinded.json")
+    assert r.reason == "declared-kind-policy"
+    assert r.destination == "workstation"
+
+    # 3. No declaration: the inferred kind's rule applies.
+    r = policy.for_artifact("metrics", [], "anything.json")
+    assert r.reason == "kind-policy"
+    assert r.destination == "workstation"
+
+    # 4. Nothing applies: the unclassified destination.
+    r = policy.for_artifact("mystery", [], "anything.bin")
+    assert r.reason == "unclassified"
+    assert r.destination == "target_local"
+
+
+def test_declared_flag_distinguishes_instruction_from_default() -> None:
+    """A reader must be able to tell a deliberate declaration from a default."""
+    policy = A.RoutingPolicy()
+    decls = A.parse_outputs([{"path": "a.json", "kind": "metrics"}])
+    assert policy.for_artifact("log", decls, "a.json").declared is True
+    assert policy.for_artifact("metrics", [], "b.json").declared is False
+
+
+def test_documented_per_kind_defaults() -> None:
+    policy = A.RoutingPolicy()
+    for kind in ("metrics", "report", "log"):
+        assert policy.by_kind[kind] == "workstation"
+    assert policy.unclassified == "target_local"
+
+
+def test_documented_configuration_shape() -> None:
+    """`artifact_routing` configures by kind, with a fallback key."""
+    policy = A.RoutingPolicy.from_config(
+        Config({"artifact_routing": {"metrics": "target_local", "default": "workstation"}}, [])
+    )
+    assert policy.by_kind["metrics"] == "target_local"
+    assert policy.unclassified == "workstation"
+
+
+def test_config_accepts_the_documented_fallback_aliases() -> None:
+    for key in ("unclassified", "default", "*"):
+        policy = A.RoutingPolicy.from_config(
+            Config({"artifact_routing": {key: "workstation"}}, [])
+        )
+        assert policy.unclassified == "workstation"
+
+
+def test_unknown_destination_in_config_is_ignored_not_guessed() -> None:
+    """A typo must not silently route data somewhere unintended.
+
+    `metrics` always exists in `by_kind` (it is a built-in default), so the check
+    is that its value was NOT replaced by the unknown name -- not that the key is
+    absent. A new kind is also rejected outright.
+    """
+    policy = A.RoutingPolicy.from_config(
+        Config({"artifact_routing": {"metrics": "archive", "brand-new": "archive"}}, [])
+    )
+    assert policy.by_kind["metrics"] == "workstation"   # unchanged by the typo
+    assert "archive" not in policy.by_kind.values()
+    assert "brand-new" not in policy.by_kind
+
+
+def test_a_third_destination_is_not_implemented() -> None:
+    """R9 documents the extension point; it deliberately builds no third destination.
+
+    If this ever changes, the module's documented prerequisites must be met --
+    a name alone would produce a destination that cannot receive anything.
+    """
+    assert len(A.DESTINATIONS) == 2
+    assert "archive" not in A.DESTINATIONS
+    assert "store" not in A.DESTINATIONS
+
+
+def test_the_extension_point_is_documented() -> None:
+    """The docstring must state what a third destination would require."""
+    doc = A.__doc__ or ""
+    assert "THE DESTINATION MODEL" in doc
+    assert "What a third destination would require" in doc
+    # The explicit non-requirement matters as much as the requirements.
+    assert "content-addressed store" in doc
+    assert "object store" in doc
