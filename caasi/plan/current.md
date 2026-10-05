@@ -1119,10 +1119,33 @@
     - **NOT done**: queue, reservation, resource booking, waiting, retry, automatic forwarding,
       multi-target execution, scheduling, ranking/scoring, fleet, web UI. **G4 untouched.
       DDS-over-Tailscale untouched.** `.trae`/`.reasonix` untouched.
-    - **Stopping for review** — not proceeding into queues, reservations, allocation or
-      scheduling. Justification for any future stage: **observed contention** (queues solve
-      contention; none seen) plus a real second-target use case. Until then `--where` is the
-      whole of the R8 capability caasi needs.
+    - **ACCEPTED.** `--where` is complete and matches the agreed R8 boundary. Concurrency
+      remains **intentionally unresolved** (occupancy is an observation/preference, never a
+      reservation). **R8 is not expanded further.**
+    - **R8 status recorded**: **selection DELIVERED**; queues, reservations, waiting, retries,
+      automatic forwarding, scoring/ranking, scheduling, fleet management and multi-target
+      execution remain **deliberately deferred — not partial work, but assessed and found
+      unjustified**.
+    - **What would justify revisiting them** (recorded so a future stage is evidence-driven):
+      1. **observed contention** — a queue solves contention and none has been observed (one
+         developer, two targets, ad-hoc runs). The inputs for *detecting* it already exist
+         (`--where idle` reads live occupancy), so the trigger is a real observation rather than
+         a design ambition;
+      2. **a real second-target use case** — multi-target execution needs work that genuinely
+         must span machines.
+    - **Observed limitations (open, not worked around)**: the **idle-target race** (by design;
+      closing it needs the reservation machinery that is out of scope); **DDS-over-Tailscale**
+      (environmental network fact, not a caasi defect); **G4** (`remotes:` shim, untouched).
+    - **Traceability updated**: R6 consolidation item marked **resolved**; R8 marked **selection
+      delivered / remainder deferred**; new rules recorded that *deferral is not closure*,
+      *partial delivery does not close the remainder*, and *a limitation recorded is not a
+      limitation solved*.
+    - **Next architectural gap identified (not started)**: **M3 — target occupancy is not
+      exposed as a query.** Occupancy is computed inside `--where` but an operator cannot ask
+      *"what is running where?"* directly — `caasi target list` shows transport/endpoint/tags
+      but not live runs, and `occupancy_by_target` has exactly one caller. This is the
+      **presentation** gap the R8 review flagged (inputs already exist; only exposure is
+      missing), and it is the smallest genuinely-open item. **Not started — stopping here.**
 
   - **Current State**: Nine threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target

@@ -1,6 +1,6 @@
 # Phase 7 Report: `--where` Explicit Target Selection
 
-**Status:** Completed & Empirically Verified
+**Status:** Completed & Empirically Verified — **accepted**, closing R8's *selection* half
 **Date:** October 2026
 **Design:** [`where-selection-design.md`](where-selection-design.md)
 **Origin:** [`r8-architecture-review.md`](r8-architecture-review.md) — the minimum R8 abstraction
@@ -201,12 +201,41 @@ fleet management; no web UI. **G4 untouched. DDS-over-Tailscale untouched.**
 
 ---
 
-## 10. Next step
+## 10. R8 status: selection delivered, the rest deliberately deferred
 
-**Stopping for review.** Not proceeding into queues, reservations, allocation or
-scheduling.
+**Delivered:** the *selection* half of R8 — requirement-driven, inspectable,
+explained choice among currently suitable targets, with occupancy as a preference.
 
-If a future stage is warranted, the review already identified what would justify
-it: **observed contention** (queues solve contention, and none has been seen) and a
-real second-target use case. Until then, `--where` is the whole of the R8 capability
-caasi needs.
+**Not delivered, and deliberately so:** queues, reservations, waiting, retries,
+automatic forwarding, scoring/ranking, scheduling, fleet management, multi-target
+execution. These are **not** partial implementations waiting to be finished; they
+were assessed and found unjustified.
+
+**What would justify revisiting them** — recorded so a future stage is driven by
+evidence rather than by the vision alone:
+
+1. **Observed contention.** A queue solves contention, and none has been observed:
+   one developer, two targets, ad-hoc runs. The inputs for *detecting* contention
+   already exist (`--where idle` reads live occupancy), so the trigger is a real
+   observation, not a design ambition.
+2. **A real second-target use case.** Multi-target execution needs a workload that
+   genuinely must span machines, which the current work does not have.
+
+Until those appear, `--where` is the whole of the R8 capability caasi needs.
+
+---
+
+## 11. Observed limitations (open, not worked around)
+
+| Limitation | Character | Why it stays open |
+| :--- | :--- | :--- |
+| **Idle-target race** | by design | two simultaneous submissions can both select the same idle target; occupancy is an observation and a preference, **never a reservation**. Closing it requires exactly the reservation machinery this stage must not add. |
+| **DDS-over-Tailscale** | environmental | caasi resolves the ROS 2 context correctly; DDS multicast discovery does not traverse the Tailscale link between the reference machines. A network-topology fact, not a caasi defect. |
+| **G4 `remotes:` shim** | cleanup | untouched; independent of R8. |
+
+---
+
+## 12. Next step
+
+**Stopping here for review/checkpoint.** R8 is not expanded further; the next step
+is the next architectural gap, not more of this one.

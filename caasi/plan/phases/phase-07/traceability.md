@@ -30,9 +30,9 @@ end-goal requirement (R1–R10)  →  architectural gap (G1–G5)
 | **R3** domain owners | *(cross-cutting; held throughout)* | all | **Held** |
 | **R4** target-aware execution | G2, G3 | F1, F2 | **F1+F2 complete** |
 | **R5** workload abstraction | **G5** | **F1, F2** | **F1+F2 complete** |
-| **R6** target selection | **G1, G2** | **F1** | **Accepted** — G1 closed; G2 closed on capability, with a recorded consolidation item |
+| **R6** target selection | **G1, G2** | **F1** (+ `--where`) | **Accepted** — G1 and G2 closed; the consolidation item is **resolved** |
 | **R7** lifecycle composition | **G3** | **F2** | **F2 complete** |
-| **R8** multi-target control plane | *(deliberately deferred)* | — | Deferred |
+| **R8** multi-target control plane | *(deliberately deferred)* | `--where` | **Selection DELIVERED**; scheduling/queues/allocation remain **deferred** |
 | **R9** result/artifact flow | *(partial; no gap)* | — | Partial |
 | **R10** monitoring web UI | *(deliberately deferred)* | — | Deferred |
 
@@ -177,12 +177,25 @@ unchanged.
 5. **R1–R10 remain the broader end-goal contract** ([durable-requirements.md](durable-requirements.md));
    this record only supplies the middle links.
 6. **Deferral is not closure.** R8 and R10 are deliberately deferred and remain
-   requirements.
-7. **A closed gap may still carry a recorded item.** G2 is closed on capability
-   but carries an open **consolidation item** (the duplicated requirement ladder
-   and the `check.strict` divergence). Closing a gap does not erase a known
-   follow-up; it records that the follow-up does not block the capability.
-8. **An environmental limitation is not a capability gap.** R2 is implemented and
+   requirements. **R8 is now partly delivered**: the *selection* half (`--where`) is
+   implemented and validated, while queues, scheduling, allocation, reservations and
+   multi-target execution remain deliberately deferred — and are to stay deferred
+   until **observed contention** and a real second-target use case justify them.
+   Partial delivery does not close the remainder.
+7. **A limitation recorded is not a limitation solved.** Two remain open and
+   documented rather than worked around: the **idle-target race** (occupancy is an
+   observation and a preference, never a reservation — solving it requires the very
+   reservation machinery that is out of scope) and **DDS-over-Tailscale** (an
+   environmental network fact, not a caasi defect).
+8. **A closed gap may carry a recorded follow-up.** Closing a gap does not erase a
+   known follow-up; it records that the follow-up does not block the capability.
+   G2 followed exactly this path: closed on capability, with its consolidation item
+   carried as an open issue and later resolved.
+9. **A decided contract is not a workaround.** The F2 local build/run mismatch was
+   fixed by resolving *what `local` means* (a deployed target, like any other) and
+   removing a special case — not by adding a lookup fallback. The standalone
+   workspace build remains for its legitimate purpose.
+10. **An environmental limitation is not a capability gap.** R2 is implemented and
    verified, but cross-machine DDS discovery does not traverse the Tailscale link
    between the two reference machines. That is a network-topology fact, recorded
    as measured and **not** worked around — caasi implements no DDS discovery,
