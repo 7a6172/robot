@@ -277,9 +277,15 @@ def effective_status(record: RunRecord, config: Config | None = None) -> str:
     if exit_code is not None:
         return TERMINAL_OK if exit_code == 0 else TERMINAL_FAIL
 
-    if record.target != "local" and record.target_transport == "ssh":
+    if record.target_transport == "ssh":
         return remote_effective_status(record, config)
-    elif record.target != "local" and record.target_transport == "local" and record.remote_run_dir:
+    if record.remote_run_dir:
+        # Any run executing in a DEPLOYED run directory is a sandbox run, whatever
+        # the target is called. Keying this on `target != "local"` skipped runs
+        # whose target is named `local` but which execute in the deployment (the
+        # normal case for a locally-deployed target), leaving them to fall through
+        # to LOST even when the run had finished successfully. The run directory
+        # is the reliable discriminator; the target's name is not.
         return sandbox_effective_status(record)
 
     if pid_alive(record.pid):

@@ -34,34 +34,103 @@ import yaml
 #: Directory, relative to the project root, holding workload declarations.
 WORKLOAD_DIR = "workloads"
 
+#: The fixed, ordered vocabulary of operations a workload may compose (Stage F2).
+#:
+#: These are *existing* caasi operations, not a new execution engine. The list is
+#: deliberately closed: a step name outside it is rejected at parse time rather
+#: than silently ignored, and there are no conditionals, loops or expressions. A
+#: workload needing real control flow is a program, and the workload invokes it
+#: through ``run`` -- caasi does not grow a workflow language.
+KNOWN_STEPS: tuple[str, ...] = ("deploy", "build", "run", "collect")
+
+#: Steps that take no configuration and are therefore written bare or as ``{}``.
+_CONFIGURABLE_STEPS = ("build", "run")
+
 
 class WorkloadError(ValueError):
     """Raised for an invalid workload declaration."""
 
 
 @dataclass
+class Step:
+    """One composed operation. Names an existing caasi operation; runs nothing itself."""
+
+    name: str
+    options: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"name": self.name, "options": dict(self.options)}
+
+
+@dataclass
 class Workload:
-    """Declared work: what it needs (F1), how it runs (F2)."""
+    """Declared work: what it needs (F1), how it runs (F2), what it yields (F2)."""
 
     name: str
     requires: dict[str, Any] = field(default_factory=dict)
     #: Where the declaration was read from, for provenance and error messages.
     config_path: Path | None = None
-    #: Forward-compatible passthrough. Stage F2 reads these; F1 records but does
-    #: not act on them, so a workload declaring steps now still parses.
-    steps: list[Any] = field(default_factory=list)
+    steps: list["Step"] = field(default_factory=list)
     outputs: list[Any] = field(default_factory=list)
     description: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {"name": self.name, "requires": dict(self.requires)}
         if self.steps:
-            data["steps"] = list(self.steps)
+            data["steps"] = [s.to_dict() for s in self.steps]
         if self.outputs:
             data["outputs"] = list(self.outputs)
         if self.description:
             data["description"] = self.description
         return data
+
+
+def parse_steps(raw: Any) -> list[Step]:
+    """Parse a workload's ``steps`` into the fixed operation vocabulary.
+
+    Two spellings are accepted for each entry, and no others:
+
+    ``- deploy``                 (bare, for steps needing no configuration)
+    ``- build: {packages: [x]}`` (one key naming the step, its options as the value)
+
+    An unknown step name is **rejected**, not ignored: silently skipping a step the
+    author wrote would run a different sequence than the declaration says.
+    """
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise WorkloadError("'steps' must be a list")
+
+    steps: list[Step] = []
+    for index, entry in enumerate(raw):
+        where = f"steps[{index}]"
+
+        if isinstance(entry, str):
+            name, options = entry.strip(), {}
+        elif isinstance(entry, dict):
+            if len(entry) != 1:
+                raise WorkloadError(
+                    f"{where}: a step must have exactly one key "
+                    f"(the operation name), got {len(entry)}"
+                )
+            name, options = next(iter(entry.items()))
+            name = str(name).strip()
+            options = options if isinstance(options, dict) else {}
+            if options == {} and entry[name] is not None and not isinstance(entry[name], dict):
+                raise WorkloadError(
+                    f"{where}: '{name}' options must be a mapping or empty"
+                )
+        else:
+            raise WorkloadError(f"{where}: a step must be a name or a single-key mapping")
+
+        if name not in KNOWN_STEPS:
+            raise WorkloadError(
+                f"{where}: unknown step '{name}' "
+                f"(known steps: {', '.join(KNOWN_STEPS)})"
+            )
+        steps.append(Step(name=name, options=dict(options)))
+
+    return steps
 
 
 def parse_workload(data: Any, name: str | None = None, path: Path | None = None) -> Workload:
@@ -98,9 +167,7 @@ def parse_workload(data: Any, name: str | None = None, path: Path | None = None)
     if not isinstance(requires, dict):
         raise WorkloadError("'requires' must be a mapping of requirement specs")
 
-    steps = data.get("steps") or []
-    if not isinstance(steps, list):
-        raise WorkloadError("'steps' must be a list")
+    steps = parse_steps(data.get("steps"))
 
     outputs = data.get("outputs") or []
     if not isinstance(outputs, list):

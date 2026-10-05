@@ -350,10 +350,15 @@ def test_combined_requirements_without_a_workload_is_the_project_requirements():
     assert merged == {"ros2": {}}
 
 
-def test_steps_and_outputs_parse_but_f1_does_not_act_on_them():
-    """F1 records them so a workload declaring steps now still loads."""
+def test_steps_and_outputs_parse_into_their_models():
+    """F1 only required that these load; F2 gave steps a model and a vocabulary.
+
+    Stage F2 replaced the F1 placeholder (raw passthrough) with `Step` objects
+    validated against a closed vocabulary, so this asserts the F2 contract while
+    keeping the original intent: a workload declaring steps and outputs loads.
+    """
     w = W.parse_workload({"name": "t", "steps": [{"run": {"command": "x"}}], "outputs": [{"path": "*.log"}]})
-    assert w.steps == [{"run": {"command": "x"}}]
+    assert [(s.name, s.options) for s in w.steps] == [("run", {"command": "x"})]
     assert w.outputs == [{"path": "*.log"}]
 
 # ---------------------------------------------------------------------------

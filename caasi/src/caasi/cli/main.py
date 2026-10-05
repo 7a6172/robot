@@ -41,6 +41,7 @@ from . import (
     sim,
     runtime_cmd,
     target_cmd,
+    workload_cmd,
     teleop_cmd,
     test_cmd,
     train_cmd,
@@ -94,6 +95,7 @@ HELP_PANELS: dict[str, tuple[str, ...]] = {
         "runtime",
         "shell",
         "target",
+        "workload",
     ),
 }
 
@@ -241,6 +243,7 @@ app.add_typer(platform_cmd.cosmos_app, name="cosmos", help=_("cosmos.help"))
 app.add_typer(remote_cmd.app, name="remote", help=_("remote.help"))
 app.add_typer(container_cmd.app, name="container", help=_("container.help"))
 app.add_typer(runtime_cmd.app, name="runtime", help=_("runtime.help"))
+app.add_typer(workload_cmd.app, name="workload", help=_("workload.help"))
 app.add_typer(target_cmd.app, name="target", help=_("target.help"))
 app.add_typer(target_cmd.app, name="node", help=_("target.help"))
 
