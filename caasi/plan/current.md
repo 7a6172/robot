@@ -913,6 +913,54 @@
     - **F3 NOT started.** No F3 code exists.
     - No implementation changes of any kind in this pass.
 
+  - **Phase 7 Stage F3 (Target-Aware Tool Invocation): COMPLETED.**
+    - [F3 Report](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f3-report.md) |
+      [F3 Design](file:///home/zar/Documents/phd/robot/caasi/plan/phases/phase-07/stage-f3-design.md)
+    - **Requirement R2.** Principle held: **"caasi supplies context, then gets out of the way."**
+      One **generic** mechanism (`caasi rviz2 --target t`, `caasi rosbag --target t record …`,
+      `caasi tools list|run`). **No part of rviz2/rqt/rosbag and no part of DDS is implemented.**
+    - **A tool is data, not code**: `tools:` config entries (`invoke` + declarative
+      `environment`). Verified by adding **new tools purely in configuration** during
+      validation — invocable with **no code change**. That is the genericity claim tested.
+    - **Target facts are never substituted with local ones**: `rmw=None` on both targets (no
+      back-fill); a target asked that sets no domain reports `UNSET` (**measured absence**),
+      kept distinct from `None` (never asked). `RMW_IMPLEMENTATION` is omitted rather than
+      inheriting the workstation's, which would silently change the target's DDS behaviour.
+    - **The domain guard (the empty-graph trap) works**: explicit `--domain` > target-reported
+      > **REFUSE**. Refusal (exit 3): *"…does not set ROS_DOMAIN_ID … pass --domain explicitly
+      rather than assuming the default (an assumed domain can silently show an empty ROS
+      graph)"*. **Never silently defaulted to 0.**
+    - **Refusals are first-class evidence**: unreachable (exit 3, transport reason); no ROS 2
+      (*"nothing to attach to"*); unknown tool (lists available); missing local binary.
+      **The tool's own exit code propagates unmodified** (7 → 7). Argument pass-through verified:
+      `record --unknown-flag -x /scan /tf` reached the tool verbatim.
+    - **Remote GUI / discovery — the honest result (measured, not assumed)**: a real ROS 2
+      `talker` (no hardware, no motion) was run on `u24-307` on domain 42. The target sees its
+      own node ✅; **local discovery on the workstation works** (saw `/f3_local_talker` on the
+      same domain) ✅; but **`u24-307`'s node is NOT discovered from the workstation** ✗ —
+      *despite caasi resolving the context correctly* (`ROS_DISTRO=jazzy`, `ROS_DOMAIN_ID=42`).
+      Verified NOT a mismatch caasi could fix within scope: `RMW` unset on **both** sides,
+      `ROS_LOCALHOST_ONLY` unset, both routable — but the machines are on **different LANs**
+      (target `192.168.31.34` = **100% packet loss**; reachable only via Tailscale ~440 ms).
+      **Cause: DDS multicast discovery does not traverse the Tailscale link.** Per the agreed
+      boundary this is **recorded, not worked around** — caasi implements no DDS discovery,
+      tunnels or relays. Explicitly **not** claimed as working, and "RViz window opens" was
+      **not** treated as proof.
+    - **Defect found in F3's own code**: `output.fail()` **raises its own `Exit(1)`**, so a
+      `raise typer.Exit(3)` after it was unreachable and every refusal exited **1**. Caught
+      only by **measuring the exit code** — the printed message was already correct. Fixed.
+      (Also re-encountered the `pgrep -f` self-match trap from E3 on the target.)
+    - **The F1 consolidation item was NOT fixed and did not block F3** (F3 never evaluates
+      project requirements). Still open: `check.strict` divergence between `caasi check` and
+      `target select`.
+    - **Tests**: 35 new in `tests/test_toolctx.py`. Full suite **1175 passed, 1 failed**
+      (pre-existing `test_perception_cmd.py` artifact).
+    - **Hygiene**: config byte-identical to original (probe targets/tools removed); probe ROS 2
+      node stopped and removed on `u24-307`; local probes removed. Reference trees unchanged.
+    - **F3 NOT extended**: no auto-selection/forwarding/scheduling/queues/multi-target, no new
+      ROS/DDS functionality, no RViz replacement, no remote GUI management, no web UI, no
+      daemonisation, **no G4 cleanup**. **Stopping for F3 review.**
+
   - **Current State**: Eight threads closed and committed — the three-way equivalence
     chain (**`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`**); **Stage D** (real remote target
     validation against `u24-307`, three defects found and fixed); **Stage E1**

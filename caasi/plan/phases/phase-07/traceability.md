@@ -26,7 +26,7 @@ end-goal requirement (R1–R10)  →  architectural gap (G1–G5)
 | End-goal req. | Architectural gap | Stage | Status |
 | :--- | :--- | :--- | :--- |
 | **R1** workstation as control plane | G1, G2, G3 | F1, F2 | **F1+F2 complete** (G1/G2 accepted) |
-| **R2** target-aware existing tools | *(no gap — new capability)* | F3 | **Designed, not implemented** — [`stage-f3-design.md`](stage-f3-design.md) |
+| **R2** target-aware existing tools | *(no gap — new capability)* | F3 | **Implemented** — [`stage-f3-report.md`](stage-f3-report.md), with one recorded environmental limitation (DDS over Tailscale) |
 | **R3** domain owners | *(cross-cutting; held throughout)* | all | **Held** |
 | **R4** target-aware execution | G2, G3 | F1, F2 | **F1+F2 complete** |
 | **R5** workload abstraction | **G5** | **F1, F2** | **F1+F2 complete** |
@@ -182,3 +182,9 @@ unchanged.
    but carries an open **consolidation item** (the duplicated requirement ladder
    and the `check.strict` divergence). Closing a gap does not erase a known
    follow-up; it records that the follow-up does not block the capability.
+8. **An environmental limitation is not a capability gap.** R2 is implemented and
+   verified, but cross-machine DDS discovery does not traverse the Tailscale link
+   between the two reference machines. That is a network-topology fact, recorded
+   as measured and **not** worked around — caasi implements no DDS discovery,
+   tunnels or multicast relays. It would be a scope violation to "fix" it inside
+   caasi, and a false claim to report it as working.
