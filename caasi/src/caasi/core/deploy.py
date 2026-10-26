@@ -22,6 +22,7 @@ from typing import Any
 
 from ..utils import shell
 from . import artifacts as artifacts_mod
+from . import layout as caasi_layout
 from . import manifest as manifests
 from . import project as projects
 from . import provenance
@@ -139,8 +140,13 @@ def resolve_deployment_destination(target: Target, project_name: str) -> str:
             return str(Path("~/.caasi/deployments/local").expanduser() / project_name)
         return str(Path(root).expanduser() / project_name)
 
-    # Remote SSH transport
-    root = target.deployment_root or f"~/deployments/{project_name}"
+    # Remote SSH transport. The default root comes from the caasi layout, which owns
+    # the decision of where material lives on a managed machine; it used to be an
+    # ad-hoc "~/deployments/<project>" invented here, which scattered a new top-level
+    # home entry per project.
+    root = target.deployment_root or caasi_layout.default_deployment_root(
+        target.name, target.tags
+    )
     if not root.endswith(project_name):
         return f"{root.rstrip('/')}/{project_name}"
     return root

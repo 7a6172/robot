@@ -9,6 +9,30 @@ environment-oriented tool; 0.4.0 makes targets — remote machines and robots �
 concept end to end. Everything below is implemented and validated, and the release is
 defined by that set rather than by a date.
 
+### Added — one directory layout per target
+
+* caasi now owns where material lives on a machine it manages, so a new target needs no
+  convention debate and every command looks in the same place:
+
+  ```
+  ~/caasi/
+  ├── robots/       physical robots and their deployed environments
+  ├── projects/     robotics projects, regardless of where they run
+  ├── fleet/        shared robot inventory, profiles and configuration
+  ├── workspaces/   source checkouts and development workspaces
+  ├── data/         retained or collected data (datasets, recordings, results)
+  ├── artifacts/    reusable build outputs and packaged releases
+  └── cache/        re-creatable temporary data, safe to clear
+  ```
+
+  The tree lives in `caasi.core.layout`; further roots (simulations, maps) can be added
+  there without touching callers. The default deployment destination is now
+  `~/caasi/robots/<target>` for a target tagged `robot`, and
+  `~/caasi/workspaces/<target>` otherwise, with the project name appended. The
+  distinction comes from the target's own tags, so any robot name works and nothing is
+  hardcoded to one machine. An explicit `deployment_root` still overrides it, so existing
+  deployments are unaffected.
+
 ### Fixed — remote deployment reliability
 
 * **Fresh-robot deployment works.** Three defects made the first deploy to a new target
