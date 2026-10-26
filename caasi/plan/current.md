@@ -2176,3 +2176,44 @@ authorise movement: M7 still needs explicit approval, a raised robot and a super
 2. Boot the robot into Ubuntu 24 / Jazzy so `joint_state_publisher`, `ros_gz_*` and
    `realsense2_camera` can be installed there.
 3. Run the stationary bringup on the robot with `hardware:=swjtumover` and actuation denied.
+
+---
+
+## ROS1 hardware baseline COMPLETE (2026-10-26, measured on the robot)
+
+- [Baseline report](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/ros1-hardware-baseline.md)
+- Commit `0f1c573`. ROS1 source and installation untouched; nothing installed; no reboot.
+
+### Headline finding
+**`motor_node` loads no configuration under `rosrun`** — `rosparam get /motor_node` returns
+"not set", so it runs on code defaults: `chassis_radius` 0.225 instead of **0.103** (+118 %).
+All measurements were taken with `motor.yaml` loaded, matching the real launch path.
+
+### Measured (L4)
+| Subsystem | Key figures |
+|---|---|
+| Motor | steady rpm 27.7/28.7 vs 28.4 predicted; **latency 158–179 ms**; **at rest 87–88 ms** after explicit zero; odom +0.2786 m |
+| Motor signs | +`linear.x` → **+rpm** but **−`position_deg`** and **+odom x**; reverse mirrors within 3 % |
+| Single wheel | isolated exactly via `x=0.025, z=−0.025/chassis_radius` (other wheel 0.01°) |
+| LiDAR | **14.029 Hz**, 1440 samples, `lidar_link`, ±π @ 0.004363323, 0.25–25.0 m, 1325 finite/115 NaN, **wall-clock stamps** @71.53 ms |
+| RealSense | rgb8 + 16UC1 aligned 640×480 @ **~16.6 Hz** (30 requested), `d415_color_optical_frame`, fx 608.405, depth 1253–2991 mm |
+| TF | `odom`→`base_link` identity, d415 subtree present; **ROS1 defect**: intermittent (0,0,0,0) quaternion rejected by tf2 |
+
+### Key negative result corrected
+The 0.5 s pulses suggested a rotation shortfall. The 2 s steady-state run explained it: it is
+**startup latency (~0.17 s), not calibration**. rpm agrees with `60/(2πr)` within 2 %.
+
+### Not measured (deliberate)
+IO board — its frame carries lift/LED/BMS fields whose physical effect is unestablished, so it was
+not exercised. Screen/QR already verified in phase 8 and reproduced in ROS 2.
+
+### Open baseline gaps
+IO board capture (inbound only) · TF quaternion defect reproduction · whether ~16.6 fps is a
+host/USB limit · LiDAR `ERRCODE_MSOPTIMEOUT` under load.
+
+### Next (ROS2)
+1. IO-board default-port hazard fix.
+2. Vanjee ROS 2 feasibility (thin node over `vanjee_driver`).
+3. RealSense ROS 2 integration — needs `realsense2_camera`, not installable on this workstation.
+4. Ubuntu 24 / Jazzy environment prep — **needs the user to boot Ubuntu 24**.
+5. Stationary ROS 2 bringup with actuation disabled.
