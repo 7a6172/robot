@@ -1,0 +1,48 @@
+# PROPOSED network configuration for the robot under Ubuntu 24 / Jazzy
+#
+# NOT APPLIED. This file is a proposal for approval. Nothing has been written to the
+# robot; /etc/netplan there still contains only 50-cloud-init.yaml with no device stanza.
+#
+# Context: the robot's *internal* hardware is on Ethernet (LiDAR 192.168.110.0/24,
+# motor + IO board 192.168.100.0/24). External connectivity is Wi-Fi only. Under
+# Ubuntu 20 these same two NICs were up as 192.168.110.10/24 and 192.168.100.10/24 and
+# both devices answered ping; under Ubuntu 24 they are down and unaddressed, which is
+# why the devices are unreachable.
+#
+# Deliberate omissions, to be reviewed:
+#   * NO gateway on either interface. The Ubuntu 20 configuration carried default
+#     routes via 192.168.110.1 and 192.168.100.1 (metric 20100/20101). Those are not
+#     reproduced here: a default route on a device subnet can hijack general traffic
+#     away from Wi-Fi. Internet access must stay on wlp2s0.
+#   * NO DNS servers on either interface, for the same reason.
+#   * dhcp4 false on both: these are fixed device links.
+#   * optional true so a missing link never blocks boot.
+
+network:
+  version: 2
+  ethernets:
+    # LiDAR (Vanjee 718H at 192.168.110.100; the driver binds host_address 192.168.110.10)
+    enp1s0:
+      dhcp4: false
+      dhcp6: false
+      addresses: [192.168.110.10/24]
+      optional: true
+
+    # Motor controller (192.168.100.100:23) and chassis IO board (192.168.100.100:26)
+    enp3s0:
+      dhcp4: false
+      dhcp6: false
+      addresses: [192.168.100.10/24]
+      optional: true
+
+# Apply (only after approval):
+#   sudo install -m 600 /dev/stdin /etc/netplan/60-robot-devices.yaml <<'EOF'
+#   ...contents above...
+#   EOF
+#   sudo netplan try      # auto-reverts in 120 s unless confirmed
+#   # then verify, not assume:
+#   ip -4 -br addr show enp1s0 enp3s0
+#   ping -c1 -W2 192.168.110.100      # LiDAR
+#   ping -c1 -W2 192.168.100.100      # motor + IO board
+#   # Wi-Fi must still route to the outside world:
+#   ip route get 1.1.1.1
