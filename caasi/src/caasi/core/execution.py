@@ -114,7 +114,10 @@ def build_snippet(request: ExecRequest) -> str:
     parts: list[str] = []
 
     def _source(label: str, path: str) -> None:
-        quoted = shlex.quote(path)
+        # Expand a leading '~' on the target, not locally: quoting the path whole made
+        # '~/caasi/...' a literal directory, so a correct-looking overlay silently could
+        # not be sourced (found by passing one on the real robot).
+        quoted = targets_core.remote_path_expr(path)
         # Missing or failing setup must abort rather than be skipped: silently ignoring
         # it made a broken overlay look like a working environment.
         parts.append(
@@ -145,7 +148,7 @@ def build_snippet(request: ExecRequest) -> str:
         )
 
     if request.cwd:
-        quoted = shlex.quote(request.cwd)
+        quoted = targets_core.remote_path_expr(request.cwd)
         parts.append(
             f'cd {quoted} || {{ echo "{MARK_CWD_FAILED}: {request.cwd}" >&2; '
             f"exit {EXIT_SETUP_FAILED}; }}"

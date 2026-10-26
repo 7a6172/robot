@@ -602,7 +602,12 @@ def get_deployment_status(
 
     # Remote SSH transport
     ssh_prefix = target_ssh_prefix(target)
-    cmd = ssh_prefix + [f"cat '{dest.rstrip('/')}/.caasi-deployment.json' 2>/dev/null"]
+    # The destination may still carry a '~'; quoting it whole would read a literal '~'
+    # directory instead of the home directory. Same helper as the writer, so the read and
+    # write paths cannot disagree about what the path means.
+    cmd = ssh_prefix + [
+        f"cat {remote_path_expr(dest.rstrip('/') + '/.caasi-deployment.json')} 2>/dev/null"
+    ]
     res = subprocess.run(cmd, capture_output=True, text=True,
                          timeout=max(10.0, float(target.ssh_timeout) * 2))
     if res.returncode != 0 or not res.stdout.strip():

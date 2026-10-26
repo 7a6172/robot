@@ -205,9 +205,12 @@ def remote_effective_status(record: RunRecord, config: Config | None = None) -> 
     run_dir = record.remote_run_dir.rstrip("/")
     pid = record.pid
 
+    # Paths must expand '~' on the target, same helper as the writer: quoting them whole
+    # made every status check look in a literal '~' directory and report "lost".
+    exit_f = targets_core.remote_path_expr(run_dir + "/exit_code")
     check_cmd = (
-        f"if [ -f '{run_dir}/exit_code' ]; then "
-        f"  echo 'EXIT:'$(cat '{run_dir}/exit_code'); "
+        f"if [ -f {exit_f} ]; then "
+        f"  echo 'EXIT:'$(cat {exit_f}); "
         f"elif [ -n '{pid}' ] && kill -0 '{pid}' 2>/dev/null; then "
         f"  echo 'RUNNING'; "
         f"else "
@@ -238,6 +241,11 @@ def remote_effective_status(record: RunRecord, config: Config | None = None) -> 
                     (record.directory / "exit_code").write_text(str(code), encoding="utf-8")
                 except OSError:
                     pass
+            # An explicit stop wins: since the wrapper records its exit status via an
+            # EXIT trap, a stopped run also has an exit code, and reporting it as
+            # succeeded/failed would lose the fact that we stopped it.
+            if record.stopped:
+                return STOPPED
             return TERMINAL_OK if code == 0 else TERMINAL_FAIL
         except ValueError:
             return TERMINAL_FAIL
@@ -265,6 +273,9 @@ def sandbox_effective_status(record: RunRecord) -> str:
                     (record.directory / "exit_code").write_text(str(code), encoding="utf-8")
                 except OSError:
                     pass
+            # An explicit stop wins over the exit status recorded by the wrapper.
+            if record.stopped:
+                return STOPPED
             return TERMINAL_OK if code == 0 else TERMINAL_FAIL
         except ValueError:
             return TERMINAL_FAIL
@@ -899,6 +910,7 @@ def start_target_run(
 
     wrapper_content = f"""#!/usr/bin/env bash
 RUN_DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
+trap 'echo $? > "$RUN_DIR/exit_code"' EXIT
 cd "{target_work_dir}" || exit 1
 [ -f "{ros_setup}" ] && . "{ros_setup}"
 [ -f "{overlay_setup}" ] && . "{overlay_setup}"
@@ -906,9 +918,6 @@ export CAASI_PROJECT_ROOT="{dest}"
 export CAASI_EXPERIMENT="{target_config_path}"
 {env_exports_str}
 "$@"
-ec=$?
-echo "$ec" > "$RUN_DIR/exit_code"
-exit "$ec"
 """
 
     # 8. Launch on target
@@ -1110,32 +1119,37 @@ def start_target_command(
     )
     # Sourcing failures are fatal here too: a managed process that silently ran without
     # its environment is worse than one that refuses to start.
+    # Target-side '~' expansion, same helper as everywhere else: quoting these whole made
+    # '~/caasi/...' a literal path, so a correct overlay could not be sourced.
     source_ros = (
-        f'. {shlex.quote(ros_setup)} || exit 126' if ros_setup else ""
+        f'. {targets_core.remote_path_expr(ros_setup)} || exit 126' if ros_setup else ""
     )
     source_overlay = (
-        f'. {shlex.quote(overlay_setup)} || exit 126' if overlay_setup else ""
+        f'. {targets_core.remote_path_expr(overlay_setup)} || exit 126'
+        if overlay_setup else ""
     )
-    cd_line = f'cd {shlex.quote(work_dir)} || exit 126' if work_dir else ""
+    cd_line = (f'cd {targets_core.remote_path_expr(work_dir)} || exit 126'
+               if work_dir else "")
 
+    # The EXIT trap records the status even when the process aborts early (a failed
+    # setup exits before "$@" runs). Without it such a run left no exit_code and was
+    # reported as "lost" rather than failed.
     wrapper = f"""#!/usr/bin/env bash
 RUN_DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
+trap 'echo $? > "$RUN_DIR/exit_code"' EXIT
 {cd_line}
 {source_ros}
 {source_overlay}
 {exports}
 "$@"
-ec=$?
-echo "$ec" > "$RUN_DIR/exit_code"
-exit "$ec"
 """
 
     ssh_prefix = targets_core.target_ssh_prefix(target)
-    upload = (
-        f"mkdir -p {shlex.quote(target_run_dir)} && "
-        f"cat > {shlex.quote(target_run_dir + '/run.sh')} && "
-        f"chmod 755 {shlex.quote(target_run_dir + '/run.sh')}"
-    )
+    # remote_path_expr expands a leading '~' on the target; quoting the path whole would
+    # create a literal '~' directory and every later status check would report "lost".
+    rd = targets_core.remote_path_expr(target_run_dir)
+    run_sh = targets_core.remote_path_expr(target_run_dir + "/run.sh")
+    upload = f"mkdir -p {rd} && cat > {run_sh} && chmod 755 {run_sh}"
     res = subprocess.run(
         ssh_prefix + [upload], input=wrapper, text=True, capture_output=True,
         timeout=budget,
@@ -1144,14 +1158,17 @@ exit "$ec"
         raise RuntimeError(f"Failed to prepare run wrapper on target: {res.stderr.strip()}")
 
     quoted = shlex.join([str(a) for a in argv])
+    out_log = targets_core.remote_path_expr(target_run_dir + "/stdout.log")
+    err_log = targets_core.remote_path_expr(target_run_dir + "/stderr.log")
+    pid_f = targets_core.remote_path_expr(target_run_dir + "/pid")
+    pgid_f = targets_core.remote_path_expr(target_run_dir + "/pgid")
     launch = (
-        f"nohup setsid {shlex.quote(target_run_dir + '/run.sh')} {quoted} "
-        f"> {shlex.quote(target_run_dir + '/stdout.log')} "
-        f"2> {shlex.quote(target_run_dir + '/stderr.log')} </dev/null &\n"
+        f"nohup setsid {run_sh} {quoted} "
+        f"> {out_log} 2> {err_log} </dev/null &\n"
         f"PID=$!\n"
-        f"echo $PID > {shlex.quote(target_run_dir + '/pid')}\n"
-        f"ps -o pgid= -p $PID 2>/dev/null | tr -d ' ' > {shlex.quote(target_run_dir + '/pgid')}\n"
-        f'echo "PID:$PID:$(cat {shlex.quote(target_run_dir + "/pgid")})"\n'
+        f"echo $PID > {pid_f}\n"
+        f"ps -o pgid= -p $PID 2>/dev/null | tr -d ' ' > {pgid_f}\n"
+        f'echo "PID:$PID:$(cat {pgid_f})"\n'
     )
     res = subprocess.run(ssh_prefix + [launch], capture_output=True, text=True,
                          timeout=budget)

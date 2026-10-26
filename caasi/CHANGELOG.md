@@ -9,6 +9,29 @@ environment-oriented tool; 0.4.0 makes targets — remote machines and robots �
 concept end to end. Everything below is implemented and validated, and the release is
 defined by that set rather than by a date.
 
+### Fixed — target paths: a leading `~` is expanded on the target, everywhere
+
+One mistake — quoting a path containing `~` as a whole — appeared at four call sites and
+failed differently at each. Found while driving a real robot, not in tests:
+
+* deployment materialisation created a literal `~/caasi/...` tree on the target
+* `caasi build` could not find a deployment that `caasi deploy` had just reported VERIFIED
+* a managed run started correctly but `caasi run status` reported `lost`
+* `caasi exec --overlay '~/...'` could not source a perfectly valid overlay
+
+All sites now go through the single `targets.remote_path_expr` helper, so the write path,
+the read path and every probe agree on what the path means.
+
+### Fixed — managed runs recorded no exit status when setup failed
+
+The wrapper wrote `exit_code` after `"$@"`, so any early failure (a setup script that could
+not be sourced, an unset working directory) exited before the write. Such runs left no
+status and were reported `lost` rather than `failed`, hiding the real cause. The wrapper now
+records its status through an `EXIT` trap, which fires on every exit path.
+
+An explicit stop still wins over that recorded status: `caasi run stop` on a run whose
+wrapper then reports an exit code is reported `stopped`, not `succeeded`.
+
 ### Added — `caasi target deps`: operation-aware dependency inspection
 
 * **`caasi target deps <target> [--for build|bringup|sim|project] [--json]`** reports whether a
