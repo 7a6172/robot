@@ -49,6 +49,14 @@ TOPIC_CMD_VEL_AUTO = "/openmover/control/cmd_vel"
 #: Service that switches manual/auto. Verified against the node's source.
 SRV_MODE = "/openmover/control/cmd_vel_mode/request"
 SRV_TYPE = "openmover_msgs/srv/CmdVelModeRequest"
+#: The ROS environment as it was when this module was imported. caasi's conftest
+#: installs an autouse fixture that deletes ROS_*/AMENT_PREFIX_PATH from os.environ so
+#: the CLI unit tests stay hermetic; a real-ROS integration test therefore cannot read
+#: those variables at call time. Snapshotting at import (collection happens before any
+#: fixture runs) keeps the launch environment intact for subprocesses while leaving the
+#: hermetic behaviour of the rest of the suite untouched.
+_BASE_ENV = dict(os.environ)
+
 
 pytestmark = pytest.mark.skipif(
     not MOTOR_BIN.exists() or shutil.which("ros2") is None or not os.environ.get("ROS_DISTRO"),
@@ -93,16 +101,18 @@ def _ros_env(domain: int | None = None) -> dict[str, str]:
     preserved because ROS 2 itself depends on the entries `setup.bash` provides --
     removing them wholesale breaks the CLI just as badly.
     """
-    env = os.environ.copy()
+    env = dict(_BASE_ENV)
+    # Strip only the caasi *source* tree (it breaks the ros2 CLI's entry-point
+    # discovery). Paths under caasi-workspace/ are the ROS overlay and must stay,
+    # otherwise `ros2 run <project package>` cannot resolve.
     parts = [p for p in env.get("PYTHONPATH", "").split(os.pathsep)
-             if p and "caasi" not in p.lower()]
+             if p and not p.rstrip("/").endswith("/caasi/src")]
     if parts:
         env["PYTHONPATH"] = os.pathsep.join(parts)
     else:
         env.pop("PYTHONPATH", None)
     if domain is not None:
         env["ROS_DOMAIN_ID"] = str(domain)
-        env["ROS_LOCALHOST_ONLY"] = "1"
     return env
 
 
@@ -115,6 +125,7 @@ class Sink:
         self.sock.settimeout(0.2)
         self.port: int = self.sock.getsockname()[1]
         self.frames: list[bytes] = []
+        self._stamped: list[tuple[float, bytes]] = []
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
 
@@ -134,10 +145,18 @@ class Sink:
             except (TimeoutError, OSError):
                 continue
             if len(data) >= 4:
-                self.frames.append(data)
+                self._record(data)
 
     def speeds(self) -> list[int]:
         return [struct.unpack(">h", f[2:4])[0] for f in self.frames]
+
+    def stamped(self) -> list[tuple[float, bytes]]:
+        """(arrival time, frame) pairs, for timeout assertions."""
+        return list(self._stamped)
+
+    def _record(self, frame: bytes) -> None:
+        self.frames.append(frame)
+        self._stamped.append((time.time(), frame))
 
     def nonzero(self) -> list[int]:
         return [s for s in self.speeds() if s != 0]
@@ -520,3 +539,52 @@ def test_h7_geometry_validation_intact():
     rc, out = run_capture(node.argv, timeout=10)
     assert rc is not None and rc != 0
     assert "chassis_radius" in out
+
+
+# ================================================================ Batch D: watchdog
+# The watchdog is deliberately separate from actuation permission: permission answers
+# "may this process drive at all?", the watchdog answers "should the last command still
+# apply?". Both trees previously kept the last instructed speed forever.
+
+def _run_with_stop(sink: "Sink", node: "Node", *, publish_s: float = 4.0,
+                   after_s: float = 3.0) -> tuple[int, int]:
+    """Command for a while, stop, then count nonzero frames before/after expiry."""
+    publish_cmd_vel(node.domain, seconds=publish_s)
+    while_nz = len(sink.nonzero())
+    t_stop = time.time()
+    time.sleep(after_s)
+    after_nz = sum(
+        1 for (stamp, frame) in sink.stamped()
+        if stamp > t_stop + 1.0 and struct.unpack(">h", frame[2:4])[0] != 0
+    )
+    return while_nz, after_nz
+
+
+def test_w1_command_expires_after_timeout():
+    """A source that stops must not leave the last speed in effect (the D7 defect)."""
+    with Sink() as sink, Node(sink, actuation=True, env_actuation="1",
+                             params={"motor.cmd_vel_timeout": "0.5"}) as node:
+        assert node.alive()
+        while_nz, after_nz = _run_with_stop(sink, node)
+    assert while_nz > 0, "watchdog test is vacuous unless the command actually drives"
+    assert after_nz == 0, f"{after_nz} nonzero frames survived the timeout"
+
+
+def test_w2_watchdog_does_not_grant_permission():
+    """Expiry must not become an authorisation path: denied stays denied."""
+    with Sink() as sink, Node(sink, actuation=True, env_actuation=None,
+                             params={"motor.cmd_vel_timeout": "0.5"}) as node:
+        assert node.alive()
+        publish_cmd_vel(node.domain, seconds=4.0)
+        time.sleep(0.5)
+        assert sink.nonzero() == [], "watchdog activity must not enable actuation"
+
+
+def test_w3_timeout_zero_disables_expiry_by_explicit_choice():
+    """Opting out must be explicit, and must still require both permission factors."""
+    with Sink() as sink, Node(sink, actuation=True, env_actuation="1",
+                             params={"motor.cmd_vel_timeout": "0"}) as node:
+        assert node.alive()
+        while_nz, after_nz = _run_with_stop(sink, node)
+    assert while_nz > 0
+    assert after_nz > 0, "with expiry disabled the last command should persist (documented opt-out)"

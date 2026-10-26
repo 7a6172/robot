@@ -159,6 +159,15 @@ inline bool actuation_permitted()
     return actuation_enabled && actuation_env_ok;
 }
 
+// Command watchdog (Batch D). Deliberately separate from actuation permission:
+//   - permission answers "may this process drive motors at all?"
+//   - the watchdog answers "should the last command still be in effect?"
+// Both trees previously kept the last commanded speed forever, so a command source
+// that stopped mid-command left the robot driving. This expires the command instead.
+double cmd_vel_timeout = 0.5;            // seconds; <= 0 disables expiry
+rclcpp::Time last_cmd_vel_stamp(0, 0, RCL_ROS_TIME);
+bool cmd_vel_ever_received = false;
+
 
 // 定义电机就绪标志
 bool motor_ready = false;
@@ -225,6 +234,11 @@ void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
     // M1: a command counts as "fresh" only if permission (both factors) is already
     // granted, so a value received while disabled can never authorise itself later.
+    // Watchdog bookkeeping happens for every arrival, permitted or not, so the
+    // staleness clock reflects reality rather than only the authorised case.
+    last_cmd_vel_stamp = node->now();
+    cmd_vel_ever_received = true;
+
     if (actuation_permitted())
     {
         fresh_command_after_enable = true;
@@ -264,6 +278,11 @@ void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
 void cmd_vel_manual_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
     // M1: same fresh-command rule as cmd_vel_callback.
+    // Watchdog bookkeeping happens for every arrival, permitted or not, so the
+    // staleness clock reflects reality rather than only the authorised case.
+    last_cmd_vel_stamp = node->now();
+    cmd_vel_ever_received = true;
+
     if (actuation_permitted())
     {
         fresh_command_after_enable = true;
@@ -540,6 +559,38 @@ int main(int argc, char **argv)
         }
     }
 
+    // Watchdog window. Optional and defaulted on purpose: this parameter can only ever
+    // reduce motion, so defaulting it is safe, unlike the motion-determining set above.
+    // Read from the override map, for the same reason the required parameters are:
+    // get_parameter_or() reports "not set" for an override that was never declared, so
+    // it silently ignored every supplied value and always returned the default
+    // (measured: 0/0.0/2.0 all reported 0.50 s). Both integer and double spellings are
+    // accepted so `:=0` and `:=0.0` mean the same thing.
+    {
+        cmd_vel_timeout = 0.5;
+        const auto &ov =
+            node_handle->get_node_parameters_interface()->get_parameter_overrides();
+        auto it = ov.find("motor.cmd_vel_timeout");
+        if (it != ov.end())
+        {
+            if (it->second.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE)
+                cmd_vel_timeout = it->second.get<double>();
+            else if (it->second.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER)
+                cmd_vel_timeout = (double)it->second.get<int64_t>();
+            else
+                RCLCPP_WARN(node_handle->get_logger(),
+                            "%s：motor.cmd_vel_timeout 类型无效，使用默认 %.2f s。",
+                            TAG, cmd_vel_timeout);
+        }
+        if (cmd_vel_timeout < 0.0)
+        {
+            cmd_vel_timeout = 0.0;  // negative means "disabled", not "instant expiry"
+        }
+    }
+    RCLCPP_INFO(node_handle->get_logger(),
+                "%s：指令看门狗超时 = %.2f s%s", TAG, cmd_vel_timeout,
+                cmd_vel_timeout == 0.0 ? "（已禁用）" : "");
+
     // One consolidated statement of the effective permission, so an operator can see
     // exactly which factor is missing without reading the code.
     if (!actuation_permitted())
@@ -628,6 +679,25 @@ int main(int argc, char **argv)
                 motor_speed_cmd_data.speed_rpm_right = 0;
             }
             actuation_was_enabled = actuation_permitted();
+
+            // Watchdog: expire a command that has not been refreshed. Cumulative and
+            // independent of permission, so a silent source cannot leave the last
+            // commanded speed in effect indefinitely.
+            if (cmd_vel_timeout > 0.0 && cmd_vel_ever_received)
+            {
+                const double age = (node_handle->now() - last_cmd_vel_stamp).seconds();
+                if (age > cmd_vel_timeout)
+                {
+                    if (motor_speed_cmd_data.speed_rpm_left != 0 ||
+                        motor_speed_cmd_data.speed_rpm_right != 0)
+                    {
+                        RCLCPP_WARN_THROTTLE(node_handle->get_logger(), *node_handle, 2000,
+                                             "%s：指令超时 %.2fs，速度归零。", TAG, age);
+                    }
+                    motor_speed_cmd_data.speed_rpm_left = 0;
+                    motor_speed_cmd_data.speed_rpm_right = 0;
+                }
+            }
 
             // 组装发送数据
             packet_send_buffer[0] = comm_state == STATE_CONTROL_LEFT_MOTOR ? MOTOR_LEFT_ID : MOTOR_RIGHT_ID;
