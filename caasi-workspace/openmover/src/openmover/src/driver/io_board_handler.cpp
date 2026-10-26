@@ -432,8 +432,103 @@ int main(int argc, char **argv)
     // 获取参数（ROS 1: ~/robot/xxx -> ROS 2: robot.xxx）
     control_freq = (float)node_handle->declare_parameter<double>("robot.control_freq", 20.0);
 
-    ip_address = node_handle->declare_parameter<std::string>("robot.ip_address", "192.168.100.100");
-    port = node_handle->declare_parameter<int>("robot.port", 23);
+    // The chassis IO board and the motor controller live on the SAME address and differ
+    // only by UDP port: motors answer on 23, the IO board on 26. `robot.port` previously
+    // defaulted to 23, which meant an omitted or misspelled configuration silently aimed
+    // IO traffic at the motor controller -- the one destination this node must never
+    // reach. Both the address and the port are now required, and the motor port is
+    // rejected outright.
+    {
+        const auto &ov =
+            node_handle->get_node_parameters_interface()->get_parameter_overrides();
+        std::vector<std::string> missing, bad;
+
+        auto read_str = [&](const char *key, std::string &out) {
+            auto it = ov.find(key);
+            if (it == ov.end() ||
+                it->second.get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET)
+            {
+                missing.emplace_back(key);
+                return;
+            }
+            if (it->second.get_type() != rclcpp::ParameterType::PARAMETER_STRING)
+            {
+                bad.emplace_back(std::string(key) + " must be a string");
+                return;
+            }
+            out = it->second.get<std::string>();
+        };
+        auto read_int = [&](const char *key, int &out, bool &have) {
+            auto it = ov.find(key);
+            if (it == ov.end() ||
+                it->second.get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET)
+            {
+                missing.emplace_back(key);
+                return;
+            }
+            if (it->second.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER)
+            {
+                out = (int)it->second.get<int64_t>();
+                have = true;
+            }
+            else
+            {
+                bad.emplace_back(std::string(key) + " must be an integer");
+            }
+        };
+
+        std::string s_ip;
+        int i_port = 0;
+        bool have_port = false;
+        read_str("robot.ip_address", s_ip);
+        read_int("robot.port", i_port, have_port);
+
+        if (!bad.empty())
+        {
+            std::string list;
+            for (const auto &b : bad) list += "\n  - " + b;
+            RCLCPP_FATAL(node_handle->get_logger(),
+                         "%s:参数类型无效，拒绝启动。问题:%s", TAG, list.c_str());
+            rclcpp::shutdown();
+            return 1;
+        }
+        if (!missing.empty())
+        {
+            std::string list;
+            for (const auto &m : missing) list += "\n  - " + m;
+            RCLCPP_FATAL(node_handle->get_logger(),
+                         "%s:缺少必需参数，拒绝启动（不会用默认值代替）。缺失:%s",
+                         TAG, list.c_str());
+            rclcpp::shutdown();
+            return 1;
+        }
+        if (i_port < 1 || i_port > 65535)
+        {
+            RCLCPP_FATAL(node_handle->get_logger(),
+                         "%s:robot.port=%d 无效（必须在 1..65535）。", TAG, i_port);
+            rclcpp::shutdown();
+            return 1;
+        }
+        // Hard refusal: port 23 belongs to the motor controller. Refusing here means a
+        // wrong or inherited configuration cannot reach the motor endpoint by accident.
+        if (i_port == 23)
+        {
+            RCLCPP_FATAL(node_handle->get_logger(),
+                         "%s:robot.port=23 是电机控制器的端口，IO 板必须使用 26。"
+                         "拒绝启动以避免向电机端点发送 IO 报文。", TAG);
+            rclcpp::shutdown();
+            return 1;
+        }
+        if (s_ip.empty())
+        {
+            RCLCPP_FATAL(node_handle->get_logger(), "%s:robot.ip_address 不能为空。", TAG);
+            rclcpp::shutdown();
+            return 1;
+        }
+
+        ip_address = s_ip;
+        port = i_port;
+    }
 
     version_a = node_handle->declare_parameter<int>("robot.version_a", 1);
     version_b = node_handle->declare_parameter<int>("robot.version_b", 0);
