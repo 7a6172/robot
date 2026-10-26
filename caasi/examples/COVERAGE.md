@@ -3,7 +3,7 @@
 **Auditable mapping from each CLI command to the example that demonstrates it.**
 
 Generated from the **live command tree**, not maintained by hand: the current CLI has
-**57 root commands and 253 command paths**, and **every one is listed below**. A
+**58 root commands and 254 command paths**, and **every one is listed below**. A
 command that has no runnable example is still listed, with the reason — nothing is
 silently omitted.
 
@@ -244,6 +244,7 @@ of them invents a `--dry-run` that the CLI does not provide.
 | `caasi sensor list` | cookbook | read-only | CI |  |
 | `caasi sensor test` | cookbook | read-only | CI |  |
 | `caasi setup` | cookbook | not executed | manual | modifies the environment |
+| `caasi exec` | cookbook | read-only | CI | runs on a target through `caasi exec --target` |
 | `caasi shell` | cookbook | read-only | CI |  |
 | `caasi sim` | 06 | Isaac/Isaac ROS | opt-in | needs GPU + Isaac |
 | `caasi sim check` | 06 | Isaac/Isaac ROS | opt-in | needs GPU + Isaac |

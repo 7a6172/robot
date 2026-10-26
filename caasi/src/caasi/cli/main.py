@@ -37,6 +37,7 @@ from . import (
     run_cmd,
     sensor_cmd,
     setup_cmd,
+    exec_cmd,
     shell_cmd,
     sim,
     runtime_cmd,
@@ -89,6 +90,7 @@ HELP_PANELS: dict[str, tuple[str, ...]] = {
     _("help.panel.platform"): (
         "container",
         "cosmos",
+        "exec",
         "groot",
         "native",
         "node",
@@ -227,6 +229,7 @@ app.add_typer(teleop_cmd.app, name="teleop", help=_("teleop.help"))
 app.command("replay", help=_("replay.help"))(replay_cmd.replay_command)
 app.add_typer(native_cmd.app, name="native", help=_("native.help"))
 app.command("shell", help=_("shell.help"))(shell_cmd.shell_command)
+app.command("exec", help=_("exec.help"))(exec_cmd.exec_command)
 app.add_typer(sensor_cmd.app, name="sensor", help=_("sensor.help"))
 app.add_typer(view_cmd.app, name="view", help=_("view.help"))
 app.add_typer(vision_cmd.app, name="vision", help=_("vision.help"))

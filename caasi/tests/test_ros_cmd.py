@@ -403,8 +403,10 @@ def test_remote_query_builds_sourced_ssh_invocation(monkeypatch):
     # ssh transport
     assert "ssh" in seen["args"][0]
     assert "u@probe.invalid" in joined
-    # delegates to the target's ros2 rather than reimplementing anything
-    assert "exec ros2" in joined
+    # delegates to the target's own ros2 rather than reimplementing anything: the
+    # snippet execs the argv passed after "--", whose first element is ros2
+    assert 'exec "$@"' in joined
+    assert "ros2 topic list" in joined
     # sources the underlay so a non-interactive shell can find it
     assert "/opt/ros/jazzy/setup.bash" in joined
 

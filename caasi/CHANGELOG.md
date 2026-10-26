@@ -9,6 +9,30 @@ environment-oriented tool; 0.4.0 makes targets — remote machines and robots �
 concept end to end. Everything below is implemented and validated, and the release is
 defined by that set rather than by a date.
 
+### Added — generic command execution on a target
+
+* **`caasi exec --target <t> [--ros] [--overlay <setup.bash>] [--cwd DIR] [-e K=V] [--timeout S] -- CMD ...`**
+  runs any command on a target through one path. `caasi ros` remains the ROS-specific
+  delegate and now *shares* this implementation instead of keeping a second snippet
+  builder, so argument handling, environment setup and outcome classification are
+  identical everywhere.
+* Outcomes are stated, not inferred: `ok`, `nonzero`, `timeout`, `transport`,
+  `setup`, `no_ros2`. Callers branch on the outcome, because "ssh returned 0" does not
+  mean the remote command succeeded. Exit statuses are mapped honestly — a transport
+  failure keeps ssh's 255, setup failures use 126, a missing `ros2` 127, a timeout 124,
+  and a remote non-zero is preserved unchanged.
+* **Setup failures are no longer silent.** The previous snippet used `test -f X && . X`,
+  which skipped a missing setup script and then reported whatever the command did, so a
+  broken overlay looked like a working environment. A missing or failing setup script now
+  aborts with a marker and a distinct exit code.
+* **The ROS CLI is only required when ROS is explicitly requested.** Sourcing a workspace
+  overlay alone does not imply `ros2` must exist; requiring it there made an ordinary
+  command fail with a ROS error (caught by the suite running without ROS on PATH).
+* The ROS distribution is **discovered from the target**, never assumed: an unknown distro
+  is reported instead of guessing `/opt/ros/jazzy`.
+* Arguments are passed as structured argv through `bash -c ... -- "$@"`, so spaces,
+  quotes, Unicode and shell metacharacters survive without becoming a second command.
+
 ### Added — one directory layout per target
 
 * caasi now owns where material lives on a machine it manages, so a new target needs no

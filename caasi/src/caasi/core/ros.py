@@ -138,38 +138,31 @@ def remote_ros2(
     transport, environment sourcing and ROS_DOMAIN_ID selection are caasi's
     concern - DDS discovery itself is entirely ROS 2's.
 
-    ``ros_setup``/``overlay_setup`` are target-side paths to source first.
-    ``domain_id`` selects the target's ROS_DOMAIN_ID, because a runtime may
-    legitimately live on a non-default domain; querying the wrong one returns an
-    empty graph rather than an error.
+    This is now a caller of :func:`execution.run_on_target` rather than its own
+    snippet builder, so every remote command in caasi shares one implementation of
+    environment setup, argument handling and outcome classification.
 
     Returns a ShellResult; never raises for a non-zero ros2 exit. A transport
     failure (unreachable, timeout) is reported as ``returncode == -1`` with the
     reason in ``stderr``, matching :func:`shell.run_cmd` semantics.
     """
-    import shlex
+    from . import execution as execution_core
 
-    from . import targets as targets_core
-
-    env_prefix = ""
+    env = {}
     if domain_id is not None:
-        env_prefix = f"export ROS_DOMAIN_ID={shlex.quote(str(domain_id))} ; "
+        env["ROS_DOMAIN_ID"] = str(domain_id)
 
-    if target.transport != "ssh":
-        # A non-SSH target has no separate transport; run locally instead.
-        if domain_id is not None:
-            snippet = env_prefix + 'exec ros2 "$@"'
-            return shell.run_cmd(
-                ["bash", "-c", snippet, "--", *args], timeout=timeout
-            )
-        return run_ros2(args, timeout=timeout)
-
-    prefix = targets_core.target_ssh_prefix(target)
-    snippet = env_prefix + _remote_ros_snippet(ros_setup, overlay_setup)
-    # shlex.join keeps user-supplied args intact through the remote shell.
-    # The snippet ends with `exec ros2 "$@"`, so only the subcommand is passed.
-    remote_cmd = shlex.join(["bash", "-c", snippet, "--", *args])
-    return shell.run_cmd([*prefix, remote_cmd], timeout=timeout)
+    request = execution_core.ExecRequest(
+        argv=["ros2", *args],
+        env=env,
+        ros_setup=ros_setup,
+        overlay_setup=overlay_setup,
+        timeout=timeout if timeout is not None else execution_core.DEFAULT_TIMEOUT,
+    )
+    outcome = execution_core.run_on_target(target, request)
+    return shell.ShellResult(
+        returncode=outcome.returncode, stdout=outcome.stdout, stderr=outcome.stderr
+    )
 
 
 def remote_ros2_lines(
