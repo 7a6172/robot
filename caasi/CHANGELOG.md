@@ -9,6 +9,23 @@ environment-oriented tool; 0.4.0 makes targets — remote machines and robots �
 concept end to end. Everything below is implemented and validated, and the release is
 defined by that set rather than by a date.
 
+### Fixed — remote deployment reliability
+
+* **Fresh-robot deployment works.** Three defects made the first deploy to a new target
+  fail, and together they explain the "missing files" verification error:
+  * A `~` in `deployment_root` was quoted, so the remote shell never expanded it and
+    `mkdir -p '~/x'` created a *literal* `~` directory. The real destination never
+    existed. Remote paths are now expanded on the target via `$HOME`, through one shared
+    helper (`targets.remote_path_expr`) used by deploy and build.
+  * The destination is resolved to an **absolute path by the target itself** in the same
+    round-trip that creates it. `rsync` does not expand `$HOME` in a `host:path`
+    argument — it prefixes the remote home to anything not already absolute — so the
+    resolved path is what rsync, the metadata write and verification all use.
+  * The changed-file list only matched `>f` itemize lines, but a **push** itemizes as
+    `<f.st......`. Every real file change was therefore omitted from the deployment
+    record while created directories were still listed. Both directions are now
+    reported, along with creations and deletions.
+
 ### Added — remote targets
 
 * **Targets** are declared in configuration and addressed by name, with per-target

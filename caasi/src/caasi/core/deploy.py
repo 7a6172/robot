@@ -12,6 +12,7 @@ import datetime
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import time
@@ -25,7 +26,13 @@ from . import manifest as manifests
 from . import project as projects
 from . import provenance
 from .config import Config
-from .targets import Target, TargetInspection, discover_target, target_ssh_prefix
+from .targets import (
+    Target,
+    TargetInspection,
+    discover_target,
+    remote_path_expr,
+    target_ssh_prefix,
+)
 
 DEFAULT_EXCLUDE_PATTERNS = [
     "build",
@@ -216,8 +223,17 @@ def _parse_rsync_stats(output_text: str) -> tuple[int, int, int, list[str]]:
 
     for line in output_text.splitlines():
         line = line.strip()
-        # Itemized changes e.g. ">f+++++++++ path/to/file"
-        if line.startswith(">f") or line.startswith("*deleting") or line.startswith("cd++++++"):
+        # rsync itemizes from the receiving side's perspective, so a *push* reports
+        # "<f.st......" for a modified file and "<f+++++++++" for a new one. Only ">"
+        # was matched before, so every real file change was silently omitted from the
+        # deployment record while directories (cd+++) were listed. Both directions are
+        # accepted here, plus creations, deletions and attribute-only updates.
+        if (
+            line[:2] in (">f", "<f")            # file transferred either direction
+            or line.startswith("cd")           # directory created
+            or line.startswith("*deleting")    # removed on the target
+            or line[:2] in (">d", "<d")        # directory metadata changed
+        ):
             parts = line.split(maxsplit=1)
             if len(parts) == 2:
                 changed_files.append(parts[1])
@@ -331,10 +347,24 @@ def execute_deployment(
         dest_remote = spec.destination_path
         if not dry_run:
             # Ensure destination directory exists on target
-            mkdir_cmd = ssh_prefix + [f"mkdir -p '{dest_remote}'"]
+            # Create the destination AND resolve it to an absolute path in one
+            # round-trip. Two bugs made a fresh remote deploy impossible:
+            #   1. the path was quoted whole, so the remote shell never expanded '~'
+            #      and mkdir created a literal '~' directory;
+            #   2. rsync does not expand '$HOME' in a host:path argument -- it prefixes
+            #      the remote home to anything that is not already absolute.
+            # Asking the target for the resolved path removes both problems and needs
+            # no assumption about where the home directory is.
+            mkdir_cmd = ssh_prefix + [
+                f"mkdir -p {remote_path_expr(dest_remote)} && "
+                f"cd {remote_path_expr(dest_remote)} && pwd"
+            ]
             # One SSH round-trip; budget from the target's own link latency.
             res = subprocess.run(mkdir_cmd, capture_output=True, text=True,
                                  timeout=max(10.0, float(spec.target.ssh_timeout) * 2))
+            if res.returncode == 0 and res.stdout.strip():
+                # Use the target's own absolute path for rsync, metadata and verification.
+                dest_remote = res.stdout.strip().splitlines()[-1].strip()
             if res.returncode != 0:
                 err_msg = res.stderr.strip() or f"exit code {res.returncode}"
                 return DeploymentRecord(
@@ -349,7 +379,9 @@ def execute_deployment(
                     status="failed",
                     errors=[f"Failed to create remote destination directory on {spec.target.name}: {err_msg}"],
                 )
-        dest_arg = f"{endpoint}:{dest_remote.rstrip('/')}/"
+        # dest_remote is now the absolute path reported by the target, so rsync does
+        # not have to interpret '~' or '$HOME'. Quoted so spaces survive.
+        dest_arg = f"{endpoint}:{shlex.quote(dest_remote.rstrip('/'))}/"
 
     rsync_cmd.extend([src_path, dest_arg])
 
@@ -443,7 +475,7 @@ def execute_deployment(
         # Remote SSH: pipe metadata directly via stdin to cat
         ssh_prefix = target_ssh_prefix(spec.target)
         dest_meta = f"{spec.destination_path.rstrip('/')}/.caasi-deployment.json"
-        write_cmd = ssh_prefix + [f"cat > '{dest_meta}'"]
+        write_cmd = ssh_prefix + [f"cat > {remote_path_expr(dest_meta)}"]
         res = subprocess.run(write_cmd, input=meta_json, text=True, capture_output=True,
                              timeout=max(10.0, float(spec.target.ssh_timeout) * 2))
         if res.returncode != 0:
@@ -489,10 +521,10 @@ def verify_deployment(target: Target, destination_path: str) -> tuple[bool, str 
     ssh_prefix = target_ssh_prefix(target)
     dest = destination_path.rstrip("/")
     check_cmd = (
-        f"test -d '{dest}' && "
-        f"test -f '{dest}/caasi.yaml' && "
-        f"test -f '{dest}/.caasi-deployment.json' && "
-        f"cat '{dest}/.caasi-deployment.json'"
+        f"test -d {remote_path_expr(dest)} && "
+        f"test -f {remote_path_expr(dest + '/caasi.yaml')} && "
+        f"test -f {remote_path_expr(dest + '/.caasi-deployment.json')} && "
+        f"cat {remote_path_expr(dest + '/.caasi-deployment.json')}"
     )
     res = subprocess.run(ssh_prefix + [check_cmd], capture_output=True, text=True,
                          timeout=max(10.0, float(target.ssh_timeout) * 2))

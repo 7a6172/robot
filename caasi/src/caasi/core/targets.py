@@ -265,6 +265,31 @@ def target_ssh_prefix(target: Target) -> list[str]:
     return args
 
 
+def remote_path_expr(path: str) -> str:
+    """Return a shell-safe expression for a path that lives on a target.
+
+    Quoting a path prevents word splitting, but it also stops the remote shell from
+    expanding a leading ``~`` -- ``mkdir -p '~/x'`` creates a *literal* ``~`` directory
+    instead of using the home directory. That is exactly what happened on a fresh
+    robot: the deployment landed nowhere and verification failed.
+
+    A leading ``~`` is therefore expanded through ``$HOME`` *on the target*, which is
+    the only place the real home is known, and everything after it is quoted so spaces
+    and shell metacharacters survive untouched. Nothing is interpolated unquoted, so an
+    unusual path cannot inject a command.
+    """
+    raw = str(path)
+    if raw in ("~", "~/"):
+        return '"$HOME"'
+    if raw.startswith("~/"):
+        rest = raw[2:]
+        return '"$HOME"/' + shlex.quote(rest) if rest else '"$HOME"'
+    if raw.startswith("~"):
+        # "~user/..." needs the remote shell's own tilde expansion.
+        return shlex.quote(raw)
+    return shlex.quote(raw)
+
+
 def check_socket_reachable(host: str, port: int = 22, timeout: float = 1.5) -> tuple[bool, float | None]:
     """Test TCP connectivity to host:port with bounded timeout."""
     start = time.perf_counter()
