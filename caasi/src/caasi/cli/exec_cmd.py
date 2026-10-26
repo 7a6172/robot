@@ -44,6 +44,8 @@ def exec_command(
     timeout: float = typer.Option(
         execution.DEFAULT_TIMEOUT, "--timeout", help=_("exec.flag.timeout")
     ),
+    detach: bool = typer.Option(False, "--detach", "-d", help=_("exec.flag.detach")),
+    name: Optional[str] = typer.Option(None, "--name", help=_("exec.flag.name")),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
     """Run CMD on a target and report exit status, output and outcome."""
@@ -79,6 +81,39 @@ def exec_command(
         overlay_setup=overlay,
         timeout=timeout,
     )
+    if detach:
+        # Managed mode: same target/env/argv resolution, handed to the existing run
+        # lifecycle so `caasi run status|logs|stop` work on it. Not a second supervisor.
+        from ..core import runs as runs_core
+
+        try:
+            record = runs_core.start_target_command(
+                target, cfg,
+                argv=list(command),
+                work_dir=cwd,
+                env=env_map,
+                ros_setup=setup_path,
+                overlay_setup=overlay,
+                name=name or "command",
+            )
+        except (RuntimeError, ValueError) as err:
+            output.fail(str(err))
+
+        if output.wants_json(json_output):
+            output.echo_json({
+                "run_id": record.run_id,
+                "target": record.target,
+                "pid": record.pid,
+                "pgid": record.pgid,
+                "remote_run_dir": record.remote_run_dir,
+            })
+        else:
+            typer.echo(f"started {record.run_id} on {record.target} (pid {record.pid})")
+            typer.echo(f"  status: caasi run status {record.run_id}")
+            typer.echo(f"  logs:   caasi run logs {record.run_id}")
+            typer.echo(f"  stop:   caasi run stop {record.run_id}")
+        raise typer.Exit(0)
+
     result = execution.run_on_target(target, request)
 
     if json_output:

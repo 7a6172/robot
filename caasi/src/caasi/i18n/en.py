@@ -921,6 +921,8 @@ MESSAGES: dict[str, str] = {
     "exec.flag.ros": "Source the target's ROS 2 setup before running the command",
     "exec.flag.ros_setup": "Explicit target-side ROS setup script to source",
     "exec.flag.overlay": "Target-side workspace overlay to source (e.g. <ws>/install/setup.bash)",
+    "exec.flag.detach": "Start as a managed background run instead of waiting (use caasi run to manage it)",
+    "exec.flag.name": "Name for the managed run",
     "exec.flag.timeout": "Seconds before the command is considered timed out",
     "exec.error.unknown_target": "Unknown target '{name}'.",
     "exec.error.bad_env": "Invalid --env '{entry}'; expected KEY=VALUE.",

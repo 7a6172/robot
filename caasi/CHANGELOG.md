@@ -9,6 +9,31 @@ environment-oriented tool; 0.4.0 makes targets — remote machines and robots �
 concept end to end. Everything below is implemented and validated, and the release is
 defined by that set rather than by a date.
 
+### Added — ad-hoc managed processes on a target
+
+* **`caasi exec --detach --name <n> -- CMD ...`** starts an arbitrary command as a tracked,
+  detached run on a target, reusing the existing run lifecycle: one wrapper format, one
+  launch shape (`nohup setsid`), the same PID/PGID recording, and the same
+  `caasi run status|logs|stop`. There is no second supervisor.
+* Bounded and managed modes share target resolution, ROS environment setup, argument
+  handling and error reporting; they differ only in whether caasi waits. The bounded
+  outcome vocabulary (`ok`/`nonzero`/`timeout`/`transport`/`setup`/`no_ros2`) is
+  unchanged, and managed runs use the run lifecycle's own states rather than forcing
+  asynchronous process states into the bounded model.
+* Unlike an experiment run, an ad-hoc command needs **no project, deployment or build
+  preconditions** — diagnostics often have to run before anything is deployed, and
+  refusing them would push the user back to raw SSH.
+* Sourcing failures in the managed wrapper are fatal (exit 126), so a process cannot run
+  silently without the environment it was told to use.
+
+Two defects found by using it, both fixed:
+  * **Status reported `lost` for every ad-hoc run.** `remote_effective_status` required a
+    deployment `destination`, which an ad-hoc command does not have; the check now
+    requires only the run directory.
+  * **Run directories were placed under `cache/`**, which is documented as safe to clear,
+    while logs and exit codes must survive. Managed runs now live under
+    `~/caasi/data/runs/<run_id>`.
+
 ### Added — generic command execution on a target
 
 * **`caasi exec --target <t> [--ros] [--overlay <setup.bash>] [--cwd DIR] [-e K=V] [--timeout S] -- CMD ...`**

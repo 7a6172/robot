@@ -27,6 +27,7 @@ from typing import Any
 import yaml
 
 from ..core.config import Config
+from . import layout as caasi_layout
 from . import targets as targets_core
 
 TERMINAL_OK = "succeeded"
@@ -189,7 +190,10 @@ def _reap(pid: int | None) -> None:
 
 def remote_effective_status(record: RunRecord, config: Config | None = None) -> str:
     """Check the live or terminal status of a run on a remote SSH target."""
-    if not record.destination or not record.remote_run_dir:
+    # Only the run directory is required. An ad-hoc managed command has no deployment
+    # `destination`, and requiring one made every such run report "lost" even while it
+    # was demonstrably running (found by starting one and checking its status).
+    if not record.remote_run_dir:
         return LOST
 
     cfg = config or Config({}, [])
@@ -1050,3 +1054,134 @@ exit "$ec"
         directory=host_run_dir,
     )
 
+
+
+def start_target_command(
+    target: targets_core.Target,
+    config: Config,
+    *,
+    argv: list[str],
+    work_dir: str | None = None,
+    env: dict[str, str] | None = None,
+    ros_setup: str | None = None,
+    overlay_setup: str | None = None,
+    name: str = "command",
+    kind: str = "command",
+    timeout: float | None = None,
+) -> RunRecord:
+    """Start an arbitrary command as a tracked, detached run on *target*.
+
+    This is the managed counterpart to ``execution.run_on_target`` (bounded commands) and
+    deliberately reuses the *same* machinery as experiment runs — one wrapper format, one
+    launch shape, the same PID/PGID recording and the same ``caasi run status|logs|stop``
+    lifecycle. There is no second supervisor.
+
+    Differences from :func:`start_target_run`: no experiment manifest, no deployment or
+    build preconditions, and no project requirement. Ad-hoc diagnostics often need to run
+    *before* a project is deployed, and refusing them would push the user back to raw SSH.
+    """
+    if not argv:
+        raise ValueError("start_target_command requires a command")
+
+    # A local target already has a complete detached-run implementation; delegate instead
+    # of writing a second one.
+    if target.transport != "ssh":
+        record = start_run(
+            config,
+            name=name,
+            command=list(argv),
+            cwd=work_dir,
+            env=dict(env or {}),
+            backend="command",
+            kind=kind,
+        )
+        record.target = target.name
+        record.target_transport = target.transport
+        return record
+
+    budget = max(10.0, float(target.ssh_timeout) * 2)
+    run_id = new_run_id(name)
+    target_run_dir = caasi_layout.run_dir(run_id)
+    host_run_dir = runs_dir(config) / run_id
+    host_run_dir.mkdir(parents=True, exist_ok=True)
+
+    exports = "\n".join(
+        f"export {k}={shlex.quote(str(v))}" for k, v in (env or {}).items()
+    )
+    # Sourcing failures are fatal here too: a managed process that silently ran without
+    # its environment is worse than one that refuses to start.
+    source_ros = (
+        f'. {shlex.quote(ros_setup)} || exit 126' if ros_setup else ""
+    )
+    source_overlay = (
+        f'. {shlex.quote(overlay_setup)} || exit 126' if overlay_setup else ""
+    )
+    cd_line = f'cd {shlex.quote(work_dir)} || exit 126' if work_dir else ""
+
+    wrapper = f"""#!/usr/bin/env bash
+RUN_DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
+{cd_line}
+{source_ros}
+{source_overlay}
+{exports}
+"$@"
+ec=$?
+echo "$ec" > "$RUN_DIR/exit_code"
+exit "$ec"
+"""
+
+    ssh_prefix = targets_core.target_ssh_prefix(target)
+    upload = (
+        f"mkdir -p {shlex.quote(target_run_dir)} && "
+        f"cat > {shlex.quote(target_run_dir + '/run.sh')} && "
+        f"chmod 755 {shlex.quote(target_run_dir + '/run.sh')}"
+    )
+    res = subprocess.run(
+        ssh_prefix + [upload], input=wrapper, text=True, capture_output=True,
+        timeout=budget,
+    )
+    if res.returncode != 0:
+        raise RuntimeError(f"Failed to prepare run wrapper on target: {res.stderr.strip()}")
+
+    quoted = shlex.join([str(a) for a in argv])
+    launch = (
+        f"nohup setsid {shlex.quote(target_run_dir + '/run.sh')} {quoted} "
+        f"> {shlex.quote(target_run_dir + '/stdout.log')} "
+        f"2> {shlex.quote(target_run_dir + '/stderr.log')} </dev/null &\n"
+        f"PID=$!\n"
+        f"echo $PID > {shlex.quote(target_run_dir + '/pid')}\n"
+        f"ps -o pgid= -p $PID 2>/dev/null | tr -d ' ' > {shlex.quote(target_run_dir + '/pgid')}\n"
+        f'echo "PID:$PID:$(cat {shlex.quote(target_run_dir + "/pgid")})"\n'
+    )
+    res = subprocess.run(ssh_prefix + [launch], capture_output=True, text=True,
+                         timeout=budget)
+    if res.returncode != 0 or "PID:" not in res.stdout:
+        raise RuntimeError(
+            f"Failed to launch remote process on target: "
+            f"{res.stderr.strip() or res.stdout.strip()}"
+        )
+    pid_line = [line for line in res.stdout.splitlines() if line.startswith("PID:")][0]
+    fields = pid_line.split(":")
+    pid = int(fields[1])
+    pgid = int(fields[2]) if len(fields) > 2 and fields[2].isdigit() else pid
+
+    record = RunRecord(
+        run_id=run_id,
+        name=name,
+        backend="command",
+        kind=kind,
+        command=list(argv),
+        cwd=work_dir or ".",
+        created=_now(),
+        pid=pid,
+        pgid=pgid,
+        target=target.name,
+        target_transport=target.transport,
+        remote_run_dir=target_run_dir,
+        destination=None,
+        project=None,
+    )
+    _write_manifest(host_run_dir, record.to_dict(config))
+    (host_run_dir / "run.sh").write_text(wrapper, encoding="utf-8")
+    record.directory = host_run_dir
+    return record

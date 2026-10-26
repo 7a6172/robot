@@ -40,6 +40,9 @@ PROJECTS = f"{ROOT}/projects"
 FLEET = f"{ROOT}/fleet"
 WORKSPACES = f"{ROOT}/workspaces"
 DATA = f"{ROOT}/data"
+#: Run records and their logs. Under data/, not cache/: logs and exit codes must survive
+#: a cache clear.
+RUNS = f"{DATA}/runs"
 DATASETS = f"{DATA}/datasets"
 RECORDINGS = f"{DATA}/recordings"
 RESULTS = f"{DATA}/results"
@@ -65,6 +68,11 @@ def workspace_root(target: str) -> str:
 def workspace(workspace_name: str) -> str:
     """A development workspace: ``workspaces/<name>``."""
     return f"{WORKSPACES}/{workspace_name}"
+
+
+def run_dir(run_id: str) -> str:
+    """A managed run's directory: ``data/runs/<run_id>``."""
+    return f"{RUNS}/{run_id}"
 
 
 def dataset(name: str) -> str:
