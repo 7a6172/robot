@@ -69,9 +69,22 @@ def default_deployment_root(target: str, tags: list[str] | None = None) -> str:
 def deployment_destination(target: str, project: str, tags: list[str] | None = None) -> str:
     """Full destination for *project* deployed to *target*.
 
-    Matches the ``<root>/<project>`` convention the deployment records already use.
+    A robot owns one directory: ``~/caasi/robots/<robot>`` holds that robot's deployed
+    environment. The project name is deliberately **not** appended, because the robot is
+    the unit of identity here -- ``~/caasi/robots/swjtumover05`` and
+    ``~/caasi/robots/openmover`` are two *robots*, not a robot and a project.
+
+    A non-robot compute target keeps the ``<root>/<project>`` shape, since one machine
+    may host several unrelated projects.
+
+    An explicit ``deployment_root`` on the target still wins (see
+    :func:`caasi.core.deploy.resolve_deployment_destination`), so existing deployments
+    that used the older ``<root>/<project>`` shape remain valid.
     """
-    return f"{default_deployment_root(target, tags).rstrip('/')}/{project}"
+    root = default_deployment_root(target, tags).rstrip("/")
+    if tags and "robot" in tags:
+        return root
+    return f"{root}/{project}"
 
 
 #: Every root, for documentation and for ``caasi`` diagnostics that want to enumerate

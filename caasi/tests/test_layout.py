@@ -49,9 +49,22 @@ def test_no_tags_defaults_to_workspaces():
     assert layout.default_deployment_root("mystery") == "~/caasi/workspaces/mystery"
 
 
-def test_destination_appends_the_project():
+def test_robot_owns_the_robot_directory_itself():
+    """A robot's code lives at robots/<robot>; the project name is not appended.
+
+    swjtumover05 and openmover are two *robots*, not a robot and a project.
+    """
     assert layout.deployment_destination("swjtumover05", "openmover", ["robot"]) == (
-        "~/caasi/robots/swjtumover05/openmover"
+        "~/caasi/robots/swjtumover05"
+    )
+    assert layout.deployment_destination("openmover", "openmover", ["robot"]) == (
+        "~/caasi/robots/openmover"
+    )
+
+
+def test_compute_target_still_gets_one_directory_per_project():
+    assert layout.deployment_destination("gpu-builder", "openmover", ["gpu"]) == (
+        "~/caasi/workspaces/gpu-builder/openmover"
     )
 
 

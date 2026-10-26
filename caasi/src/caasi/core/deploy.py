@@ -144,9 +144,13 @@ def resolve_deployment_destination(target: Target, project_name: str) -> str:
     # the decision of where material lives on a managed machine; it used to be an
     # ad-hoc "~/deployments/<project>" invented here, which scattered a new top-level
     # home entry per project.
-    root = target.deployment_root or caasi_layout.default_deployment_root(
-        target.name, target.tags
-    )
+    if not target.deployment_root:
+        # No explicit root: use the caasi layout, which decides the shape. For a robot
+        # that is the robot's own directory (~/caasi/robots/<robot>); a compute target
+        # gets one subdirectory per project.
+        return caasi_layout.deployment_destination(target.name, project_name, target.tags)
+
+    root = target.deployment_root
     if not root.endswith(project_name):
         return f"{root.rstrip('/')}/{project_name}"
     return root

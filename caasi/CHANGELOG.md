@@ -27,11 +27,13 @@ defined by that set rather than by a date.
 
   The tree lives in `caasi.core.layout`; further roots (simulations, maps) can be added
   there without touching callers. The default deployment destination is now
-  `~/caasi/robots/<target>` for a target tagged `robot`, and
-  `~/caasi/workspaces/<target>` otherwise, with the project name appended. The
-  distinction comes from the target's own tags, so any robot name works and nothing is
-  hardcoded to one machine. An explicit `deployment_root` still overrides it, so existing
-  deployments are unaffected.
+  `~/caasi/robots/<robot>` for a target tagged `robot` -- a robot owns one directory, and
+  the project name is deliberately not appended, because the robot is the unit of
+  identity (`~/caasi/robots/swjtumover05` and `~/caasi/robots/openmover` are two robots).
+  A non-robot compute target keeps `~/caasi/workspaces/<target>/<project>`, since one
+  machine may host several unrelated projects. The distinction comes from the target's
+  own tags, so any robot name works and nothing is hardcoded to one machine. An explicit
+  `deployment_root` still overrides the default, so existing deployments are unaffected.
 
 ### Fixed — remote deployment reliability
 
