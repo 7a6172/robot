@@ -432,9 +432,21 @@ int main(int argc, char **argv)
                    it->second.get_type() != rclcpp::ParameterType::PARAMETER_NOT_SET;
         };
 
+        // Numeric parameters accept either an integer or a floating literal. The
+        // robot's own motor.yaml writes `control_freq: 50`, which YAML types as an
+        // integer; rejecting that made a correct hardware profile fail to load. ROS 1
+        // read it through param<float>, which accepted both. Strings are still refused.
         auto as_double = [&](const char *key, double &out) {
             if (!has(key)) { missing.emplace_back(key); return; }
-            try { out = overrides.at(key).get<double>(); }
+            const auto t = overrides.at(key).get_type();
+            try {
+                if (t == rclcpp::ParameterType::PARAMETER_DOUBLE)
+                    out = overrides.at(key).get<double>();
+                else if (t == rclcpp::ParameterType::PARAMETER_INTEGER)
+                    out = (double)overrides.at(key).get<int64_t>();
+                else
+                    bad_type.emplace_back(key);
+            }
             catch (const std::exception &) { bad_type.emplace_back(key); }
         };
         auto as_int = [&](const char *key, int &out) {
