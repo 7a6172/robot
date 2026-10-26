@@ -1,0 +1,31 @@
+# 考核导航目标点配置。
+# 下面坐标只是示例，必须在你们考核赛道实际建好的 map 中重新标定。
+# 标定方法：启动 map_server + amcl + move_base + rviz，在 RViz 点 2D Nav Goal，
+# 同时执行 rostopic echo /move_base_simple/goal 记录 position.x、position.y 和 orientation。
+# 如果记录到四元数 qz/qw，可用 yaw = 2*atan2(qz, qw) 换算，也可直接在目标点中写 qz/qw。
+
+goals:
+  - name: "goal_1"
+    x: 0.48508787155151367
+    y: -3.4729700088500977
+    yaw: 1.643955
+    wait: 0.2
+
+  - name: "goal_2"
+    x: 0.07982659339904785
+    y: -2.5077948570251465
+    yaw: 1.860527
+    wait: 0.2
+
+  - name: "goal_3"
+    x: 0.03093886375427246
+    y: -1.4023712873458862
+    yaw: 0.899797
+    wait: 0.2
+
+  - name: "start_parking"
+    x: -0.04358017444610596
+    y: -0.28503382205963135
+    yaw: 0.025280
+    wait: 0.0
+    

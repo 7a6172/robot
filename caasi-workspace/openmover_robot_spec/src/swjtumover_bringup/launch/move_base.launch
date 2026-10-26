@@ -1,0 +1,11 @@
+<launch>
+  <!-- 启动 move_base 主节点 -->
+ <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen" clear_params="true">
+        <param name="base_global_planner" value="global_planner/GlobalPlanner  " />
+        <param name="base_local_planner" value="teb_local_planner/TebLocalPlannerROS" />
+        <rosparam file="$(find swjtumover_bringup)/param/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find swjtumover_bringup)/param/global_costmap_params.yaml" command="load" />
+        <rosparam file="$(find swjtumover_bringup)/param/teb_local_planner_params.yaml" command="load" />
+    </node>
+  
+</launch>

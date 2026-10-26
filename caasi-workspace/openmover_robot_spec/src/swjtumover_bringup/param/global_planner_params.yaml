@@ -1,0 +1,18 @@
+GlobalPlanner:                 # 使用 global_planner 包的插件（若用 navfn，改为 NavfnROS 相应参数）
+  allow_unknown: true          # 允许穿越未知区域（配合全局 costmap 的 track_unknown_space）
+  default_tolerance: 0.5       # 目标点附近允许的匹配半径（m）
+
+  # 算法选项
+  use_dijkstra: true           # Dijkstra 更稳健；若更快可选 A*（use_dijkstra=false）
+  use_quadratic: true
+  use_grid_path: false
+  old_navfn_behavior: false
+
+  # 代价参数（与 costmap 膨胀相关，必要时微调）
+  lethal_cost: 200
+  neutral_cost: 50
+  cost_factor: 3.0
+
+  # 姿态生成
+  orientation_mode: 0          # 0=无特殊处理，沿路径插值
+  orientation_window_size: 1

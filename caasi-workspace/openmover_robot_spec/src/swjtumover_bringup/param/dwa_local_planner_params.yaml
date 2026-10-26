@@ -1,0 +1,42 @@
+DWAPlannerROS:
+  ######## 运动学限制（差速底盘） ########
+  holonomic_robot: false
+  max_vel_x: 0.50
+  min_vel_x: 0.0
+  max_vel_trans: 0.50
+  min_vel_trans: 0.08        # 允许更慢的平移，在窄处更容易找到合法解
+
+  max_vel_theta: 1.0         # 降低角速上限，减少猛转导致的碰撞评估失败
+  min_vel_theta: 0.10
+
+  acc_lim_x: 1.0
+  acc_lim_theta: 2.0
+  acc_lim_y: 0.0
+
+  ######## 采样与前瞻 ########
+  sim_time: 2.0              # 看得略远一点，便于绕障
+  sim_granularity: 0.02      # 轨迹离散更细，碰撞判定更准
+  vx_samples: 28             # 增加采样密度，提高出解概率
+  vy_samples: 0
+  vtheta_samples: 32
+
+  ######## 成本函数权重 ########
+  path_distance_bias: 70.0    # 贴全局路但不至于被“吸死”在路径上
+  goal_distance_bias: 21.0    # 朝目标推进的意愿略高
+  occdist_scale: 0.02         # 障碍代价权重，0.015~0.04 可微调
+
+  forward_point_distance: 0.18 # 前向评估点稍近，鼓励边走边调头
+  stop_time_buffer: 0.20       # 刹停缓冲略小，放宽出解条件
+  scaling_speed: 0.25
+  max_scaling_factor: 0.2
+
+  ######## 目标容差（避免到点陀螺） ########
+  xy_goal_tolerance: 0.20
+  yaw_goal_tolerance: 0.30
+  latch_xy_goal_tolerance: true
+
+  ######## 其他 ########
+  prune_plan: true
+  oscillation_reset_dist: 0.25
+  publish_traj_pc: true
+  publish_cost_grid_pc: false

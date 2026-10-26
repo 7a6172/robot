@@ -1,0 +1,10 @@
+# 遥控
+teleop:
+  # 遥控线速度
+  velocity_x: 0.2
+  # 遥控角速度
+  velocity_yaw: 0.4
+  # 遥控线加速度
+  max_x_acc: 0.2
+  # 遥控角加速度
+  max_yaw_acc: 0.4

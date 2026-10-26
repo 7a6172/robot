@@ -1,0 +1,59 @@
+TebLocalPlannerROS:
+  footprint_model:
+    type: "polygon"
+    vertices: [[0.16, 0.16], [0.16, -0.16], [-0.16, -0.16], [-0.16, 0.16]]
+
+  odom_topic: odom
+
+  # 策略相关
+  teb_autosize: True
+  dt_ref: 0.55
+  dt_hysteresis: 0.12
+  global_plan_overwrite_orientation: True
+  max_global_plan_lookahead_dist: 2.0
+  feasibility_check_no_poses: 3
+
+  # 运动相关
+  max_vel_x: 0.6 # 保持不变
+  max_vel_x_backwards: 0.2  # 保持不变
+  max_vel_theta: 1.0
+  acc_lim_x: 0.5
+  acc_lim_theta: 1.0
+  min_turning_radius: 0.5
+  wheelbase: 0.31
+  cmd_angle_instead_rotvel: False
+
+  # 目标容差
+  xy_goal_tolerance: 0.2
+  yaw_goal_tolerance: 0.1
+
+  # 障碍物相关
+  min_obstacle_dist: 0.10
+  inflation_dist: 0.08
+  include_costmap_obstacles: True
+  costmap_obstacles_behind_robot_dist: 1.2
+  obstacle_poses_affected: 25
+  costmap_converter_plugin: ""
+
+  # 路径优化
+  no_inner_iterations: 2  # 减少以提高效率
+  no_outer_iterations: 2  # 减少以提高效率
+  penalty_epsilon: 0.1
+  weight_max_vel_x: 2  # 保持支持高速度
+  weight_max_vel_theta: 1
+  weight_acc_lim_x: 1
+  weight_acc_lim_theta: 1
+  weight_kinematics_nh: 1000
+  weight_kinematics_forward_drive: 1
+  weight_optimaltime: 0.8  # 略降以提高效率
+  weight_obstacle: 80  # 增加以提升安全
+
+  # 多线规划
+  enable_homotopy_class_planning: False  # 禁用以提高效率
+  enable_multithreading: False  # 测试后决定
+  max_number_classes: 1
+  selection_cost_hysteresis: 1.0
+  selection_obst_cost_scale: 1.0
+  selection_alternative_time_cost: False
+  roadmap_graph_no_samples: 10  # 减少以提高效率
+  roadmap_graph_area_width: 5
