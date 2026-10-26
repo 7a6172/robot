@@ -25,7 +25,21 @@ share_dir = get_package_share_directory('openmover')
 launch_dir = os.path.join(share_dir, 'launch')
 config_dir = os.path.join(share_dir, 'config_defaults')
 
-hardwares_yaml = os.path.join(config_dir, 'hardwares.yaml')
+# Hardware profile selection. The parameter file is chosen by the `hardware` launch
+# argument instead of being hardcoded, so one project can describe more than one real
+# hardware fit. Defaults to the lab profile, which is exactly the previous behaviour.
+HARDWARE_PROFILES = {
+    'openmover_lab': 'hardwares.yaml',        # bluesea2 x2, io_board, 0.162 m track
+    'swjtumover': 'hardware/swjtumover.yaml',  # Vanjee 718H, screen display, 0.103 m track
+}
+
+# The parameter file follows the profile. Expressed as a substitution so the choice is
+# made at launch time and the same file serves both hardware fits without duplicating
+# the launch description.
+hardwares_yaml = PythonExpression([
+    "'", config_dir, "/' + ", repr(HARDWARE_PROFILES), ".get('",
+    LaunchConfiguration('hardware'), "', 'hardwares.yaml')",
+])
 modules_yaml = os.path.join(config_dir, 'modules.yaml')
 
 urdf_file = os.path.join(share_dir, 'urdf', 'robot_description.urdf')
@@ -100,6 +114,9 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     launch_gazebo = LaunchConfiguration('launch_gazebo')
     motor_actuation_enabled = LaunchConfiguration('motor_actuation_enabled')
+    hardware = LaunchConfiguration('hardware')
+    lidar_driver = LaunchConfiguration('lidar_driver')
+    io_driver = LaunchConfiguration('io_driver')
 
     # The environment factor for M1 hardening: exactly '1' only when the launch
     # argument is exactly 'true'. A params file cannot set an environment variable,
@@ -108,6 +125,34 @@ def generate_launch_description():
     motor_actuation_env = PythonExpression([
         "'1' if '", motor_actuation_enabled, "' == 'true' else '0'"
     ])
+
+    def _validate_hardware(context, *args, **kwargs):
+        # Unknown profile or a driver that contradicts the profile is a configuration
+        # error, not something to guess at. Failing here means an incompatible pair can
+        # never reach the point where two drivers would start.
+        profile = context.launch_configurations.get('hardware', 'openmover_lab')
+        lidar = context.launch_configurations.get('lidar_driver')
+        io_drv = context.launch_configurations.get('io_driver')
+
+        if profile not in HARDWARE_PROFILES:
+            raise RuntimeError(
+                f"unknown hardware profile {profile!r}; known profiles: "
+                f"{sorted(HARDWARE_PROFILES)}"
+            )
+
+        expected = {'openmover_lab': ('bluesea2', 'io_board'),
+                    'swjtumover': ('vanjee', 'screen')}[profile]
+        if lidar is not None and lidar != expected[0]:
+            raise RuntimeError(
+                f"hardware profile {profile!r} expects lidar_driver:={expected[0]!r}, "
+                f"got {lidar!r} -- these drivers are mutually exclusive by profile"
+            )
+        if io_drv is not None and io_drv != expected[1]:
+            raise RuntimeError(
+                f"hardware profile {profile!r} expects io_driver:={expected[1]!r}, "
+                f"got {io_drv!r} -- these drivers are mutually exclusive by profile"
+            )
+        return []
 
     def _validate_motor_actuation(context, *args, **kwargs):
         # Reject ambiguous spellings before any node starts. ROS 2 launch parses
@@ -174,14 +219,19 @@ def generate_launch_description():
         condition=gz_cond)
 
     # 启动 Gazebo Harmonic 仿真器
-    gz_sim = IncludeLaunchDescription(
-        os.path.join(get_package_share_directory('ros_gz_sim'),
-                     'launch', 'gz_sim.launch.py'),
-        launch_arguments={
-            'gz_args': ['-r -v 1 ', world_file],
-            'on_exit_shutdown': 'false',
-        }.items(),
-        condition=gz_cond)
+    # NOTE: ros_gz_sim is resolved lazily, inside this function. Resolving it at
+    # description-build time made the entire bringup unimportable on any host without
+    # Gazebo -- including the physical robot, where simulation is never used.
+    def _gz_sim_include():
+        return IncludeLaunchDescription(
+            os.path.join(get_package_share_directory('ros_gz_sim'),
+                         'launch', 'gz_sim.launch.py'),
+            launch_arguments={
+                'gz_args': ['-r -v 1 ', world_file],
+                'on_exit_shutdown': 'false',
+            }.items(),
+            condition=gz_cond,
+        )
 
     # 启动 Gazebo <-> ROS 2 桥接
     ros_gz_bridge = Node(
@@ -200,6 +250,19 @@ def generate_launch_description():
         DeclareLaunchArgument('system_mode', default_value='1'),
         DeclareLaunchArgument('sim_area', default_value='0'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
+        DeclareLaunchArgument(
+            'hardware', default_value='openmover_lab',
+            description='Hardware profile: which parameter file and which driver set. '
+                        'openmover_lab = bluesea2 x2 + io_board + 0.162 m track; '
+                        'swjtumover = Vanjee 718H + screen display + 0.103 m track.'),
+        DeclareLaunchArgument(
+            'lidar_driver', default_value='bluesea2',
+            description='LiDAR driver to start. Must match the hardware profile; the two '
+                        'drivers are mutually exclusive, so they cannot both run.'),
+        DeclareLaunchArgument(
+            'io_driver', default_value='io_board',
+            description='Chassis IO driver to start. Must match the hardware profile.'),
+        OpaqueFunction(function=_validate_hardware),
         OpaqueFunction(function=_validate_motor_actuation),
         DeclareLaunchArgument(
             'motor_actuation_enabled', default_value='false',
@@ -250,7 +313,9 @@ def generate_launch_description():
 
         # 以下为仿真环境使用
         gz_resource_path,
-        gz_sim,
+        # Deferred: the Gazebo include is only constructed when the condition holds, so
+        # a host without ros_gz_sim can still load this file.
+        OpaqueFunction(function=lambda ctx: [_gz_sim_include()], condition=gz_cond),
         ros_gz_bridge,
         OpaqueFunction(function=lambda ctx: spawn_area(ctx, 0),
                        condition=IfCondition(PythonExpression(
