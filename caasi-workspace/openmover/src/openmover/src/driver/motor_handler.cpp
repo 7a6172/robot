@@ -6,6 +6,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <chrono>
 #include <thread>
@@ -109,6 +110,56 @@ bool emergency_flag = false;
 // 定义手动控制标志
 bool manual_control_flag = true;
 
+// Actuation permission (M1, Phase 8).
+//
+// Defaults to DENIED and is only ever set from the `motor.actuation_enabled`
+// parameter, which is declared WITHOUT a default so a missing key fails closed.
+//
+// This is deliberately a separate fact from "which hardware am I on": selecting a
+// hardware profile must never grant permission to drive motors. It is also
+// separate from the emergency and manual/auto gates below -- this flag can only
+// ever deny more, never less.
+//
+// Enforcement happens at the single final transmission boundary in main(), where
+// a nonzero speed is overwritten with zero on every iteration. That placement is
+// what guarantees a command received while disabled cannot later be released when
+// permission is granted.
+bool actuation_enabled = false;
+
+// Set once a speed command has arrived *after* permission was granted. Before
+// that, every transmitted frame carries zero, so granting permission cannot
+// release a value that was stored while disabled.
+bool fresh_command_after_enable = false;
+
+// Latch of the previous permission state, used to re-arm fresh_command_after_enable
+// on every transition from disabled -> enabled.
+bool actuation_was_enabled = false;
+
+// Second, independent actuation factor: the process environment (M1 hardening).
+//
+// The parameter alone was not enough. A ROS 2 parameter *file* is merged into the
+// same override map as a `-p` argument, and the node cannot tell where a value came
+// from -- so a YAML file declaring `actuation_enabled: true` could grant actuation.
+// Environment variables are not settable from a parameter file, so requiring
+// `CAASI_MOTOR_ACTUATION=1` closes that bypass mechanically.
+//
+// Only the exact string "1" satisfies this condition. Missing, empty, "0", "true",
+// "yes" and every other value deny.
+bool actuation_env_ok = false;
+
+// Name of the environment variable. Not sensitive: a permission flag, not a secret.
+// Its value is never logged -- only whether the condition was satisfied.
+constexpr const char *ACTUATION_ENV_VAR = "CAASI_MOTOR_ACTUATION";
+
+// Single source of truth for "may this process drive motors at all". Both factors
+// are read once at startup and never re-read, so no runtime parameter change can
+// escalate permission.
+inline bool actuation_permitted()
+{
+    return actuation_enabled && actuation_env_ok;
+}
+
+
 // 定义电机就绪标志
 bool motor_ready = false;
 
@@ -172,6 +223,12 @@ bool udp_init()
 // 速度控制回调
 void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
+    // M1: a command counts as "fresh" only if permission (both factors) is already
+    // granted, so a value received while disabled can never authorise itself later.
+    if (actuation_permitted())
+    {
+        fresh_command_after_enable = true;
+    }
     if (!manual_control_flag)
     {
         // 解算速度
@@ -206,6 +263,11 @@ void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
 // 手动速度控制回调
 void cmd_vel_manual_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
+    // M1: same fresh-command rule as cmd_vel_callback.
+    if (actuation_permitted())
+    {
+        fresh_command_after_enable = true;
+    }
     if (manual_control_flag)
     {
         // 解算速度
@@ -279,24 +341,225 @@ int main(int argc, char **argv)
     setlocale(LC_CTYPE, "zh_CN.utf8");
 
     // 定义ROS节点处理程序
-    auto node_handle = rclcpp::Node::make_shared(NODE_NAME);
+    // The node must receive the command-line arguments, otherwise `-p key:=value`
+    // overrides are not attached to it (get_parameter_overrides() would be empty and
+    // parameter presence could not be verified).
+    // The node must receive the command-line arguments so `--ros-args -p key:=value`
+    // overrides reach it. Without this the override map is empty and the fail-closed
+    // configuration check would reject every run.
+    //
+    // This node reads its configuration from the override map and never declares a
+    // default, so allow_undeclared_parameters is left at its default (false): the
+    // parameters stay undeclared, which is intentional -- declaration with a default
+    // is exactly the mechanism that previously hid missing keys.
+    rclcpp::NodeOptions node_options;
+    node_options.arguments(std::vector<std::string>(argv + 1, argv + argc));
+    node_options.allow_undeclared_parameters(true);
+    node_options.automatically_declare_parameters_from_overrides(false);
+    auto node_handle = rclcpp::Node::make_shared(NODE_NAME, node_options);
     node = node_handle.get();
 
     // 打印调试信息
     RCLCPP_INFO(node_handle->get_logger(), "%s：节点已启动。", TAG);
 
     // 获取参数（ROS 1: ~/motor/xxx -> ROS 2: motor.xxx）
-    control_freq = (float)node_handle->declare_parameter<double>("motor.control_freq", 100.0);
+    //
+    // M1 (Phase 8): the parameters that determine physical motion are validated
+    // BEFORE the socket is opened, and fail closed. The previous code used
+    // declare_parameter(name, default) for every entry, which silently substitutes
+    // a default when the key is missing -- measured on the real robot as
+    // wheel_acc 10000 vs 1800, wheel_radius 0.0535 vs 0.05035 and
+    // odom_compensation_ratio 1.0 vs 1.047. A silently wrong geometry drives a
+    // robot wrongly, so "absent" is now an error rather than a fallback.
+    //
+    // Telemetry is unaffected: this validation runs before the publishers are
+    // created, so a configuration failure stops the node instead of letting it run
+    // with unverified motion parameters. That is the documented trade-off
+    // (requirement 7: document rather than weaken validation).
+    // ---------------------------------------------------------------------
+    // M1 (Phase 8): fail-closed configuration.
+    //
+    // Every parameter that determines physical motion must be *supplied*. The
+    // previous code used declare_parameter(name, default) throughout, which silently
+    // substitutes a default when the key is missing -- measured on the real robot as
+    // wheel_acc 10000 vs 1800, wheel_radius 0.0535 vs 0.05035 and
+    // odom_compensation_ratio 1.0 vs 1.047. A silently wrong geometry drives a robot
+    // wrongly, so absence is now a startup error.
+    //
+    // The override map is the correct source of truth here. It is populated before
+    // anything is declared, and asking it directly keeps "supplied" and "defaulted"
+    // distinguishable -- which declare_parameter(name, default) cannot do.
+    //
+    // Telemetry is unaffected: this runs before any publisher exists, so a bad
+    // configuration stops the node rather than letting it publish from a state whose
+    // motion parameters were never verified.
+    // ---------------------------------------------------------------------
+    {
+        // Established by instrumentation on this build: the parameter overrides --
+        // whatever `--ros-args -p key:=value` or a YAML file supplied -- are readable
+        // here and are already present before anything is declared. get_parameter_or()
+        // alone is NOT usable: it reports "not set" for an override that has not been
+        // declared. Presence is therefore decided from the override map and the value
+        // taken from it directly, so nothing is ever declared with a default.
+        const auto &overrides =
+            node_handle->get_node_parameters_interface()->get_parameter_overrides();
 
-    ip_address = node_handle->declare_parameter<std::string>("motor.ip_address", "192.168.100.100");
-    port = node_handle->declare_parameter<int>("motor.port", 26);
+        std::vector<std::string> missing;
+        std::vector<std::string> bad_type;
 
-    wheel_max_speed_rpm = node_handle->declare_parameter<int>("motor.wheel_max_speed_rpm", 300);
-    wheel_acc = node_handle->declare_parameter<int>("motor.wheel_acc", 10000);
+        auto has = [&](const char *key) {
+            auto it = overrides.find(key);
+            return it != overrides.end() &&
+                   it->second.get_type() != rclcpp::ParameterType::PARAMETER_NOT_SET;
+        };
 
-    chassis_radius = node_handle->declare_parameter<double>("motor.chassis_radius", 0.225);
-    wheel_radius = node_handle->declare_parameter<double>("motor.wheel_radius", 0.0535);
-    odom_compensation_ratio = node_handle->declare_parameter<double>("motor.odom_compensation_ratio", 1.0);
+        auto as_double = [&](const char *key, double &out) {
+            if (!has(key)) { missing.emplace_back(key); return; }
+            try { out = overrides.at(key).get<double>(); }
+            catch (const std::exception &) { bad_type.emplace_back(key); }
+        };
+        auto as_int = [&](const char *key, int &out) {
+            if (!has(key)) { missing.emplace_back(key); return; }
+            try { out = (int)overrides.at(key).get<int64_t>(); }
+            catch (const std::exception &) { bad_type.emplace_back(key); }
+        };
+        auto as_string = [&](const char *key, std::string &out) {
+            if (!has(key)) { missing.emplace_back(key); return; }
+            try { out = overrides.at(key).get<std::string>(); }
+            catch (const std::exception &) { bad_type.emplace_back(key); }
+        };
+        auto as_bool = [&](const char *key, bool &out) {
+            if (!has(key)) { missing.emplace_back(key); return; }
+            try { out = overrides.at(key).get<bool>(); }
+            catch (const std::exception &) { bad_type.emplace_back(key); }
+        };
+
+        double d_control_freq = 0.0;
+        std::string s_ip;
+        int i_port = 0, i_max_rpm = 0, i_acc = 0;
+        double d_chassis = 0.0, d_wheel = 0.0, d_odom = 0.0;
+        bool b_actuation = false;
+
+        as_double("motor.control_freq", d_control_freq);
+        as_string("motor.ip_address", s_ip);
+        as_int("motor.port", i_port);
+        as_int("motor.wheel_max_speed_rpm", i_max_rpm);
+        as_int("motor.wheel_acc", i_acc);
+        as_double("motor.chassis_radius", d_chassis);
+        as_double("motor.wheel_radius", d_wheel);
+        as_double("motor.odom_compensation_ratio", d_odom);
+        // Actuation permission: only a supplied, literal `true` enables it.
+        as_bool("motor.actuation_enabled", b_actuation);
+
+        if (!bad_type.empty())
+        {
+            std::string list;
+            for (const auto &b : bad_type) list += "\n  - " + b;
+            RCLCPP_FATAL(node_handle->get_logger(),
+                         "%s：参数类型无效，拒绝启动（不会猜测意图）。类型错误:%s",
+                         TAG, list.c_str());
+            rclcpp::shutdown();
+            return 1;
+        }
+
+        if (!missing.empty())
+        {
+            std::string list;
+            for (const auto &m : missing) list += "\n  - " + m;
+            RCLCPP_FATAL(node_handle->get_logger(),
+                         "%s：缺少必需参数，拒绝启动（不会用默认值代替）。缺失:%s",
+                         TAG, list.c_str());
+            rclcpp::shutdown();
+            return 1;
+        }
+
+        control_freq = (float)d_control_freq;
+        ip_address = s_ip;
+        port = i_port;
+        wheel_max_speed_rpm = i_max_rpm;
+        wheel_acc = i_acc;
+        chassis_radius = d_chassis;
+        wheel_radius = d_wheel;
+        odom_compensation_ratio = d_odom;
+        actuation_enabled = b_actuation;
+    }
+
+    // Range checks: an out-of-range geometry or limit is as dangerous as a missing
+    // one, so it is rejected rather than clamped silently.
+    {
+        std::vector<std::string> bad;
+        if (!(control_freq > 0.0f && control_freq <= 1000.0f))
+            bad.emplace_back("motor.control_freq must be in (0, 1000]");
+        if (port <= 0 || port > 65535)
+            bad.emplace_back("motor.port must be in (0, 65535]");
+        if (wheel_max_speed_rpm <= 0)
+            bad.emplace_back("motor.wheel_max_speed_rpm must be > 0");
+        if (wheel_acc <= 0)
+            bad.emplace_back("motor.wheel_acc must be > 0");
+        if (!(chassis_radius > 0.0))
+            bad.emplace_back("motor.chassis_radius must be > 0");
+        if (!(wheel_radius > 0.0))
+            bad.emplace_back("motor.wheel_radius must be > 0");
+        if (!(odom_compensation_ratio > 0.0))
+            bad.emplace_back("motor.odom_compensation_ratio must be > 0");
+        if (ip_address.empty())
+            bad.emplace_back("motor.ip_address must be non-empty");
+
+        if (!bad.empty())
+        {
+            std::string list;
+            for (const auto &b : bad)
+            {
+                list += "\n  - " + b;
+            }
+            RCLCPP_FATAL(node_handle->get_logger(),
+                         "%s：参数取值无效，拒绝启动。问题:%s", TAG, list.c_str());
+            rclcpp::shutdown();
+            return 1;
+        }
+    }
+
+    RCLCPP_INFO(node_handle->get_logger(),
+                "%s：actuation_enabled=%s（默认禁用；非显式 true 一律禁用）",
+                TAG, actuation_enabled ? "true" : "false");
+
+    // Second factor (M1 hardening): CAASI_MOTOR_ACTUATION must be exactly "1".
+    // A parameter file cannot set an environment variable, so this closes the
+    // params-file bypass. Read once, here, and never re-read.
+    {
+        const char *env_raw = std::getenv(ACTUATION_ENV_VAR);
+        actuation_env_ok = (env_raw != nullptr) && (std::strcmp(env_raw, "1") == 0);
+
+        // Log the reason, not the value: the variable is a permission flag, and a
+        // diagnostic should not encourage operators to treat it as a secret.
+        if (!actuation_env_ok)
+        {
+            RCLCPP_WARN(node_handle->get_logger(),
+                        "%s：环境条件未满足（%s 缺失或不为 \"1\"），物理驱动保持禁用。",
+                        TAG, ACTUATION_ENV_VAR);
+        }
+    }
+
+    // One consolidated statement of the effective permission, so an operator can see
+    // exactly which factor is missing without reading the code.
+    if (!actuation_permitted())
+    {
+        const std::string missing =
+            (!actuation_enabled && !actuation_env_ok) ? "参数与环境变量"
+            : (!actuation_enabled)                    ? "参数 motor.actuation_enabled"
+                                                      : "环境变量 CAASI_MOTOR_ACTUATION";
+        RCLCPP_WARN(node_handle->get_logger(),
+                    "%s：物理驱动禁用（缺少: %s）。遥测与日志照常，只发送零速度指令。",
+                    TAG, missing.c_str());
+    }
+    else
+    {
+        RCLCPP_WARN(node_handle->get_logger(),
+                    "%s：物理驱动已启用（参数=true 且 %s=1）。",
+                    TAG, ACTUATION_ENV_VAR);
+    }
+
+
 
     // 初始化系统
     if (udp_init())
@@ -339,11 +602,46 @@ int main(int argc, char **argv)
             // 处理回调函数
             executor.spin_some();
 
+            // ------------------------------------------------------------------
+            // M1 actuation boundary (Phase 8).
+            //
+            // This is the single place where a motor command is transmitted at
+            // runtime (the other four sendto() calls are the shutdown zero-flush
+            // below and are intentionally not gated). Two independent conditions
+            // must hold for a nonzero speed to reach the wire:
+            //
+            //   1. `actuation_enabled` is explicitly true (fail-closed param), and
+            //   2. a fresh command has arrived *after* permission was granted.
+            //
+            // Condition 2 is what prevents a command received while disabled from
+            // being released later: granting permission re-arms the fresh-command
+            // latch to false, so the transmitted speed stays zero until a new
+            // cmd_vel actually arrives.
+            //
+            // The zero is applied here, after packet composition and immediately
+            // before sendto(), so no path can reach the socket with a stale value.
+            // ------------------------------------------------------------------
+            if (actuation_permitted() && !actuation_was_enabled)
+            {
+                fresh_command_after_enable = false;
+                motor_speed_cmd_data.speed_rpm_left = 0;
+                motor_speed_cmd_data.speed_rpm_right = 0;
+            }
+            actuation_was_enabled = actuation_permitted();
+
             // 组装发送数据
             packet_send_buffer[0] = comm_state == STATE_CONTROL_LEFT_MOTOR ? MOTOR_LEFT_ID : MOTOR_RIGHT_ID;
             packet_send_buffer[1] = 0x64;
 
             int16_t speed_rpm = comm_state == STATE_CONTROL_LEFT_MOTOR ? motor_speed_cmd_data.speed_rpm_left : -motor_speed_cmd_data.speed_rpm_right;
+
+            // Final boundary guard: without permission, or without a fresh command
+            // since permission was granted, the transmitted speed is zero.
+            if (!actuation_permitted() || !fresh_command_after_enable)
+            {
+                speed_rpm = 0;
+            }
+
             packet_send_buffer[2] = (uint8_t)(speed_rpm >> 8);
             packet_send_buffer[3] = (uint8_t)(speed_rpm & 0xff);
 

@@ -1,0 +1,30 @@
+# 物理机器人（swjtumover05）硬件参数 —— ROS 2 参数文件
+#
+# 来源：机器人 /dev/sda2 上 swjtumover_bringup/config/motor.yaml
+#       数值已在真机上以 L4 证据核验（Phase 8）：
+#         motor_state 25 Hz、rpm≈0、0 故障；odom 5 s 漂移 10 µm。
+#
+# 与实验室配置（hardwares.yaml）的差异全部来自真机测量，不是猜测：
+#   chassis_radius           0.103   (lab 0.162)  —— 轮距 0.206 m vs 0.324 m
+#   odom_compensation_ratio  1.047   (lab 1.0)    —— 真机标定系数
+#   wheel_acc                1800    (lab 6000)
+#   control_freq             50      (lab 100)
+#
+# 注意：本文件**故意不包含 actuation_enabled**。
+#       物理驱动许可只能由 launch 参数显式传入（默认 false），
+#       这样复制、继承或误用此 YAML 都不可能授予驱动权限。
+/**:
+  ros__parameters:
+
+    motor:
+      control_freq: 50
+
+      ip_address: "192.168.100.100"
+      port: 23
+
+      wheel_max_speed_rpm: 300
+      wheel_acc: 1800
+
+      chassis_radius: 0.103
+      wheel_radius: 0.05035
+      odom_compensation_ratio: 1.047

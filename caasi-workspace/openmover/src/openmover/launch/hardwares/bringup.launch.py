@@ -99,6 +99,28 @@ def generate_launch_description():
     sim_area = LaunchConfiguration('sim_area')
     use_sim_time = LaunchConfiguration('use_sim_time')
     launch_gazebo = LaunchConfiguration('launch_gazebo')
+    motor_actuation_enabled = LaunchConfiguration('motor_actuation_enabled')
+
+    # The environment factor for M1 hardening: exactly '1' only when the launch
+    # argument is exactly 'true'. A params file cannot set an environment variable,
+    # so this is what makes "a YAML cannot grant actuation" a mechanism rather than
+    # a convention.
+    motor_actuation_env = PythonExpression([
+        "'1' if '", motor_actuation_enabled, "' == 'true' else '0'"
+    ])
+
+    def _validate_motor_actuation(context, *args, **kwargs):
+        # Reject ambiguous spellings before any node starts. ROS 2 launch parses
+        # argument values as YAML, which would otherwise accept 'yes'/'on'/'TRUE' as
+        # boolean true and silently authorise actuation.
+        raw = context.launch_configurations.get('motor_actuation_enabled', 'false')
+        if raw not in ('true', 'false'):
+            raise RuntimeError(
+                "motor_actuation_enabled must be exactly 'true' or 'false' "
+                f"(got {raw!r}); ambiguous spellings are rejected so that an "
+                "unintended value can never authorise motor output"
+            )
+        return []
 
     sim_cond = IfCondition(PythonExpression([system_mode, ' == 0']))
     real_cond = IfCondition(PythonExpression([system_mode, ' == 1']))
@@ -178,6 +200,13 @@ def generate_launch_description():
         DeclareLaunchArgument('system_mode', default_value='1'),
         DeclareLaunchArgument('sim_area', default_value='0'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
+        OpaqueFunction(function=_validate_motor_actuation),
+        DeclareLaunchArgument(
+            'motor_actuation_enabled', default_value='false',
+            description='Allow physical motor actuation. Default DENY. This is an '
+                        'explicit launch decision and is deliberately NOT read from a '
+                        'YAML parameter file, so a copied or inherited configuration '
+                        'cannot grant motor output on another robot.'),
         DeclareLaunchArgument(
             'launch_gazebo', default_value='1',
             description='仿真模式下是否启动 Gazebo 本体；0 = 外部仿真器'
@@ -246,7 +275,14 @@ def generate_launch_description():
         Node(package='openmover', executable='motor_handler', name='motor_handler',
              output='screen', respawn=True, condition=real_cond,
              parameters=[hardwares_yaml, modules_yaml,
-                         {'use_sim_time': use_sim_time}]),
+                         # Actuation permission is an explicit launch decision and is
+                         # never read from a YAML file: a parameter file may deny
+                         # driving but must never grant it, so a copied, inherited or
+                         # mistaken YAML cannot enable motor output on another robot.
+                         # Declared below with default 'false' (DENY).
+                         {'motor.actuation_enabled': motor_actuation_enabled},
+                         {'use_sim_time': use_sim_time}],
+             additional_env={'CAASI_MOTOR_ACTUATION': motor_actuation_env}),
         Node(package='openmover', executable='io_board_handler', name='io_board_handler',
              output='screen', respawn=True, condition=real_cond,
              parameters=[hardwares_yaml, modules_yaml,

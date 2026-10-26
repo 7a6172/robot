@@ -36,6 +36,11 @@ obstacle_handler:
       # 里程计真值补偿系数
       odom_compensation_ratio: 1.0
 
+      # 物理驱动许可（M1，Phase 8）**故意不在此文件中定义**。
+      # 参数文件可以否决驱动，但绝不能授予驱动；许可只能由 launch 参数
+      # 显式传入（默认 false），这样复制/继承/误用任何 YAML 都无法开启驱动。
+      # 见 bringup.launch.py 的 motor_actuation_enabled 参数。
+
     # 底盘IO板
     robot:
       # 软件版本号（a.b.c）
