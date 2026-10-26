@@ -132,6 +132,7 @@ install(DIRECTORY include/ DESTINATION include)
 # script directory placed on sys.path[0] by the interpreter.
 install(PROGRAMS
   scripts/driver/speaker_handler.py
+  scripts/driver/screen_handler.py
   scripts/teleop/teleop_handler.py
   scripts/workload/workload.py
   scripts/server/func_mode_server_handler.py
