@@ -1239,3 +1239,940 @@
     E3 container logs/inspect, multi-target aggregation) but none are required.
     (Carried-forward reproducibility gap, unrelated to these stages: no committed ROS 1
     Dockerfile for the legacy reference environment.)
+
+---
+
+# Phase 8: Real Robot Migration Validation (opened 2026-10-25)
+
+## Phase 8 Context — the robot is a different machine from the lab
+
+The physical robot became available: **`swjtumover05`** at `10.212.19.95` (Wi-Fi) /
+`swjtumover05-u24` (Tailscale `100.80.102.120`). Ubuntu 24.04.5 on `/dev/sda3` (ROS 2 Jazzy);
+Ubuntu 20.04.6 + ROS Noetic on `/dev/sda2`, mounted at `/mnt/ubuntu20`, holding the **working
+ROS 1 stack**.
+
+**Critical discovery:** the robot does **not** run the lab OpenMover code. Its packages are
+`swjtumover_bringup`, `swjtumover_msgs`, `vanjee_lidar_sdk` — disjoint from `openmover`,
+`openmover_msgs`, `bluesea2`, `ira_laser_tools`, `auto_mapping_toolbox`, `relocalization_toolbox`,
+`warehouse_simulation`. The three-way equivalence chain completed earlier
+(`ROS1 ≈ ROS2-reference ≡ caasi-ROS2`) applies **only to the lab robot** and says nothing about
+this one.
+
+**But the codebases share a direct lineage**: the robot's `motor_node.cpp` is a **~78 % fork** of
+the lab's `motor_handler.cpp` (270 of ~345 unique lines shared), with a **byte-identical UDP wire
+protocol** (IDs 1/2, opcode `0x64`, 10-byte packet, crc8-Maxim), and
+`swjtumover_msgs/motor_state.msg` is **field-for-field identical** to
+`openmover_msgs/MotorState.msg`.
+
+## Gate structure agreed with the user
+
+1. **Gate 1 — source discrepancy inventory (read-only).** ✅ **COMPLETED.**
+2. **Gate 2 — live ROS 1 behavioural baseline (read-only, robot stationary).** ⛔ **Not started.**
+3. **Gate 3 — ROS 2 port** (hardware bringup first, navigation later). ⛔ **Not started.**
+
+No ROS 2 code may be written until Gates 1 and 2 are complete.
+
+## Gate 1 outcome — COMPLETED
+
+- [Four-Way Discrepancy Report](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/four-way-discrepancy-report.md)
+- **Snapshot captured** at `caasi-workspace/openmover_robot_spec/` — 696 files, tree SHA-256
+  `9d46a6c515dc74ae1d136baadfdb503a3e06fe8cd61ad915d189601c0b29b78d`, source **never written to**.
+  `SNAPSHOT-MANIFEST.txt` (per-file hashes) + `README.md` (provenance).
+- **Four implementations recorded**: robot ROS 1 (snapshot, no VCS), lab ROS 1 (`openmover_robot`,
+  parent `79dc52f`), lab ROS 2 (`openmover_ws`, parent `79dc52f`), CAASI ROS 2
+  (`caasi-workspace/openmover`, parent `8c86c0a`).
+- **Physical divergence confirmed from URDF**: robot track width **0.206 m** vs lab **0.324 m**;
+  robot has **1** LiDAR link (`lidar_link`), lab has **2** (forward/rear). Different chassis.
+- **LiDAR**: Vanjee 718H (`vanjee_lidar_sdk`) vs bluesea2 dual + merger. **Vendor SDK is
+  dual-target** (`package_ros1.xml` + `package_ros2.xml`, `rclcpp`/`COLCON` detection,
+  `#ifdef ROS2_FOUND`) — likely reusable without porting.
+- **Camera**: RealSense D415 (`8086:0ad3`, USB, verified present) vs V4L2 HIK.
+- **Robot-only node**: `screen_node` (UDP `192.168.100.100:26`, `qrcode_text`) — the lab's port 26
+  is a *different* device (`io_board_handler`).
+- **Latent hazard recorded**: `motor.yaml` values disagree with code defaults
+  (`wheel_acc` 1800 vs 10000, `wheel_radius` 0.05035 vs 0.0535, `odom_compensation_ratio`
+  1.047 vs 1.0). YAML wins today (namespaces match), but a port must preserve the YAML values.
+- **Phantom dependency**: `swjtumover_bringup/package.xml` declares `relocalization_toolbox_msgs`
+  (a lab-only package) which is not referenced anywhere in the robot's code.
+- **Lab ROS 1 standalone buildability assessed (not attempted)**: feasible via the existing Docker
+  `osrf/ros:noetic-desktop-full` oracle; Cartographer must be source-built; the reference tree has
+  three known build-hygiene defects. **Still no committed Dockerfile.**
+- **Nothing was built, deployed, installed, or activated. No hardware accessed. Robot not moved.**
+  ROS 1 was **not** running and was **not** started.
+
+### Environment facts blocking Gate 2 (OBSERVED, not inferred)
+
+| Fact | Value |
+|---|---|
+| Robot HW | Intel N150, **4 cores, 7 GB RAM**, no GPU |
+| ROS 2 | Jazzy at `/opt/ros/jazzy` ✅ |
+| `colcon` | **MISSING** on the robot |
+| `docker`/`podman` | **MISSING** on the robot |
+| RealSense D415 | present on USB ✅ |
+| `enp1s0`, `enp3s0` | **DOWN** |
+| `192.168.100.100` (motor + screen, UDP 23/26) | **UNREACHABLE** |
+| `192.168.110.100` (Vanjee LiDAR UDP) | **UNREACHABLE** |
+| host `192.168.110.10` (required by `lidar.yaml`) | **not configured on any interface** |
+| ROS 1 processes | **none running** |
+
+Two distinct hardware subnets (`.100` and `.110`) are required. **I have not configured, enabled
+or addressed any interface** — user approval required and the user performs the change.
+
+## Open questions awaiting user decision
+
+- **Q1** Does "every single bit of functionality" include the 11 helper scripts
+  (`exam_*.py`, `nav_goal.py`, `omove_following.py`, `ok.py`/`ok2.py`, `scan_filter_120deg.py`, …)?
+  Several look like scratch/duplicate files.
+- **Q2** Should the robot's ROS 2 port **preserve the ROS 1 topic names** (`cmd_vel`, `odom`,
+  `scan`) or adopt the lab ROS 2 `openmover/hardware/*` naming?
+- **Q3** Keep the robot's direct `cmd_vel → motors` behaviour, or adopt the lab ROS 2
+  mode/emergency-stop gate (safer, but a behavioural change from the working ROS 1 system)?
+- **Q4** Confirm Nav2 (replacing gmapping/amcl/move_base) is a **separate later stage**.
+- **Q5** There is no VCS on the robot — Gate 2 will settle whether `/dev/sda2` is what actually flies.
+
+## Recommended porting strategy (proposed, NOT approved, no code written)
+
+1. **Reuse upstream** — `vanjee_lidar_sdk` (dual-target), `realsense2_camera`,
+   `robot_state_publisher`, `joint_state_publisher`.
+2. **Port mechanically from the robot's own ROS 1 source** — `motor_node`, `screen_node`,
+   `teleop_node`, `swjtumover_msgs`. Borrow rclcpp *idioms* from CAASI `motor_handler.cpp`, but keep
+   the **robot's** topics, parameters and direct `cmd_vel` semantics; preserve
+   `odom_compensation_ratio = 1.047`.
+3. **Re-derive, never inherit, anything geometric or navigational** — the lab values are provably
+   wrong for this chassis.
+
+Rationale: the CAASI port is the right reference for **ROS 2 idioms and infrastructure** and the
+wrong source of **behavioural truth** for this robot.
+
+## Next concrete step
+
+Gate 2, but **its prerequisites are unmet**. Per the user's instruction, the next action is to
+**investigate** whether Noetic + hardware access can work from the running Ubuntu 24.04
+(chroot feasibility, `/dev` passthrough, UDP reachability, `ROS_MASTER` config) and **report exact
+requirements for approval** — before any reboot, interface configuration, or hardware activation.
+
+**No reboot, no boot-entry change, no network configuration, no hardware activation, no motion**
+will be performed without explicit approval.
+
+---
+
+## Gate 2 Feasibility Investigation — COMPLETED (read-only, 2026-10-25)
+
+- [Gate 2 Feasibility Report](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/gate2-feasibility-report.md)
+- [Helper Script Inventory](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/four-way-discrepancy-report.md#13-helper-script-inventory-group-1-requirement-added-2026-10-25)
+
+### What was PROVEN (runtime, L3)
+
+- `chroot /mnt/ubuntu20` **works** — Ubuntu 20 userland executes from Ubuntu 24.
+- Noetic Python imports (`rospy`, `rosmaster`) work inside it.
+- **`roscore` starts and reports `MASTER ONLINE: True`** inside the chroot, once `ROS_HOSTNAME`
+  is set.
+- **Root cause of the initial failure CONFIRMED**: `/mnt/ubuntu20/etc/hosts` maps
+  `127.0.1.1 swjtumover`, but the live kernel hostname is **`swjtumover05`**. A stale-hosts
+  mismatch, not a ROS or chroot defect.
+- chroot shares the host network namespace (`lo`, `wlp2s0`, `tailscale0` all visible).
+
+### What was PROVEN UNSAFE
+
+- `LD_LIBRARY_PATH` pointing at `/mnt/ubuntu20/usr/lib/x86_64-linux-gnu` **breaks the host's own
+  `/bin/bash`** (`GLIBC_2.38 not found`). Naive execution of Ubuntu 20 binaries on the 24 host
+  resolves managed C++ against host glibc 2.39 / GCC 14. **`chroot` is the only safe mechanism;
+  `LD_LIBRARY_PATH` across the boundary must never be used.**
+
+### THE BLOCKER — hardware is not physically connected
+
+| Evidence | Measurement |
+|---|---|
+| `enp1s0`, `enp3s0` carrier | **`no carrier`** (both) |
+| `ethtool` link | `Link detected: no` |
+| NIC hardware | 2 × RTL8168h/8111h, `r8169`, present at boot |
+| LiDAR host bind `192.168.110.10` | **`[Errno 99] Cannot assign requested address`** |
+| `/dev` inside chroot | **static stale dir** — no `/dev/video*`, no `/dev/bus/usb` |
+
+`carrier = no` means **no cable / no link partner**, not a missing IP. Assigning addresses cannot
+change it. **No chroot, bind mount or interface configuration can substitute for a cable.**
+Per instruction I did **not** configure any interface, routing or firewall.
+
+### Evidence level reached
+
+**L3 (runtime) for ROS 1 core only.** No robot node launched. **L4 (physical hardware) is
+unreachable by any method** until devices are cabled and powered.
+
+### Disclosure — one transient state change occurred
+
+My `roscore` proof test left 3 processes running (pids 4654/4663/4673). **They were killed and
+verified gone; port 11311 is free.** The user's ROS 1 system was not running before and is not
+running now. A `/tmp/rc.log` remains inside the chroot on `/dev/sda2` (removal offered).
+
+### Decisions recorded from this round
+
+- **Group 1** — all 11 helper scripts inventoried and classified (1 required, 4 useful,
+  3 unclear, 3 experimental/duplicate). **None deleted, none ported.** Only 2 are in the production
+  bringup path; 6 are referenced by no launch file. `omove_following（复件）.py` is **byte-identical**
+  to `omove_following.py`. No `catkin_install_python` exists — a ROS 2 port must add install rules.
+- **Group 2** — robot's ROS 1 **names/types/units/semantics preserved** (`cmd_vel`, `odom`, `scan`);
+  lab port's `openmover/hardware/*` renaming and `PoseWithCovarianceStamped` odometry **not**
+  inherited. Any deviation documented with compatibility impact.
+- **Group 3** — ROS 2 **must not permit unrestricted actuation by default**; require an
+  **explicit, default-disabled actuation gate** while preserving the command interface where
+  practical. Intentional safety improvement. **No nonzero velocity, no motor activation in M1.**
+- **Group 4** — gmapping/AMCL/move_base and Nav2 migration **out of milestone 1**; record
+  dependencies for a later stage.
+
+### Next step — BLOCKED on user action, not on engineering
+
+**Rebooting is NOT the next step.** A native Ubuntu 20 boot would not reach hardware either, since
+the NICs have no carrier. The next step is **physical**: cable and power the motor/IO devices
+(`192.168.100.100`) and the Vanjee LiDAR (`192.168.110.100`, host `192.168.110.10`).
+
+Awaiting user answers to the six questions in §11 of the Gate 2 report.
+
+---
+
+## NATIVE Ubuntu 20.04 BOOT — Gate 2 hardware unblocked (2026-10-25, later)
+
+- [Feasibility Report addendum](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/gate2-feasibility-report.md#addendum-2026-10-25-later-native-ubuntu-2004-boot--gate-2-unblocked)
+- User rebooted the robot into **Ubuntu 20.04 natively**. New SSH address **`swjtumover@10.212.19.94`**
+  (`10.212.19.95` was the Ubuntu 24 side and no longer applies while 20 is booted).
+
+### Hardware is now fully reachable — the earlier blocker was NOT cabling
+
+| Check | Ubuntu 24 (before) | Ubuntu 20 native (now) |
+|---|---|---|
+| `enp1s0` carrier | no carrier | **up**, `192.168.110.10/24` |
+| `enp3s0` carrier | no carrier | **up**, `192.168.100.10/24` |
+| LiDAR `192.168.110.100` | UNREACHABLE | **REACHABLE** 0.42 ms |
+| Motor board `192.168.100.100` | UNREACHABLE | **REACHABLE** 1.5 ms |
+| RealSense D415 | absent (chroot) | **`/dev/video0..5`**, `lsusb 8086:0ad3` |
+
+The "no carrier" under Ubuntu 24 was the **Ubuntu 20 netplan being inactive**, not unplugged
+cables. Under native boot both NICs are correctly provisioned — **one subnet per NIC**, as
+recommended, with no interface configuration performed by me.
+
+### NEW decisive finding — the LiDAR broadcasts to destination PORT 0
+
+Decoded from `tcpdump` on `enp1s0`:
+```
+IP  192.168.110.100 -> 0.0.0.0
+UDP src port 5000   -> DST PORT 0
+Eth -> ff:ff:ff:ff:ff:ff (broadcast)
+```
+Kernel shows `NoPorts` climbing (`Udp: InDatagrams 1038, NoPorts 161`) while tcpdump sees ~84
+packets/window — **the kernel cannot deliver them**. A bound listener on `0.0.0.0:5000` received
+**0 packets**; `InDatagrams` did not move. Binding `192.168.110.10:7000` (per `lidar.yaml`) also
+received nothing.
+
+**The LiDAR's destination IP/port are unprogrammed.** The SDK has the mechanism
+(`difop_base.hpp` DIFOP send thread → `sendto`, `wait_for_difop: true`), so the driver must
+**actively configure** the device. → **The LiDAR cannot be baselined passively.**
+
+Motor board: `ping` OK but **no unsolicited UDP** — correct for a request/response device. It
+emits `motor_state` only after `motor_node` polls with the `0x64` frame. → **Motor telemetry also
+requires the driver.**
+
+### Consequence for Gate 2
+
+A passive baseline is **impossible for both hardware subsystems**:
+
+| Subsystem | Passive baseline? |
+|---|---|
+| ROS graph (`roscore` only) | **YES** |
+| LiDAR `scan` | **NO** — needs DIFOP configuration from the driver |
+| Motor `motor_state` | **NO** — needs `motor_node` polling |
+| RealSense | **probably YES** — standard UVC device |
+
+### Gate 2 status: NOT STARTED — awaiting user approval to start drivers
+
+No ROS node launched. **No `cmd_vel` published. No motor command sent. Robot not moved.**
+Only passive `tcpdump` captures and bounded UDP listen tests were performed (no transmission).
+
+**The blocking question is now purely a permission question**, not an engineering one: any
+hardware behavioural baseline requires starting `motor_node` and/or `vanjee_lidar_sdk_node`, which
+transmit to the devices. `motor_node` commanding zero RPM with no `cmd_vel` publisher is the
+minimum-risk path, but it is still a transmission and needs explicit approval.
+
+---
+
+## LiDAR-only L3/L4 sensor test — COMPLETED (2026-10-25)
+
+- [Addendum 2 in Gate 2 report](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/gate2-feasibility-report.md#addendum-2-2026-10-25-limited-l3l4-lidar-only-sensor-test--executed)
+- **Scope: LiDAR driver only**, per user approval. **Not** a complete robot behavioural baseline.
+
+### Pre-flight checks — all 4 PASSED
+1. **Packets:** exactly **one** DIFOP request registered (`sp_scan_data_get_`, 3000 ms interval),
+   a **read/get** to `192.168.110.100:5000`. The top-board **write/operate path is commented out**.
+2. **No motor linkage:** `motor|screen|teleop|cmd_vel` matches are only the LiDAR's own rotor
+   fields. Deps: `roscpp`, `roslib`, `sensor_msgs`.
+3. **Config verified:** `vanjee_718h`, host `192.168.110.10`, lidar `192.168.110.100`, ports 7000/5000.
+4. **Nothing else running:** no motor/screen/teleop/nav processes, no ROS master, **0 packets** on `enp3s0`.
+
+### Hazard caught and recorded
+First launch (no `config_path`) silently loaded the SDK's **bundled defaults** —
+`vanjee_720_16`, `192.168.2.86/.88` — on a network that does not exist here. No `/scan`, no data,
+no device contact. **`config_path` must be passed explicitly**; `bringup.launch` does so. Same
+foot-gun will apply to the ROS 2 port.
+
+### Result — LiDAR works natively (real hardware)
+| | |
+|---|---|
+| topic / type | `/scan` — `sensor_msgs/LaserScan` |
+| rate | **14.03 Hz** (std 0.00022 s) |
+| frame_id | **`lidar_link`** |
+| samples | **1440** per scan |
+| angle | ±3.1415925 rad, inc 0.004363323 |
+| range_min/max declared | 0.25 / 25.0 m |
+| finite returns | 1381 / 1440 |
+| **measured radius** | **0.498 / 2.329 / 9.910 m** (min/median/max) |
+
+Driver logged `get wlr718h scan data succ !` (one transient `ERRCODE_MSOPTIMEOUT` at startup).
+
+**Port-0 finding RESOLVED:** the LiDAR broadcasts to `0.0.0.0:0` until the driver sends its DIFOP
+`ScanDataGet` request, after which it streams MSOP to the host. Confirmed by working data.
+
+### Clean shutdown verified
+vanjee node gone · roscore/rosmaster/rosout gone · port 11311 free · UDP 7000 released ·
+`motor_node`/`screen_node`/`teleop_node` **never launched** · **no packets to motor board** ·
+**no `cmd_vel` ever published** · **robot did not move**.
+Logs left at `/tmp/gate2/*.log` on the robot (removable).
+
+### Evidence level — explicit
+- **L3 PASSED for LiDAR** (node ran, `/scan` published).
+- **L4 PASSED FOR LIDAR ONLY** (real ranges from a real device).
+- L4 for motor feedback: **NOT TESTED**. L4 for RealSense: **NOT TESTED**.
+- Full robot behavioural baseline: **NOT ESTABLISHED**.
+- **Behavioural equivalence ROS1↔ROS2: NOT CLAIMED.**
+
+### Next step
+Motor telemetry (`motor_state/left|right`, `odom`) still requires `motor_node`, which **sends
+motor command packets** (zero-RPM with no `cmd_vel` publisher). That remains unapproved and not
+done. RealSense is the other passive-able subsystem (standard UVC) and has not been exercised.
+
+---
+
+## RealSense + Motor telemetry + screen_node verification — COMPLETED (2026-10-25/26)
+
+- [Full report](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/realsense-and-motor-verification.md)
+
+### RealSense D415 — WORKS (L4)
+Pre-checks passed (launch inspected; `8086:0ad3` present; no driver running). Launched via
+`rs_camera.launch` with bringup's exact args under ns `/d415`.
+
+| | Color | Depth (aligned) |
+|---|---|---|
+| topic | `/d415/color/image_raw` | `/d415/aligned_depth_to_color/image_raw` |
+| type / encoding | `sensor_msgs/Image` / **rgb8** | `sensor_msgs/Image` / **16UC1** |
+| dims / frame | 640x480 `d415_color_optical_frame` | 640x480 same |
+| **rate** | **16.58 Hz** | **16.60 Hz** |
+
+**Valid depth:** 94.2 % of 307200 px; **1.024 / 1.649 / 1.933 m** min/median/max; smooth coherent
+planar gradient. Color 100 % non-black, means R/G/B 82/108/129. Intrinsics `plumb_bob`.
+TF `d415_link -> d415_color_optical_frame` t=[0,0.015,0], RPY ~ [-89.9, 0.05, -90.0] deg.
+9 benign libusb warnings only. **~16.6 Hz vs 30 requested** — an observed limit of this host
+(N150, 4 cores), recorded **not** as a defect. **The ROS 2 port must not assume 30 fps.**
+
+### Motor telemetry — WORKS (L4), robot stationary
+`motor_node` alone; **no `cmd_vel` publisher existed** (verified before launch).
+
+| | |
+|---|---|
+| topics | `/motor_state/left`, `/motor_state/right`, `/odom`, `/tf`, `/tf_static` |
+| rates | motor_state **25.00 Hz**, odom **25.07 Hz** |
+| left | rpm **-1**, 0.000244 A, pos 349.903 deg, **0 faults** |
+| right | rpm **0**, 0.001465 A, pos 21.424 deg, **0 faults** |
+| **drift over 5 s** | **dx=0.000010 m, dy=0** -> **robot did not move** |
+
+### NEW REAL FINDING — YAML params NOT loaded outside `bringup.launch`
+`rosparam get /motor_node` held **only** the two CLI values. `motor.yaml`'s seven tuning params were
+**absent**, so code defaults applied: `wheel_acc 10000` (vs **1800**), `wheel_radius 0.0535`
+(vs **0.05035**), `odom_compensation_ratio 1.0` (vs **1.047**). Immaterial for a stationary test;
+**a correctness trap for the ROS 2 port** — it must load the YAML explicitly, never rely on defaults.
+
+### screen_node — WORKS (L4), payload byte-verified
+Node is **`/screen_handler`**; subscribes `/qrcode_text`. Captured on `enp3s0`: `length 26` + three
+`length 1` packets, hex-verified payload **`qrcode.txt="PAYLOAD_CHK"`**.
+**Dedup confirmed:** repeated identical strings are silently ignored.
+
+### Methodology correction recorded
+Three earlier captures wrongly reported "nothing sent". Cause: **backgrounded `tcpdump` in a
+non-interactive SSH one-liner does not capture reliably** — proven by a raw-socket control that
+also failed to appear. Foreground capture + background publisher works.
+**Rule adopted: a negative result requires a positive control.**
+
+### Updated evidence summary
+| Subsystem | L3 runtime | L4 physical |
+|---|---|---|
+| LiDAR Vanjee 718H | yes 14.03 Hz | yes 0.498-9.910 m |
+| RealSense D415 | yes 16.6 Hz | yes 1.024-1.933 m, 94.2 % valid |
+| Motor telemetry | yes 25 Hz | yes rpm~0, 0 faults, 10 um drift |
+| screen_node | yes | yes payload verified |
+| **Motor actuation** | — | **NEVER TESTED** |
+| Navigation | — | out of milestone 1 |
+| **ROS 2 port** | — | **does not exist** |
+
+**Behavioural equivalence ROS1 <-> ROS2: NOT CLAIMED.**
+All processes stopped and verified; port 11311 free; robot stationary throughout.
+
+### Next step
+Motor **actuation** is the only hardware subsystem never exercised. Everything else on the ROS 1
+side is now proven on the real robot. The remaining blockers before ROS 2 implementation are the
+open design questions from the Gate 1 report (helper-script scope, topic naming,
+default-disabled actuation gate).
+
+---
+
+## Three-Way Feature & Reuse Assessment — COMPLETED (2026-10-26)
+
+- [Full report](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/feature-and-reuse-assessment.md)
+- Trigger: user's correct observation that the **lab ROS 1 stack is richer** than the robot's, and
+  that the robot's code must **not** be assumed to be the specification.
+
+### The decisive finding (corrects my earlier framing)
+**CAASI ROS 2 is not a reduced version of the lab stack — it IS the lab stack, already ported,
+plus more.** Measured:
+
+| Claim | Verdict |
+|---|---|
+| Lab ROS 1 richer than robot ROS 1 | **TRUE** — 17 exec vs 3; 8 msg + 10 srv vs 1 msg + 0 srv; 49 vs 2 topics |
+| CAASI missing lab functionality | **FALSE** — **0** lab topics missing from CAASI (68 vs 49 present) |
+| CAASI algorithms differ from lab | **FALSE** — 117 shared files; 48 differ *only* by ROS logging/API; no algorithmic rewrite found |
+| Lab stack builds on this robot | **NO** — 2 blockers (below) |
+
+**Measurement error corrected:** `openmover/flow/state` first appeared lab-only; it **is** in
+CAASI (`protocol.py:339`, single-quoted + line-wrapped — my first regex missed it). Recorded as a
+corrected error, not a finding.
+
+### Build-only assessment (separate workspace `/tmp/lab_build_ws`, originals untouched)
+| # | Blocker | Type | Evidence |
+|---|---|---|---|
+| **B1** | `cartographer_ros_msgs` not found | **missing dependency** | `openmover_msgs/CMakeLists.txt:12` |
+| **B2** | `relocalization_request.srv` missing | **genuine source defect** | `CMakeLists.txt:16` declares `relocalization_request.srv`; disk has **`RelocalizationRequest.srv`** — case mismatch |
+
+Also missing (later stages): `ira_laser_tools`, `rosbridge_server`, `osqp`.
+**B2 is the same defect class already recorded in the Phase 7 ROS 1 reference audit.** Worked
+around **only in the /tmp copy** (symlink); original lab tree untouched.
+**No packages installed. No lab node launched. No hardware driver run.**
+
+### Reuse classification
+- **Already reused in CAASI** (no work needed): nav planner + OSQP, relocalization 2D (GICP),
+  auto-mapping/exploration, obstacle/collision, all 5 server handlers, HAL, teleop.
+- **Config/build-only**: Vanjee LiDAR (vendor SDK is dual-target → colcon build, not a port).
+- **Adapter**: `motor_node`, `teleop_node.py`, `swjtumover_msgs` (rosidl).
+- **Genuine port**: `screen_node` (bespoke UDP, no ROS 2 equivalent).
+- **Do not port**: `laserscan_virtualizer`, `laser_merger_node` (unreferenced duplicates).
+
+### Answer to "can we save effort?"
+**Yes — the effort is largely already spent.** CAASI has the lab's software features. What CAASI
+cannot do is drive **this robot**, because it targets bluesea2 ×2, `io_board_handler`, and lab
+geometry (`chassis_radius 0.162` vs robot `0.103`). **The job is not "port the lab features" —
+it is "make the already-ported features run on this hardware."** Much smaller and better defined.
+
+### Recommended CAASI target feature set (proposed, awaiting decision)
+- **Preserve from lab** (already in CAASI): Cartographer SLAM/localization, custom planner + OSQP,
+  relocalization, auto-mapping, obstacle handling, server handlers, HAL, teleop, flow machine.
+- **Take from robot** (L4-verified): Vanjee `/scan`, `motor_node` semantics
+  (`chassis_radius 0.103`, `odom_compensation_ratio 1.047`, `wheel_acc 1800`, 50 Hz),
+  `screen_node` IO protocol, RealSense D415, `swjtumover_msgs`.
+- **Implement**: Vanjee ROS 2 build + explicit config path; `motor_node` port with
+  **default-disabled actuation gate**; `screen_node` port; `swjtumover_msgs` → rosidl;
+  topic-name reconciliation; nav-stack decision.
+
+### Evidence discipline
+Robot ROS 1 = **L4 verified**. Lab ROS 1 = **L2 failed** (never launched). CAASI = **L2 builds**,
+**L4 never on robot hardware**. Algorithm comparison = **L1 source only**.
+**Behavioural equivalence NOT claimed anywhere.**
+
+### Open decisions (blocking port start)
+1. **Nav stack**: adopt CAASI's Cartographer+custom planner (reuses a large proven codebase,
+   avoids a Nav2 port) vs keep the robot's gmapping/amcl/move_base? *Materially changes scope.*
+2. Does the robot's IO board support the lab protocol, or only `screen_node`'s?
+3. Helper-script scope (6 unreferenced, 1 byte-identical duplicate).
+4. Should the B2 case-mismatch be fixed in the lab tree (read-only to me)?
+
+---
+
+## CAASI Hardware Extension Plan — INVESTIGATION COMPLETE (2026-10-26)
+
+- [Discussion document](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/caasi-hardware-extension-plan.md)
+- **Planning only.** No source modified, nothing installed, nothing deployed, no driver run.
+
+### Verified: the CAASI CLI is real
+57 root commands across 37 typer groups (`HELP_PANELS`, `main.py:63`), ~10.5k lines of CLI source
+(`run_cmd` 820, `ecosystem` 775, `accelerated` 740, `target_cmd` 547, `ros_cmd` 538,
+`workload_cmd` 383). **Not stubs.** Phase 7 chain (target -> deploy -> build -> run -> collect) is
+implemented and was exercised against a real remote machine. Suite: **1,250 passing** (recorded;
+not re-run this stage).
+
+### THE one real architectural gap
+`src/openmover/launch/hardwares/bringup.launch.py:26-28` loads **one hardcoded**
+`config_defaults/hardwares.yaml`. Launch args are only `system_mode` / `sim_area` / `use_sim_time` /
+`launch_gazebo`. **There is no way to select a different hardware set**, and `Manifest`
+(`manifest.py:38-51`) has no `profiles:`/`variants:`/`hardware:` key.
+
+The **sim-vs-real** axis is already solved (`system_mode` 0/1 + `IfCondition`). What is missing is a
+**second axis: which real hardware.**
+
+### Recommended mechanism (smallest that fits)
+`config_defaults/hardware/{openmover_lab.yaml, swjtumover.yaml}` + two new launch args
+(`hardware`, `lidar_driver`, `io_driver`) using the **already-present** `DeclareLaunchArgument`/
+`IfCondition` idioms. Incompatible drivers become **structurally mutually exclusive** - bluesea2 and
+vanjee cannot both launch. **No plugin framework, no registry, no new CLI command.**
+
+### Gap classification (A/B/C/D)
+- **B (generic):** hardware-profile selection; default-disabled actuation gate.
+- **C (hardware-specific):** Vanjee ROS 2 integration (vendor SDK is dual-target -> build, not port);
+  `screen_node` port (bespoke UDP); robot motor params; `swjtumover_msgs` (rosidl);
+  RealSense (config only - CAASI already *detects* it via `core/sensors.py:86`, discovery only);
+  robot URDF.
+- **D (unnecessary):** new CLI command for robots; plugin/driver-registry framework;
+  `laserscan_virtualizer` + `laser_merger_node` (unreferenced); most helper scripts.
+
+### Preserve (explicitly)
+All lab params unchanged: `chassis_radius 0.162`, `wheel_acc 6000`, `control_freq 100`,
+footprint `+/-0.27/+/-0.22`, bluesea2 x2. Navigation, planning, mapping, relocalization, obstacle,
+motor/IO interfaces, simulation and Isaac layers - **none to be replaced by swjtumover's simpler code.**
+
+### Motor safety
+CAASI **already has** an emergency topic/service and a manual/auto gate
+(`motor_handler.cpp:105-131, 300-315`) - but it is **mode-gated, not default-off**. Proposal: add a
+**separate `actuation_enabled: false`** permission (manifest + launch profile + node guard) so
+telemetry publishes while actuation is refused until two independent conditions are met.
+**Must not weaken the lab default.**
+
+### CLI workflow - already fully expressible
+`target list/inspect` -> `check project` / `target select` -> `deploy` -> `build --target` ->
+`ros status --target` -> `workload run --target` -> `run logs/artifacts/stop`.
+**Every step exists today.** No new command needed; only new *data* (profile + workload file).
+
+### Measured risk carried forward
+The `motor.yaml` vs code-default discrepancy (measured earlier: `wheel_acc` 10000 vs **1800**,
+`wheel_radius` 0.0535 vs **0.05035**, `odom_compensation_ratio` 1.0 vs **1.047**) means the profile
+YAML **must** be loaded explicitly. A regression test must assert **loaded parameter values**, not
+merely that the node starts.
+
+### Six decisions awaiting input
+1. **Nav stack** - adopt CAASI's Cartographer + custom planner (avoids a Nav2 port entirely) or
+   keep gmapping/amcl/move_base? *Largest scope lever.*
+2. **Profile home** - manifest field vs target tag vs both (my lean: target tag + manifest default).
+3. **Does the actuation gate apply to the lab profile too?** (would change existing behaviour)
+4. **`swjtumover_msgs`** - reuse field-identical `openmover_msgs/MotorState`, or separate package?
+5. **Helper scripts** - confirm "do not port" for scratch/duplicates.
+6. **Vanjee** - vendor in-tree vs external underlay?
+
+---
+
+## Phase 8: Hardware Extension Plan — REASSESSED integration-first (2026-10-26)
+
+- [Revised plan](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/caasi-hardware-extension-plan.md)
+  (**supersedes** the first version of that document)
+- Planning only. No source, launch, config, dependency or system change.
+
+### What the reassessment changed — my previous proposal was partly wrong
+
+| Previous proposal | Verdict |
+|---|---|
+| Add a `hardware:` key to `Manifest` + profile system | **WITHDRAWN** — ROS 2 launch args already select configs; a manifest key would be a **second source of truth** |
+| New `config_defaults/hardware/` tree | **REDUCED** to two param files beside the existing `hardwares.yaml`. (Note: `config/hardware/` already exists at project level, **empty and unused** — resolving that inconsistency beats adding a third location.) |
+| New msg package for the robot | **WITHDRAWN** — `openmover_msgs/MotorState` is field-identical; reuse it |
+| Vendor Vanjee into `src/` (29 MB) | **WITHDRAWN as default** — prefer an external underlay |
+| Survives: `screen_node` port | **kept** — nothing upstream implements that protocol |
+
+### Verified reusable-before-new evidence
+- **ROS 2 natively does the job**: `DeclareLaunchArgument` + `IfCondition` (already used for
+  `system_mode`), and `Node(parameters=[a,b,…])` (already used). A profile abstraction would
+  duplicate mechanisms already in the file.
+- **`motor_handler` already reads 8 of the 9 robot params** (`chassis_radius`, `control_freq`,
+  `ip_address`, `odom_compensation_ratio`, `port`, `wheel_acc`, `wheel_max_speed_rpm`,
+  `wheel_radius`). Robot adds only `publish_tf`. → **parameterisation suffices; no adapter, no
+  second implementation.**
+- **Vanjee SDK**: BSD-3-Clause, ships `package_ros2.xml` + `ament_cmake` + `#ifdef ROS2_FOUND`,
+  **but `COMPILE_METHOD` is hardcoded `CATKIN` at `CMakeLists.txt:18`** — the ROS 2 branch exists
+  and is unreachable without a 1-line change. **L1 only; never built.**
+- **RealSense**: `realsense2_camera` owns streaming/depth. CAASI's `core/sensors.py:86` only
+  *detects* the device — detection ≠ driver. One `IncludeLaunchDescription` is the whole change.
+- **Navigation**: CAASI already runs `navigation_handler` + `relocalization_2d_handler` +
+  `auto_mapping_handler` + `localization_confidence_handler`. The robot's ROS 1 stack
+  (gmapping/amcl/move_base) adds no capability CAASI lacks. **Recommend: do not port.**
+
+### NEW measured safety finding (pre-existing in BOTH implementations)
+**Neither `motor_handler` nor the robot's `motor_node` zeroes the commanded speed when `cmd_vel`
+stops.** `speed_rpm_*` is written only inside callbacks; the send loop transmits **the last stored
+value every iteration**. No watchdog exists. A publisher that stops mid-command leaves the last
+nonzero RPM commanded. **Recorded, not changed** — affecting it would alter existing lab behaviour;
+a timeout-to-zero is proposed as a *separate* future change (D7).
+
+### Minimum viable sequence (all validatable without hardware)
+| Stage | Change | Evidence |
+|---|---|---|
+| **M1** | `actuation_enabled` param (default **false**) checked at the **send site** + robot param file | **L2** — assert zero nonzero-RPM frames reach a UDP sink |
+| **M2** | `hardware:=` / `lidar_driver:=` / `io_driver:=` launch args (existing idioms) | **L2** — launch-introspection test per profile |
+| **M3** | `screen_node` ROS 2 port, protocol-only (~150 lines) | **L2** — UDP-sink exact-payload test |
+| **M4** | Vanjee ROS 2 build (underlay or 1-line patch) under robot profile | **L2→L3** — `/scan` from rosbag |
+| **M5** | RealSense `IncludeLaunchDescription` | **L2** — introspection only |
+| **M6** | Stationary integration on robot | **L3** |
+| **M7** | Physical validation | **L4 — explicit approval only** |
+
+**M1 first**: only safety-touching change, no driver dependency, fully workstation-testable.
+
+### Explicitly NOT to be implemented
+Hardware-profile system / schema key · new CLI command · plugin framework · new messages package ·
+gmapping/amcl/move_base port · second motor implementation · `laserscan_virtualizer` /
+`laser_merger_node` · 6 unreferenced helper scripts + 1 byte-identical duplicate · camera
+streaming or LiDAR decoding inside CAASI · a watchdog change inside this milestone.
+
+### Seven decisions requiring approval
+- **D1 Navigation** — recommend **do not port ROS 1 nav**; CAASI's ROS 2 stack already covers it.
+- **D2 Vanjee delivery** — recommend **external underlay**, fall back to a documented 1-line patch.
+- **D3 Lab `actuation_enabled`** — recommend **`true`** (preserve lab behaviour); note `false`
+  would be strictly safer and is worth revisiting.
+- **D4 Odom type** — recommend keep CAASI's `PoseWithCovarianceStamped`; add an adapter only if a
+  consumer demonstrably needs `nav_msgs/Odometry`.
+- **D5 Messages** — recommend **reuse** `openmover_msgs/MotorState`.
+- **D6 Helper scripts** — recommend **do not port** for M1–M6.
+- **D7 cmd_vel timeout-to-zero** — recommend **document now, change later** under its own approval.
+
+### Evidence levels
+Robot ROS 1 = **L4**. CAASI ROS 2 = **L2 builds**. CAASI on robot hardware = **not tested**.
+Vanjee ROS 2 = **L1 only**. RealSense ROS 2 = **L1 only**. **ROS 1↔ROS 2 equivalence: NOT CLAIMED.**
+
+**Note:** the robot was unreachable during this reassessment (`10.212.19.94` and `.95` both down),
+so all statements above are source-derived only. Nothing was built or run.
+
+---
+
+## Phase 8: Actuation Safety Design + corrected Vanjee finding (2026-10-26)
+
+- [Revised plan](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/caasi-hardware-extension-plan.md)
+  (supersedes both earlier versions)
+- Planning only. No source, launch, config, dependency or system change.
+
+### CORRECTION to my earlier Vanjee claim — "one-line change" was wrong
+I previously said the ROS 2 build needed one line. **It needs three blockers cleared:**
+
+| Layer | Status |
+|---|---|
+| ROS 2 **publisher** layer (`source_scandata_ros.hpp:101+`, `source_pointcloud_ros.hpp:193+`, `source_imu_packet_ros.hpp`) | ✅ **genuinely implemented** (`rclcpp::Publisher`, `sensor_msgs::msg::LaserScan`) |
+| `main()` ROS 2 branch | ⚠️ minimal; **`config_path` sits inside `#ifdef ROS_FOUND`** → cannot be overridden under ROS 2 |
+| `CMakeLists.txt:18` | ❌ `set(COMPILE_METHOD CATKIN)` is a **plain `set()`, not `CACHE`** → `-DCOMPILE_METHOD=COLCON` does **not** override |
+| `vanjee_lidar_msg` | ❌ **catkin-only** (`buildtool_depend catkin`, `generate_messages`); **no ament/rosidl path** |
+
+Because of the catkin-only message package, **external underlay (D2 option a) is more invasive than
+presented**. Revised recommendation: investigate **(d) an existing maintained ROS 2 bridge** first,
+then **(c) a thin ROS 2 node over the plain-CMake `vanjee_driver`** (avoids porting the msg package
+entirely), then **(a) patched underlay**. D2 stays open until there is a **real Jazzy build**, not
+source reading.
+
+### Actuation safety design (D3) — fail-closed by construction
+- **Boundary located precisely**: one `sendto` at `motor_handler.cpp:384`. The other four
+  (`:560-572`) are the **shutdown zero-flush** — already safe, must **not** be gated.
+- **Permission is derived, never stored**: `may_actuate = actuation_enabled && !emergency_flag && <mode>`.
+- **Re-forced to zero every iteration** at the boundary — so a nonzero command received while
+  disabled is **overwritten at transmission** and can never be released later. Enabling also clears
+  the stored command buffer.
+- **Fail-closed**: flag declared **without a usable default** (`has_parameter` → FATAL + shutdown if
+  absent). Closes the exact measured hazard where all params use `declare_parameter(name, default)`
+  and silently substitute (robot node ran with `wheel_acc 10000` vs **1800**,
+  `odom_compensation_ratio 1.0` vs **1.047**).
+- **Configuration separation**: `actuation_enabled` is a **launch argument defaulting to `false`**,
+  **never a YAML key**. Selecting `hardware:=swjtumover` starts the robot's drivers with actuation
+  **off**; a copied/inherited/wrong YAML cannot grant permission. Lab keeps `true` via its own
+  launch entry. *(Changed from my earlier plan, which put the flag in YAML — a YAML default is not
+  an explicit opt-in.)*
+
+### Launch compatibility — no framework, no schema
+Three native additions to `bringup.launch.py`, using idioms already in the file: `hardware:=`,
+`lidar_driver:=` (single arg → **mutually exclusive `IfCondition`s**, so two drivers are structurally
+unrepresentable), `io_driver:=`. Plus a ~5-line `OpaqueFunction` fail-fast guard for a stale explicit
+override contradicting the profile. **No manifest key, no profile registry, no plugin system.**
+
+### Watchdog boundary (D7) — two different properties, must not be conflated
+- `actuation_enabled` answers *"may this process actuate at all?"*
+- a watchdog answers *"should this command still be in effect?"*
+The gate does **not** mitigate stale commands. **Standing rule recorded: no physical movement test
+(M7) until a separately reviewed, implemented and tested stale-command mitigation exists.**
+
+### Validation — all workstation-only (UDP sink), no robot
+V1 no nonzero frame while disabled (incl. after nonzero commands received) · V2 no stale release
+after enabling · V3 absent param fails closed · V4 invalid param denied · V5 telemetry still
+publishes · V6 **loaded parameter values** asserted (not just startup) · V7 launch introspection per
+profile, both drivers never together · V8 contradictory args fail fast · V9 D4 odometry-consumer
+check · V10 D5 semantic check · V11 `screen_node` payload · V12 full suite + lab snapshot green.
+
+### Decisions status
+D1 approved **pending** requirements validation · D2 **open** (revised options above) ·
+D3 **awaiting approval** of design in §2 · D4 **pending** V9 · D5 **pending** V10 · D6 approved ·
+D7 recorded as a **blocker on M7**.
+
+### Remaining uncertainties
+U1 nav_msgs/Odometry consumers · U2 `motor_state` semantics (sign/wrap/units/fault meaning) ·
+U3 does the scan path even need `vanjee_lidar_msg`? · U4 real Jazzy build · U5 existing ROS 2
+Vanjee bridge? · U6 robot's actual nav requirements.
+
+### Recommended next action
+**Implement M1 only** (actuation gate + parameter validation): sole safety-critical change, no
+driver dependency, fully provable on a workstation via V1–V6.
+
+**Note:** the robot was unreachable during this revision (`10.212.19.94` / `.95`), so all findings
+are source-derived. Nothing built, installed, deployed or launched.
+
+### U3 RESOLVED (immediately after the revision above)
+`vanjee_lidar_msg` is **not** used by the scan path — verified by grep across
+`source_scandata_ros.hpp` / `source_pointcloud_ros.hpp` (**no match**). It is referenced only by the
+**packet** message paths (`src/msg/ros_msg/vanjeelidar_packet.hpp`, `src/vanjee_lidar_msg/…`).
+
+**Consequence for D2:** a **scan-only** ROS 2 integration avoids the catkin-only message package
+entirely, so the "3 blockers" reduce to **2** for our use case (`COMPILE_METHOD` override +
+`config_path` exposure). Option (a) patched underlay is viable again; option (c) thin node over
+`vanjee_driver` remains the low-risk fallback; **option (d) — an existing maintained ROS 2 bridge —
+must still be investigated first** per the integration-first rule.
+
+Remaining uncertainties now: **U1** (odometry consumers / D4) · **U2** (`motor_state` semantics /
+D5) · **U4** (real Jazzy build) · **U5** (existing ROS 2 bridge) · **U6** (robot's actual nav
+requirements / D1). U3 closed.
+
+---
+
+## Phase 8 — M1 COMPLETED: actuation permission gate + fail-closed config (2026-10-26)
+
+- [M1 report](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/m1-actuation-gate-report.md)
+- **Scope honoured:** M1 only. No M2, no Vanjee work, no watchdog, no deployment, no hardware
+  driver, no package installed, no system configuration changed.
+
+### Files changed
+| File | Change |
+|---|---|
+| `.../src/openmover/src/driver/motor_handler.cpp` | +244/−9: permission flag, fail-closed param loading, range validation, boundary guard, fresh-command latch |
+| `.../config_defaults/hardwares.yaml` | comment only — **does not define `actuation_enabled`** |
+| `.../config_defaults/hardware/swjtumover.yaml` | **new** robot motion params; **no** actuation key |
+| `.../launch/hardwares/bringup.launch.py` | declares `motor_actuation_enabled` default `'false'`, passes to `motor_handler` |
+| `caasi/tests/test_motor_actuation_gate.py` | **new**, 9 UDP-sink tests |
+
+### Results
+- **`colcon build`** clean, no warnings from `motor_handler.cpp`.
+- **`pytest tests/test_motor_actuation_gate.py` → 9 passed** (1 warning, see below).
+- **Full suite → 1249 passed, 2 failed, 9 skipped.**
+  Both failures **proven pre-existing** by reverting every M1 change and reproducing them
+  identically (`test_dataset_cmd::test_dataset_generate_dry_run`,
+  `test_perception_cmd::test_perception_segment_dry_run_passes_extra_args` — terminal-width wrap
+  artifacts, already recorded in Phase 7). **Zero new failures.**
+
+### Key evidence
+- Disabled: 400+ frames captured, **all speed 0**, after real nonzero `cmd_vel`.
+- Enabled: **94 RPM** ≈ 0.5 m/s ÷ r 0.05035 (94.8 expected) — the gate gates, not blanket-blocks.
+  Without this the "disabled" test would be vacuous.
+- Missing / wrong-type params → **exit 1** with a distinct FATAL naming the key.
+- Loaded-parameter test discriminates r=0.05035 (94) from the old default 0.0535 (~89).
+- `ros2 param set` cannot escalate permission (startup-only decision).
+
+### Configuration separation — CORRECTED after read-only review
+Lab YAML keys contain **no** `actuation_enabled`; robot YAML likewise. **But that is convention,
+not mechanism:** a *supplied* params-file declaring `actuation_enabled: true` **does** enable
+actuation (confirmed by execution), because the node reads the merged parameter-override map, which
+cannot distinguish `-p` from a YAML value. The earlier claim "a parameter file can deny but never
+grant" was **wrong**; corrected in the M1 report §4 and §11.6. **FIXED and verified** — see the
+hardening entry below.
+
+### Findings recorded, not fixed
+- **SIGSEGV (-11) on exit — PRE-EXISTING.** Proven by reverting M1, rebuilding unmodified source,
+  reproducing `rc -11`. Flush frames arrive before the crash; out of M1 scope.
+- **No `cmd_vel` timeout → last command persists — PRE-EXISTING (D7).** Still **blocks M7**.
+- Three wrong presence-check mechanisms were discarded after measurement (has_parameter /
+  get_parameter_or / declare_parameter-with-sentinel); the working one is the **override map**,
+  which is why `NodeOptions.arguments(argv+1, argc)` is now required.
+- My own harness bugs (PYTHONPATH leaking into `ros2` CLI; stale ROS daemon; flaky mode service)
+  made early "disabled" passes **vacuous** until fixed — recorded rather than hidden.
+- `ros2 launch ... --show-args` fails here (`ros_gz_sim` missing), so the launch edit is
+  **statically verified only**; resolve in M2.
+
+### Behaviour change (needs D3 sign-off)
+The **lab** bringup now defaults to **deny** — a direct consequence of requirement 1 (no YAML
+grant). To drive the lab robot, pass `motor_actuation_enabled:=true`. Recommendation: do that
+explicitly now, and set it in the lab *entry point* during M2 so the robot profile still denies.
+MD
+---
+
+## M1 read-only review — COMPLETE (2026-10-26)
+
+- [M1 report §11](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/m1-actuation-gate-report.md)
+- Read-only: no source/test/config/dependency/system change. Evidence from executed probes plus a
+  **pristine `git archive HEAD` export**.
+
+### Verdict per review point
+1. **Permission enforcement — PASS.** 5 `sendto()` sites; only `:619` is runtime and it is gated.
+   Speed bytes written only at `:582-583` (gated) and `:785-786` (flush zeros).
+   `io_board_handler` cannot command motor speed (no RPM field in `ros_to_io_frame_t`).
+   Shutdown flush intact and correctly excluded from the gate.
+2. **Fail-closed config — PASS with one gap.** Missing/invalid/out-of-range all FATAL + exit 1;
+   strict typing (`0` int → type error, `0.0` → range error). Launch arg arrives as **bool**
+   (verified by executing a mirror launch file, since `ros_gz_sim` blocks the real bringup).
+   **Gap: a params-file CAN grant actuation — §11.6.**
+3. **Stale commands — PASS.** Permission assigned at exactly one site (`:458`); `ros2 param set`
+   cannot escalate; latch + buffer zero on the enable edge.
+4. **Launch wiring — PASS, execution-verified for the mechanism**; project bringup still only
+   statically verified (missing `ros_gz_sim`).
+5. **Shutdown SIGSEGV — separate pre-existing defect.** 3/3 reproducible, `exit=-11`; the 4-frame
+   zero flush always completes first. Impact = **reliability/provenance (rc 139 mis-records a good
+   run as failed)**, **no established safety impact**. Not fixed, per instruction.
+6. **Regression baseline — preserved.** Both failures reproduced against pristine `HEAD`; tests
+   unaltered.
+
+### DEFECT (corrects an earlier wrong claim)
+`motor_handler --ros-args --params-file <yaml with actuation_enabled: true>` → **`actuation_enabled=true`**.
+Enabled by `true`/`yes`/`on`/`TRUE`; `1` rejected; `false` denies. The node reads the merged
+override map, which has no notion of value origin — so "YAML cannot grant" was **inference, not
+enforcement**. Requirement 1 was **not met by mechanism** at review time.
+**Fix approved, implemented and verified — see the hardening entry at the end of this file.**
+
+### Other findings (reported, not fixed)
+- Brake byte `[7]` reads the **ungated** stored speed; transmitted speed is still 0 → no motion
+  risk. ROS1 logic is identical and undocumented in both.
+- `ros2 param set` prints **"Set parameter successful"** but has no effect (fail-safe, misleading).
+- `yes` is accepted as `true` at launch (YAML 1.1). Explicit input, not implicit; decide whether to
+  tighten to literal `true`.
+
+### Recommendation
+**Do not close M1 yet.** The gate is sound; one stated safety requirement is unmet by mechanism.
+Approve the env-var hardening first, then close.
+
+---
+
+## M1 hardening — params-file bypass CLOSED (2026-10-26)
+
+- [M1 report §12](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/m1-actuation-gate-report.md)
+- Narrowly scoped: no M2, no hardware, no deployment, no dependency/system change.
+
+### The fix — two independent factors
+`actuation_permitted() = actuation_enabled && actuation_env_ok`, both read **once** at startup:
+
+| Factor | Source | Denied when |
+|---|---|---|
+| `motor.actuation_enabled` | parameter override map | absent |
+| `CAASI_MOTOR_ACTUATION` | **process environment**, exact `"1"` | absent, empty, `0`, `true`, `yes`, ` 1`, `01`, … |
+
+A params file **cannot** set an environment variable, so the review bypass is closed mechanically.
+Boundary guard and the fresh-command latch both use the combined predicate; telemetry and the
+shutdown zero-flush untouched. Denial reason is logged (flag state only — no sensitive values).
+
+### Strict Boolean — enforced at the earliest reliable boundary
+ROS 2 parses launch arguments as YAML, so `yes`/`on`/`TRUE` become `true` **before** the node sees
+the spelling. `bringup.launch.py` therefore validates the **raw** argument in an `OpaqueFunction`
+that runs before any node starts, and maps the argument to `CAASI_MOTOR_ACTUATION` via
+`additional_env` (`'1'` only when exactly `true`).
+
+**Executed** against a mirror launch file (`ros_gz_sim` still absent, so the project bringup itself
+cannot be launch-executed here):
+
+| arg | result |
+|---|---|
+| `false` (default) / `true` | denied / enabled, as expected |
+| `yes`, `on`, `TRUE`, `1` | **rejected before any node starts** |
+| empty | rejected by `ros2 launch` itself |
+
+### Evidence
+- `pytest tests/test_motor_actuation_gate.py -q` → **16 passed** (224 s).
+- New: `h1` param-only denies · `h2` 7 wrong env values deny · `h3` env-only denies ·
+  **`h4` params-file alone cannot grant** · `h5` both factors drive (positive control) ·
+  `h6` invalid types refused · `h7` geometry validation intact.
+- Broader suite → **2 failed, 1249 passed, 16 skipped** — **same two pre-existing failures**
+  (`test_dataset_cmd`, `test_perception_cmd`; reproduced against a pristine `git archive HEAD`).
+  Skipped rose 9→16 because the new hardware-gated tests were added. **No tests altered.**
+
+### Still open (carried forward, non-blocking for M1)
+- **No `cmd_vel` watchdog → last command persists. Pre-existing, both trees. BLOCKS M7.**
+- Shutdown SIGSEGV (rc 139) — pre-existing, reliability only, flush completes first.
+- `ros2 param set` prints success but has no effect (fail-safe, misleading) — document only.
+- Brake byte `[7]` reads ungated stored speed — transmitted speed still 0, no motion risk.
+- Direct CLI `-p motor.actuation_enabled:=yes` bypasses launch validation but still needs the env
+  factor, so it cannot grant alone — documented residual.
+
+### Recommendation
+**M1 is ready to close.** Both review conditions are closed with executed evidence and regression is
+unchanged. The `cmd_vel` watchdog stays a hard blocker for any physical movement test (M7).
+
+---
+
+## Git state — PLANNED, NOT COMMITTED (awaiting user approval)
+
+Nothing has been committed since the baseline `8de5949`. Current working tree:
+
+| Path | Status | Contents |
+|---|---|---|
+| `caasi-workspace/openmover/src/openmover/src/driver/motor_handler.cpp` | modified | M1 gate + hardening |
+| `caasi-workspace/openmover/src/openmover/config_defaults/hardwares.yaml` | modified | comment only (no actuation key) |
+| `caasi-workspace/openmover/src/openmover/launch/hardwares/bringup.launch.py` | modified | arg + strict validation + env |
+| `caasi-workspace/openmover/src/openmover/config_defaults/hardware/swjtumover.yaml` | untracked | new robot profile |
+| `caasi/tests/test_motor_actuation_gate.py` | untracked | 16 UDP-sink tests |
+| `caasi-workspace/openmover_robot_spec/` | untracked | **36 MB robot ROS 1 snapshot** (696 files) |
+| `caasi/plan/phases/phase-08/` | untracked | Gate 1/2 reports, M1 report, assessment docs |
+| `caasi/plan/current.md` | modified | plan state |
+
+### Proposed commit sequence (logical checkpoints, not one dump)
+1. `docs(phase-8): robot source snapshot provenance + four-way discrepancy` — the snapshot, its
+   `README.md`/`SNAPSHOT-MANIFEST.txt`, and the Gate 1 reports.
+2. `docs(phase-8): Gate 2 feasibility + real-hardware sensor verification` — LiDAR/RealSense/motor
+   evidence.
+3. `docs(phase-8): feature & reuse assessment + hardware extension plan` — assessment + plan.
+4. `feat(motor): fail-closed config + default-deny actuation gate (M1)` — `motor_handler.cpp`,
+   `hardwares.yaml`, `swjtumover.yaml`, launch wiring, `test_motor_actuation_gate.py`.
+5. `docs(phase-8): M1 report, review and hardening record` — M1 report + `current.md`.
+
+### Open question for the user
+The snapshot is **36 MB / 696 files** of vendor + robot source. Options:
+**(a)** commit it (self-contained provenance, larger repo), or **(b)** add it to `.gitignore` and
+rely on `SNAPSHOT-MANIFEST.txt` hashes + the re-sync instructions in its `README.md`.
+I recommend **(a)** — it is the evidence base for the whole migration and it is already frozen
+(read-only reference). This needs your decision before commit 1.
+
+---
+
+## Migration iteration — Batches A–D (2026-10-26)
+
+- [Migration status + feature table](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/migration-status.md)
+- [M1 report §13 watchdog](file:///home/zar/Documents/robot/caasi/plan/phases/phase-08/m1-actuation-gate-report.md)
+
+### Committed (7 commits, was 1 baseline)
+`0bac153` snapshot+discrepancy · `71ed826` Gate 2 evidence · `ca15847` assessment+plan ·
+`0a8093c` M1 actuation gate · `671ba89` screen handler · `20433a3` hardware profiles +
+lazy Gazebo · `6b95d5d` watchdog. Nothing committed to any remote (none configured).
+
+### Delivered this iteration
+| Item | Evidence |
+|---|---|
+| **Cmd-vel watchdog** (`motor.cmd_vel_timeout`, default 0.5 s) | 87 nonzero frames while commanded → **0** after stop; 3 new tests |
+| **ROS 2 screen handler** (`screen_handler.py`) | byte-identical to the L4 frame captured on the robot; 3 tests |
+| **Hardware profile selection** (`hardware`, `lidar_driver`, `io_driver`) | executed: unknown profile + both contradiction cases rejected |
+| **Lazy Gazebo resolution** | bringup now introspectable on a Gazebo-less host (previously impossible) |
+| M1 hardening | unchanged, 19 tests total in that module |
+
+### Test results
+`test_motor_actuation_gate.py` **19 passed** · `test_screen_handler.py` **3 passed** ·
+full suite **1249 passed, 2 failed, 22 skipped** — the **same two** pre-existing failures
+(`test_dataset_cmd`, `test_perception_cmd`), reproduced against pristine `HEAD`.
+**No new failures, no tests altered.**
+
+### Not done, with reasons
+- **Vanjee 718H ROS 2**: no maintained upstream bridge exists (vendor-SDK only). SDK's ROS 2
+  layer is real, but `COMPILE_METHOD` is hardcoded `CATKIN` (plain `set()`, `-D` cannot
+  override), `config_path` sits inside `#ifdef ROS_FOUND`, and `vanjee_lidar_msg` is
+  catkin-only — though the **scan path does not use that message package**. All build deps
+  (PCL/Eigen/yaml-cpp/pcap/TBB) are present. **Decision needed:** patched underlay vs thin
+  node over `vanjee_driver`.
+- **RealSense D415 ROS 2**: `realsense2_camera` not installed; installing is not authorised here.
+- **Full bringup on robot**: robot boots Ubuntu 20/Noetic; needs the ROS 2 OS booted.
+
+### Safety findings
+- **The workstation routes to `192.168.100.0/24`** (`ip route get 192.168.100.100` → via the
+  default gateway). Real-mode bringup from here **could** send traffic toward the robot's
+  motor board, so **no real-mode bringup was run**. Every test used a `127.0.0.1` UDP sink.
+- Environment gaps (not code defects): `joint_state_publisher`, `ros_gz_sim`,
+  `ros_gz_bridge`, `realsense2_camera` all absent, so real-mode bringup aborts at launch.
+- Actuation remained disabled throughout; no robot contact of any kind.
+
+### Watchdog vs M7
+The watchdog removes the specific stale-command defect that blocked M7. It does **not**
+authorise movement: M7 still needs explicit approval, a raised robot and a supervised run.
+
+### Next
+1. Decide the Vanjee approach (underlay vs thin node).
+2. Boot the robot into Ubuntu 24 / Jazzy so `joint_state_publisher`, `ros_gz_*` and
+   `realsense2_camera` can be installed there.
+3. Run the stationary bringup on the robot with `hardware:=swjtumover` and actuation denied.
