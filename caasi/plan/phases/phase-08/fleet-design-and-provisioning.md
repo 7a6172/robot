@@ -145,3 +145,55 @@ names/tags) and that limitation stated plainly, not glossed.
    two synthetic targets and label it as such?
 3. **`caasi target deps`** — approve the read-only dependency report as the first provisioning
    capability (F5 first half), so the manual package-hunting we just did becomes one command?
+
+---
+
+## 7. Netplan applied and device isolation verified (2026-10-26)
+
+Applied with the user's approval (`/etc/netplan/60-robot-devices.yaml` on the robot):
+
+| Interface | Address | State |
+|---|---|---|
+| `enp1s0` | 192.168.110.10/24 | **up** |
+| `enp3s0` | 192.168.100.10/24 | **up** |
+| `wlp2s0` | 10.212.19.95/24 | up, **still the default route** (`default via 10.212.19.229`) |
+
+No gateway and no DNS on either device link, so external traffic stays on Wi-Fi — verified with
+`ip route` rather than assumed.
+
+### Both devices reachable on Ubuntu 24
+
+| Device | Address | RTT |
+|---|---|---|
+| Vanjee 718H | 192.168.110.100 | 0.91 ms avg |
+| Motor + IO board | 192.168.100.100 | 1.42 ms avg |
+
+### Isolation: verified for this robot, with the right caveat
+
+Method: ARP table inspection plus a subnet sweep, not inference from code.
+
+```
+ip neigh dev enp1s0 -> 192.168.110.100  lladdr 70:19:88:d3:1d:0e   (only entry)
+ip neigh dev enp3s0 -> 192.168.100.100  lladdr 00:04:a3:00:29:79   (only entry)
+sweep of .110.1/2/50/100/101/102 and .100.1/2/50/101/102/110 -> only the two expected devices
+```
+
+Evidence supporting **per-robot isolated links**:
+1. **Exactly one peer per interface**, with a vendor MAC each (Vanjee, motor board) and no other host
+   answering anywhere on either subnet.
+2. **No gateway on either link** — nothing routes into or out of these subnets.
+3. Both devices are **onboard** the robot (cabled to it), and the robot's only external path is
+   Wi-Fi at a DHCP address that differs per boot (`.94` on Ubuntu 20, `.95` here).
+4. The robot code binds **by IP only, never by interface name** (`lidar.yaml` `host_address`
+   `192.168.110.10`; `motor.yaml` `192.168.100.100`), so the same addresses are intended to be
+   valid on every robot that runs the same code.
+
+**Not proven:** that no two robots are ever plugged into one switch. That is a physical/topology
+fact I cannot observe from inside one robot. If the lab ever puts several robots on a shared device
+network, the fixed `.100.100` / `.110.100` addresses will collide and per-robot ranges become
+necessary — which is why the fleet config keeps the network profile parameterised rather than
+hardcoding one shared template.
+
+**Decision taken:** the standard profile (`.110.10` and `.100.10`, no gateway) is used for this
+robot and is the fleet default, because the evidence points to isolated onboard links. The
+parameterisation remains for the shared case.
