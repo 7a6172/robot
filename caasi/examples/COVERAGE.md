@@ -3,7 +3,7 @@
 **Auditable mapping from each CLI command to the example that demonstrates it.**
 
 Generated from the **live command tree**, not maintained by hand: the current CLI has
-**58 root commands and 254 command paths**, and **every one is listed below**. A
+**58 root commands and 256 command paths**, and **every one is listed below**. A
 command that has no runnable example is still listed, with the reason — nothing is
 silently omitted.
 
@@ -147,6 +147,7 @@ of them invents a `--dry-run` that the CLI does not provide.
 | `caasi nitros status` | 06 | Isaac/Isaac ROS | opt-in | needs GPU + Isaac |
 | `caasi node` | 02 | runnable | CI | works with local alone |
 | `caasi node check` | 02 | runnable | CI | works with local alone |
+| `caasi node deps` | 02 | runnable | CI | read-only; works with local alone |
 | `caasi node inspect` | 02 | runnable | CI | works with local alone |
 | `caasi node list` | 02 | runnable | CI | works with local alone |
 | `caasi node occupancy` | 02 | runnable | CI | works with local alone |
@@ -264,6 +265,7 @@ of them invents a `--dry-run` that the CLI does not provide.
 | `caasi system status` | cookbook | read-only | CI |  |
 | `caasi target` | 02 | runnable | CI | works with local alone |
 | `caasi target check` | 02 | runnable | CI | works with local alone |
+| `caasi target deps` | 02 | runnable | CI | read-only; works with local alone |
 | `caasi target inspect` | 02 | runnable | CI | works with local alone |
 | `caasi target list` | 02 | runnable | CI | works with local alone |
 | `caasi target occupancy` | 02 | runnable | CI | works with local alone |

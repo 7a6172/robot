@@ -1569,6 +1569,8 @@ MESSAGES: dict[str, str] = {
     # -- caasi target -------------------------------------------------------
     "target.help": "Inspect, discover, and validate execution targets (workstation, robots, edge, servers).",
     "target.list_help": "List configured execution targets.",
+    "target.deps_help": "Report whether a target can perform an operation (read-only)",
+    "target.deps.flag.scope": "Operation to check: project | build | bringup | sim",
     "target.inspect_help": "Discover hardware, environment, and capabilities of an execution target.",
     "target.check_help": "Validate target reachability, environment, and capability compatibility.",
     "toolctx.help": "Run existing tools against a target, with caasi supplying the context.",

@@ -12,6 +12,7 @@ import typer
 from rich.table import Table
 
 from .. import state
+from ..core import deps as deps_core
 from ..core import targets as targets_core
 from ..i18n import _
 from ..utils import output
@@ -545,3 +546,107 @@ def _occupancy_summary(item: dict) -> str:
     if item["unknown"]:
         parts.append(_("target.occupancy.n_unknown", n=item["unknown"]))
     return ", ".join(parts)
+
+
+@app.command("deps", help=_("target.deps_help"))
+def target_deps(
+    name: str = typer.Argument(..., help=_("target.arg.name")),
+    scope: str = typer.Option(
+        "project", "--for", help=_("target.deps.flag.scope")
+    ),
+    json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
+) -> None:
+    """Report whether a target can perform an operation, read-only."""
+    target = _require_target(name)
+    cfg = state.cfg()
+
+    # Requirements come from the project manifest when one is present: that is the
+    # authoritative declaration, so it is not duplicated here.
+    requires: dict = {}
+    try:
+        from ..core import manifest as manifests, project as projects
+
+        root = projects.find_project_root()
+        if root is not None:
+            requires = dict(manifests.read(root).requires or {})
+    except Exception:
+        requires = {}
+
+    try:
+        report = deps_core.inspect_target_deps(target, scope=scope, requires=requires)
+    except ValueError as err:
+        output.fail(str(err))
+
+    if output.wants_json(json_output):
+        output.echo_json(report.to_dict())
+        if not report.ok:
+            raise typer.Exit(1)
+        return
+
+    _render_deps(report)
+    if not report.ok:
+        raise typer.Exit(1)
+
+
+def _render_deps(report) -> None:
+    c = output.console()
+    c.print(
+        f"\n[bold cyan]Target:[/bold cyan] [bold]{report.target}[/bold]   "
+        f"[bold]operation:[/bold] {report.scope}"
+    )
+    if not report.reachable:
+        c.print(f"[bold red]INSPECTION FAILED[/bold red]: {report.error}")
+        c.print(
+            "[dim]Nothing can be concluded about this target's dependencies.[/dim]"
+        )
+        return
+    c.print(
+        f"[bold]OS:[/bold] {report.os or 'unknown'}   "
+        f"[bold]ROS:[/bold] {report.ros_distro or 'none detected'}"
+    )
+
+    color = {
+        deps_core.STATE_INSTALLED: "green",
+        deps_core.STATE_MISSING: "red",
+        deps_core.STATE_INCOMPATIBLE: "red",
+        deps_core.STATE_OPTIONAL_ABSENT: "dim",
+        deps_core.STATE_UNKNOWN: "yellow",
+    }
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Dependency")
+    table.add_column("Needed")
+    table.add_column("State")
+    table.add_column("Detected")
+    table.add_column("Why / note", overflow="fold")
+    for r in report.results:
+        needed = "required" if r.dependency.required else "optional"
+        note = r.dependency.why
+        if r.note:
+            note = f"{note} — {r.note}"
+        table.add_row(
+            r.dependency.name,
+            needed,
+            f"[{color.get(r.state, 'white')}]{r.state}[/]",
+            r.detected or "-",
+            note,
+        )
+    c.print(table)
+
+    missing = [r for r in report.results
+               if r.state in (deps_core.STATE_MISSING, deps_core.STATE_INCOMPATIBLE)]
+    if missing:
+        c.print("\n[bold]Remediation[/bold] (nothing was installed):")
+        for r in missing:
+            if r.install_command:
+                tag = "verified" if r.install_verified else "review required"
+                c.print(f"  {r.dependency.name}: [bold]{r.install_command}[/bold]  [dim]({tag})[/dim]")
+            else:
+                c.print(f"  {r.dependency.name}: no package name derivable; review manually")
+    counts = report.counts()
+    c.print(
+        f"\n[dim]{counts.get(deps_core.STATE_INSTALLED, 0)} installed, "
+        f"{counts.get(deps_core.STATE_MISSING, 0)} missing, "
+        f"{counts.get(deps_core.STATE_INCOMPATIBLE, 0)} incompatible, "
+        f"{counts.get(deps_core.STATE_OPTIONAL_ABSENT, 0)} optional-absent, "
+        f"{counts.get(deps_core.STATE_UNKNOWN, 0)} unknown[/dim]"
+    )

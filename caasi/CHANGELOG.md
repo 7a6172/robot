@@ -9,6 +9,38 @@ environment-oriented tool; 0.4.0 makes targets — remote machines and robots �
 concept end to end. Everything below is implemented and validated, and the release is
 defined by that set rather than by a date.
 
+### Added — `caasi target deps`: operation-aware dependency inspection
+
+* **`caasi target deps <target> [--for build|bringup|sim|project] [--json]`** reports whether a
+  target can perform an operation, and what exactly is missing. Read-only by construction.
+* Scopes are caasi's real operations, not an invented taxonomy: `project` (exactly what the
+  manifest declares), `build` (adds the build toolchain), `bringup` (the robot stack),
+  `sim` (the simulation stack).
+* **Operation-specific requirements.** Simulation-only dependencies (`isaac_sim`,
+  `isaac_lab`, `ros_gz_*`) are *optional* for `bringup` and only required for `sim`, so a
+  hardware bringup does not fail because the simulator is absent.
+* States are distinguished: `installed`, `missing`, `incompatible`, `optional-absent`,
+  `unknown`. A target asking for `jazzy` that reports `humble` is `incompatible` — a named
+  distribution is an identity, not a version range. Version *ranges* keep the shared
+  ladder's §57 caution and are reported as `unknown` rather than asserted broken.
+* **Reuse, not a new framework.** Requirements come from the manifest's `requires:` (the
+  authoritative declaration); the verdict ladder is `check.evaluate_requirement`; remote
+  facts come from `execution.run_on_target` in a single round-trip. No second SSH path.
+* Remediation is derived only when it can be: a ROS package resolves to
+  `sudo apt install -y ros-<distro>-<pkg>` and is marked **verified** only when the distro
+  and a Debian-family OS are known; otherwise it is explicitly marked *review required*.
+  Nothing is ever installed.
+* **Fails honestly.** An unreachable target or a failed inspection reports every dependency
+  as `unknown` and exits non-zero — never as "all installed".
+
+Two false negatives found on the real robot and fixed:
+  * ROS packages were looked up in `dpkg` by their ROS name, but the Debian package is
+    `ros-jazzy-<name>`, so installed packages were reported missing. The probe now checks
+    the installed share tree (authoritative) with a dpkg version fallback.
+  * Metapackages were reported missing when only their components were installed — `nav2`
+    is not installed itself while `nav2_costmap_2d` and friends are. A family match is now
+    accepted and named in the report.
+
 ### Added — ad-hoc managed processes on a target
 
 * **`caasi exec --detach --name <n> -- CMD ...`** starts an arbitrary command as a tracked,
