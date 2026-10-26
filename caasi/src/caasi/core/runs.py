@@ -36,6 +36,9 @@ STOPPED = "stopped"
 RUNNING = "running"
 PAUSED = "paused"
 LOST = "lost"
+#: The wrapper is gone but something it started is still alive. Reporting this as
+#: "stopped" is how a leaked node survives unnoticed.
+STALE = "stale"
 
 
 @dataclass
@@ -204,6 +207,7 @@ def remote_effective_status(record: RunRecord, config: Config | None = None) -> 
     ssh_prefix = targets_core.target_ssh_prefix(target)
     run_dir = record.remote_run_dir.rstrip("/")
     pid = record.pid
+    pgid = record.pgid or record.pid
 
     # Paths must expand '~' on the target, same helper as the writer: quoting them whole
     # made every status check look in a literal '~' directory and report "lost".
@@ -215,7 +219,11 @@ def remote_effective_status(record: RunRecord, config: Config | None = None) -> 
         f"  echo 'RUNNING'; "
         f"else "
         f"  echo 'DEAD'; "
-        f"fi"
+        f"fi; "
+        # A wrapper can exit while the program it started keeps running. Report that
+        # separately, so a leaked node is visible instead of looking cleanly stopped.
+        f"if [ -n '{pgid}' ] && kill -0 -- -'{pgid}' 2>/dev/null; then echo 'GROUP:ALIVE'; "
+        f"else echo 'GROUP:DEAD'; fi"
     )
     try:
         res = subprocess.run(
@@ -231,8 +239,16 @@ def remote_effective_status(record: RunRecord, config: Config | None = None) -> 
     if res.returncode != 0:
         return "unreachable"
 
-    out = res.stdout.strip()
+    # The probe answers two questions in one round-trip: how the wrapper ended, and whether
+    # anything in its process group is still alive.
+    lines = [ln.strip() for ln in res.stdout.strip().splitlines() if ln.strip()]
+    out = lines[0] if lines else ""
+    group_alive = any(ln == "GROUP:ALIVE" for ln in lines[1:])
     if out.startswith("EXIT:"):
+        # The wrapper finished, but if anything it started is still running the run is not
+        # over: reporting "succeeded" here is exactly how a leaked node stays invisible.
+        if group_alive:
+            return STALE
         code_str = out.split(":", 1)[1].strip()
         try:
             code = int(code_str)
@@ -243,15 +259,18 @@ def remote_effective_status(record: RunRecord, config: Config | None = None) -> 
                     pass
             # An explicit stop wins: since the wrapper records its exit status via an
             # EXIT trap, a stopped run also has an exit code, and reporting it as
-            # succeeded/failed would lose the fact that we stopped it.
+            # succeeded/failed would lose the fact that we stopped it. If descendants
+            # outlived the wrapper the truth is "stale", not "stopped".
             if record.stopped:
-                return STOPPED
+                return STALE if group_alive else STOPPED
             return TERMINAL_OK if code == 0 else TERMINAL_FAIL
         except ValueError:
             return TERMINAL_FAIL
     elif out == "RUNNING":
         return RUNNING
     elif out == "DEAD":
+        if group_alive:
+            return STALE
         if record.stopped:
             return STOPPED
         return LOST
@@ -507,7 +526,16 @@ def remote_stop_run(record: RunRecord, config: Config, timeout: float = 5.0) -> 
         return True
 
     # Check if already dead
-    check_alive = f"kill -0 {pid} 2>/dev/null && echo 'ALIVE' || echo 'DEAD'"
+    # Check the whole process group when one is known: the wrapper can exit while the
+    # program it started keeps running, and a pid-only check then reports "stopped" for a
+    # process that is still alive and still holding its ports.
+    if pgid:
+        check_alive = (
+            f"if kill -0 -{pgid} 2>/dev/null || kill -0 {pid} 2>/dev/null; "
+            f"then echo 'ALIVE'; else echo 'DEAD'; fi"
+        )
+    else:
+        check_alive = f"kill -0 {pid} 2>/dev/null && echo 'ALIVE' || echo 'DEAD'"
     try:
         res = subprocess.run(ssh_prefix + [check_alive], capture_output=True,
                              text=True, timeout=per_call)
@@ -570,7 +598,11 @@ def remote_stop_run(record: RunRecord, config: Config, timeout: float = 5.0) -> 
 
     # 4. Update manifest on target and host
     if record.remote_run_dir:
-        dest_manifest = f"{record.remote_run_dir}/manifest.yaml"
+        # Expanded on the target: inside the python -c string a literal '~' is not a home
+        # directory, so the update silently did nothing.
+        dest_manifest = targets_core.remote_path_expr(
+            record.remote_run_dir + "/manifest.yaml").strip('"').replace(
+            '"$HOME"', os.environ.get("HOME", "~"))
         update_remote = (
             f"python3 -c 'import yaml; "
             f"p=\"{dest_manifest}\"; "
@@ -581,8 +613,9 @@ def remote_stop_run(record: RunRecord, config: Config, timeout: float = 5.0) -> 
         except subprocess.TimeoutExpired:
             pass
 
-    # A delivered signal is enough to record the run as stopped. Its status must
-    # never be downgraded to 'lost' merely because confirmation timed out.
+    # A delivered signal is enough to record the run as stopped ONLY when no descendant
+    # survived. If something is still alive after SIGKILL, saying "stopped" would hide a
+    # leaked process, so the run is recorded as stopped but reported stale by status.
     _update_manifest(record, stopped=True, paused=False)
     record.stopped = True
     record.paused = False
@@ -647,11 +680,50 @@ def sandbox_stop_run(record: RunRecord, timeout: float = 5.0) -> bool:
     return stopped
 
 
+def survivors_alive(record: RunRecord, config: Config | None = None) -> bool:
+    """True when the wrapper is gone but something it started is still running.
+
+    A pid-only check answers "is the wrapper alive", which is the wrong question: the
+    wrapper exits as soon as the program it launched returns or detaches, so a leaked node
+    outlives it. This asks about the process *group* instead.
+    """
+    if not record.pid:
+        return False
+    pgid = record.pgid or record.pid
+    if record.target == "local" or record.target_transport == "local":
+        try:
+            os.killpg(pgid, 0)
+            return True
+        except (ProcessLookupError, PermissionError, OSError):
+            return False
+    cfg = config or Config({}, [])
+    target = targets_core.find_target(cfg, record.target)
+    if target is None:
+        return False
+    probe = (
+        f"kill -0 -- -{pgid} 2>/dev/null && echo 'ALIVE' || echo 'DEAD'"
+    )
+    try:
+        res = subprocess.run(
+            targets_core.target_ssh_prefix(target) + [probe],
+            capture_output=True,
+            text=True,
+            timeout=max(5.0, float(target.ssh_timeout)),
+        )
+    except Exception:
+        return False
+    return res.stdout.strip() == "ALIVE"
+
+
 def stop_run(record: RunRecord, timeout: float = 5.0, config: Config | None = None) -> bool:
     """Terminate the run's process group. Returns True if it stopped."""
     status = effective_status(record, config)
     if status in (TERMINAL_OK, TERMINAL_FAIL, STOPPED):
-        return True
+        # The wrapper has finished, but saying "stopped" without looking further is how a
+        # leaked descendant is concealed. Only report a clean stop when nothing survives.
+        if not survivors_alive(record, config):
+            return True
+        # Something outlived the wrapper: fall through and actually stop it.
 
     cfg = config or Config({}, [])
     if record.target != "local" and record.target_transport == "ssh":

@@ -9,6 +9,24 @@ environment-oriented tool; 0.4.0 makes targets — remote machines and robots �
 concept end to end. Everything below is implemented and validated, and the release is
 defined by that set rather than by a date.
 
+### Fixed — a run is only "stopped" when nothing it started is still running
+
+The wrapper exits as soon as the program it launches returns or detaches, so a pid-only
+check answered the wrong question. Two consequences, both seen on a real robot, where a
+node survived `run stop` and kept holding its UDP port:
+
+* `caasi run status` reported `succeeded` for a run whose child was still running
+* `caasi run stop` returned early for any terminal status without looking for survivors
+
+Both now ask about the process *group*. Status reports **`stale`** — a new state, distinct
+from `stopped` and `lost` — when the wrapper is finished but the group is still alive, and
+`stop` only returns once survivors have actually been signalled, killing the group when
+needed. A process that detaches into its own session escapes group-based tracking; that
+remains a documented limitation rather than something reported as clean.
+
+The remote manifest update also expanded no `~` (a literal tilde inside the `python -c`
+string is not a home directory), so it silently did nothing.
+
 ### Fixed — target paths: a leading `~` is expanded on the target, everywhere
 
 One mistake — quoting a path containing `~` as a whole — appeared at four call sites and
