@@ -103,3 +103,6 @@ openmover_ws/isaac/lab/campaign/heldout/videos_present/
 .local/
 .nv/
 .nvidia-omniverse/
+
+# Snapshot symlink to an absolute /opt/ros/noetic path on the robot; meaningless elsewhere.
+caasi-workspace/openmover_robot_spec/src/CMakeLists.txt
