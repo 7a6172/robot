@@ -16,13 +16,20 @@ defined by that set rather than by a date.
 
   ```
   ~/caasi/
-  ├── robots/       physical robots and their deployed environments
-  ├── projects/     robotics projects, regardless of where they run
-  ├── fleet/        shared robot inventory, profiles and configuration
-  ├── workspaces/   source checkouts and development workspaces
-  ├── data/         retained or collected data (datasets, recordings, results)
-  ├── artifacts/    reusable build outputs and packaged releases
-  └── cache/        re-creatable temporary data, safe to clear
+  ├── robots/{robot}/              physical robots and their deployed environments
+  ├── projects/{project}/          robotics projects, regardless of where they run
+  ├── fleet/                       shared robot inventory, profiles and configuration
+  ├── workspaces/{workspace}/      source checkouts and development workspaces
+  ├── data/
+  │   ├── datasets/{dataset}/
+  │   ├── recordings/{recording}/
+  │   └── results/{result}-{date}/
+  ├── artifacts/{artifact}/        reusable build outputs and packaged releases
+  └── cache/{entry}/               re-creatable temporary data, safe to clear
+
+  Each root holds one directory per named entity, and small helpers (`robot_root`,
+  `project_root`, `dataset`, `recording`, `result`, `artifact`, `cache_entry`) build the
+  leaf paths so callers never join the strings by hand.
   ```
 
   The tree lives in `caasi.core.layout`; further roots (simulations, maps) can be added

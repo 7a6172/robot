@@ -5,16 +5,20 @@ new target needs no convention debate and every command looks in the same place.
 layout is a fixed tree rooted at ``~/caasi``:
 
     ~/caasi/
-    ├── robots/       physical robots and their deployed environments
-    ├── projects/     robotics projects, regardless of where they run
-    ├── fleet/        shared robot inventory, profiles and configuration
-    ├── workspaces/   source checkouts and development workspaces
-    ├── data/         retained or collected data
-    │   ├── datasets/
-    │   ├── recordings/
-    │   └── results/
-    ├── artifacts/    reusable build outputs and packaged releases
-    └── cache/        re-creatable temporary data, safe to clear
+    ├── robots/{robot}/                 physical robots and their deployed environments
+    ├── projects/{project}/             robotics projects, regardless of where they run
+    ├── fleet/                          shared robot inventory, profiles and configuration
+    ├── workspaces/{workspace}/         source checkouts and development workspaces
+    ├── data/
+    │   ├── datasets/{dataset}/
+    │   ├── recordings/{recording}/
+    │   └── results/{result}-{date}/
+    ├── artifacts/{artifact}/           reusable build outputs and packaged releases
+    └── cache/{entry}/                  re-creatable temporary data, safe to clear
+
+Each root holds one directory per named entity, so a robot is `robots/swjtumover05`,
+a project is `projects/warehouse-navigation`, and a dataset is
+`data/datasets/<name>`. Use the helpers below rather than joining strings by hand.
 
 More roots can be added (``simulations``, ``maps``, ...) without changing callers,
 because everything goes through the helpers here.
@@ -44,13 +48,52 @@ CACHE = f"{ROOT}/cache"
 
 
 def robot_root(robot: str) -> str:
-    """Base directory for a physical robot's material."""
+    """A robot's own directory: ``robots/<robot>``."""
     return f"{ROBOTS}/{robot}"
+
+
+def project_root(project: str) -> str:
+    """A project's own directory: ``projects/<project>``."""
+    return f"{PROJECTS}/{project}"
 
 
 def workspace_root(target: str) -> str:
     """Base directory for a non-robot execution target."""
     return f"{WORKSPACES}/{target}"
+
+
+def workspace(workspace_name: str) -> str:
+    """A development workspace: ``workspaces/<name>``."""
+    return f"{WORKSPACES}/{workspace_name}"
+
+
+def dataset(name: str) -> str:
+    """A dataset: ``data/datasets/<name>``."""
+    return f"{DATASETS}/{name}"
+
+
+def recording(name: str) -> str:
+    """A recording: ``data/recordings/<name>``."""
+    return f"{RECORDINGS}/{name}"
+
+
+def result(name: str, date: str | None = None) -> str:
+    """A result set: ``data/results/<name>[-<date>]``.
+
+    Results are dated because the same operation is re-run; ``date`` is passed in
+    rather than read from the clock so callers stay deterministic and testable.
+    """
+    return f"{RESULTS}/{name}-{date}" if date else f"{RESULTS}/{name}"
+
+
+def artifact(name: str) -> str:
+    """A reusable build output or packaged release: ``artifacts/<name>``."""
+    return f"{ARTIFACTS}/{name}"
+
+
+def cache_entry(name: str) -> str:
+    """Clearable scratch space: ``cache/<name>``."""
+    return f"{CACHE}/{name}"
 
 
 def default_deployment_root(target: str, tags: list[str] | None = None) -> str:

@@ -79,3 +79,39 @@ def test_default_never_scatters_a_new_home_directory_entry():
     dest = layout.deployment_destination("swjtumover05", "openmover", ["robot"])
     assert dest.startswith("~/caasi/"), dest
     assert "/deployments/" not in dest
+
+
+# ------------------------------------------------- per-entity leaf directories
+
+def test_each_root_holds_one_directory_per_named_entity():
+    assert layout.robot_root("swjtumover05") == "~/caasi/robots/swjtumover05"
+    assert layout.project_root("warehouse-navigation") == (
+        "~/caasi/projects/warehouse-navigation"
+    )
+    assert layout.workspace("openmover-dev") == "~/caasi/workspaces/openmover-dev"
+    assert layout.dataset("kitti-lite") == "~/caasi/data/datasets/kitti-lite"
+    assert layout.recording("lab-2026-10-26") == "~/caasi/data/recordings/lab-2026-10-26"
+    assert layout.artifact("openmover-0.4.0") == "~/caasi/artifacts/openmover-0.4.0"
+    assert layout.cache_entry("maps") == "~/caasi/cache/maps"
+
+
+def test_result_names_carry_an_optional_date():
+    assert layout.result("nav-eval") == "~/caasi/data/results/nav-eval"
+    assert layout.result("nav-eval", "2026-10-26") == (
+        "~/caasi/data/results/nav-eval-2026-10-26"
+    )
+
+
+def test_leaf_helpers_stay_under_their_root():
+    """A helper must never escape its root, whatever the caller passes is its business."""
+    pairs = [
+        (layout.robot_root("r"), layout.ROBOTS),
+        (layout.project_root("p"), layout.PROJECTS),
+        (layout.dataset("d"), layout.DATASETS),
+        (layout.recording("rec"), layout.RECORDINGS),
+        (layout.result("res", "2026-01-01"), layout.RESULTS),
+        (layout.artifact("a"), layout.ARTIFACTS),
+        (layout.cache_entry("c"), layout.CACHE),
+    ]
+    for leaf, root in pairs:
+        assert leaf.startswith(root + "/"), leaf
