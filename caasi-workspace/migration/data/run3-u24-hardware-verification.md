@@ -78,3 +78,60 @@ without the floor:
 
 Symmetric to 0.7%, so the left/right wheel mapping and the differential sign are both consistent
 with ROS 1. This is the check that would have caught a swapped motor ID before a floor test.
+
+## Floor tests on U24 (before the battery ran down)
+
+Robot on the floor inside the maze. Same probes as the ROS 1 reference, so the numbers compare
+directly.
+
+| test | ROS 1 (U20) | ROS 2 (U24) | difference |
+| --- | --- | --- | --- |
+| forward 0.06 m/s x 6 s | 0.3462 m, ratio 0.9616 | **0.3452 m, ratio 0.9589** | **0.29 %** |
+| reverse 0.06 m/s x 6 s | 0.3479 m, ratio 0.9663 | **0.3462 m, ratio 0.9616** | **0.49 %** |
+| rotate 0.5 rad/s x 1 s | 0.5096 rad, ratio 1.0191 | **0.5091 rad, ratio 1.0182** | **0.05 %** |
+
+Yaw drift on the straight runs was -0.014 rad forward and +0.021 rad reverse, against +-0.07-0.09
+rad recorded on ROS 1 with the degrading controller. A longer 3 s rotation gave 1.2996 rad
+(ratio 0.866) with 1 cm of position drift; the 1 s figure is the one comparable to the ROS 1
+measurement.
+
+Conclusion: the ROS 2 drive train is equivalent to ROS 1 to well under one percent.
+
+## Defect 3: the launch fed a ROS 1 vendor YAML to a ROS 2 node (fixed)
+
+`bringup.launch.py` passed `swjtumover_bringup/config/lidar.yaml` -- the ROS 1 vendor schema with
+`common:` / `lidar:` and no `ros__parameters` -- to the LiDAR adapter as `parameters=`. The node
+died on startup:
+
+    Couldn't parse params file: Cannot have a value before ros__parameters at line 2
+    process has died [exit code -6]
+
+It respawned, failed the same way, and no `/scan` was produced -- and because it never bound UDP
+7000, `screen_node` took that port instead, defeating the ordering protection that exists for
+exactly this reason. The adapter has its own flat ROS 2 file in `swjtumover_vanjee/config`, which
+is what the manual runs had been using; the launch now resolves it from that package.
+
+Regression test added: every YAML a launch passes as `parameters=` must contain
+`ros__parameters`, with unknown directory variables failing the test rather than being skipped.
+Verified by reintroducing the bug (2 failures) and restoring the fix (33/33 green). All earlier
+static tests passed while this was broken, because none of them executed a launch.
+
+## Incident: controller stopped answering while the battery ran down (no runaway)
+
+After roughly two and a half minutes of floor testing the controller stopped replying, and the
+ROS 2 node did exactly what the ROS 1 one could not:
+
+    motor feedback timeout, locked to zero speed;
+    left feedback gap 137.0 s, right 137.0 s. Restart the node after fixing the link.
+    fault latch = yes, commanded protocol RPM 0/0
+
+`ping` to 192.168.100.100 still answered in 0.93 ms, with no protocol replies -- the same
+signature as the earlier board failure, now with the cause known: supply voltage. The owner
+confirmed the robot was low on battery.
+
+Nothing moved, nothing had to be killed, and the wheels were already at zero because the command
+had expired. The node then refused to drive at all rather than trusting a stale feedback stream.
+That is the difference the watchdog makes, and it is why this shutdown was uneventful.
+
+Lesson for the next session: check the battery state *before* the first floor test, not after the
+controller stops answering. The protocol probe is a battery test as much as a link test.

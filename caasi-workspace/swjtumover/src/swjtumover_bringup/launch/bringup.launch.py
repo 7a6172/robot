@@ -25,6 +25,12 @@ from launch_ros.actions import Node
 
 share_dir = get_package_share_directory('swjtumover_bringup')
 config_dir = os.path.join(share_dir, 'config')
+
+# The LiDAR adapter owns its own parameters: it reads a flat ROS 2 file under its node name,
+# whereas config/lidar.yaml in this package is the ROS 1 vendor schema (`common:`/`lidar:` with no
+# `ros__parameters`) kept for reference. Passing the ROS 1 file to a ROS 2 node fails to parse --
+# found by running the launch on the robot, so the adapter's file is resolved from its own package.
+vanjee_config_dir = os.path.join(get_package_share_directory('swjtumover_vanjee'), 'config')
 urdf_file = os.path.join(share_dir, 'urdf', 'robot_description.urdf')
 
 
@@ -50,7 +56,8 @@ def generate_launch_description():
     lidar_first = Node(
         package='swjtumover_vanjee', executable='vanjee_scan_node',
         name='vanjee_lidar_node', output='screen', respawn=True,
-        parameters=[os.path.join(config_dir, 'lidar.yaml'), {'use_sim_time': use_sim_time}])
+        parameters=[os.path.join(vanjee_config_dir, 'lidar.yaml'),
+                    {'use_sim_time': use_sim_time}])
 
     deferred = [
         OpaqueFunction(function=publish_robot_description),

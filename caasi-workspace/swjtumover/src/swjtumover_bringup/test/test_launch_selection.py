@@ -8,9 +8,13 @@ from __future__ import annotations
 
 import importlib.util
 import pathlib
+import re
+
+import yaml
 
 import pytest
 
+PROJECT = pathlib.Path(__file__).resolve().parents[3]
 PKG = pathlib.Path(__file__).resolve().parent.parent
 LAUNCH_FILE = PKG / 'launch' / 'bringup.launch.py'
 
@@ -163,3 +167,49 @@ def test_actuation_relevant_nodes_are_respawned_not_silently_dropped():
         visit(entity)
     assert respawn.get('motor_node') is True
     assert respawn.get('screen_node') is True
+
+
+# Every YAML a launch passes as `parameters=` must be a ROS 2 parameter file. The ROS 1 vendor
+# schema (`common:` / `lidar:` with no `ros__parameters`) is NOT one, and feeding it to a node
+# fails at startup with "Cannot have a value before ros__parameters". That happened on the robot
+# with bringup.launch.py handing config/lidar.yaml to the LiDAR adapter, which crashed, respawned,
+# and left the UDP 7000 port to whoever started next. Static checks missed it; this does not.
+
+_LAUNCH_PARAM_DIRS = {
+    'config_dir': 'swjtumover_bringup/config',          # this package
+    'vanjee_config_dir': 'swjtumover_vanjee/config',    # the LiDAR adapter's own file
+}
+
+
+def _launch_parameter_files():
+    """(launch file, referenced path, yaml file) for every YAML a launch passes as parameters."""
+    found = []
+    for launch in sorted(PKG.joinpath('launch').glob('*.launch.py')):
+        text = launch.read_text(encoding='utf-8')
+        for block in re.findall(r'parameters=\[(.*?)\]', text, re.S):
+            for var, name in re.findall(r"os\.path\.join\((\w+),\s*'([^']+\.yaml)'\)", block):
+                assert var in _LAUNCH_PARAM_DIRS, (
+                    f'{launch.name}: unknown parameter directory variable {var!r}; '
+                    'add it to _LAUNCH_PARAM_DIRS so this test can check the file')
+                found.append((launch.name, var, name))
+    return found
+
+
+def test_launch_parameter_files_are_ros2_parameter_files():
+    referenced = _launch_parameter_files()
+    assert referenced, 'no YAML parameters found in any launch file -- test is not looking'
+    problems = []
+    for launch_name, var, name in referenced:
+        relative = _LAUNCH_PARAM_DIRS[var]
+        package, _, _ = relative.partition('/')
+        path = PROJECT / 'src' / package / 'config' / name
+        assert path.is_file(), f'{launch_name} references a missing file: {path}'
+        data = yaml.safe_load(path.read_text(encoding='utf-8'))
+        if not isinstance(data, dict) or not data:
+            problems.append(f'{launch_name} -> {path.name}: not a mapping')
+            continue
+        if not any(isinstance(v, dict) and 'ros__parameters' in v for v in data.values()):
+            problems.append(
+                f'{launch_name} -> {path.name}: no ros__parameters (ROS 1 schema cannot be '
+                'passed to a ROS 2 node)')
+    assert not problems, '\n'.join(problems)
