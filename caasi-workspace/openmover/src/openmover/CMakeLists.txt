@@ -168,6 +168,11 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     handlers test/test_handlers.py
     APPEND_ENV PYTHONPATH="${CMAKE_CURRENT_SOURCE_DIR}")
+  # Starts real nodes against a synthetic scan; no hardware, no actuation.
+  ament_add_pytest_test(
+    obstacle_integration test/test_obstacle_integration.py
+    APPEND_ENV PYTHONPATH="${CMAKE_CURRENT_SOURCE_DIR}"
+    TIMEOUT 300)
 endif()
 
 ament_package()

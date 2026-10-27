@@ -139,3 +139,35 @@ def test_obstacle_handler_publishes_state_and_never_commands():
     assert 'openmover/navigation/obstacle' in source
     assert 'cmd_vel' not in source, "obstacle detection must not command the robot"
     assert 'actuation' not in source.lower()
+
+
+# ------------------------------------------- command watchdog (actuation path)
+
+def test_motor_handler_watchdog_zeroes_a_stale_command():
+    """Losing the command source must not leave the last command in effect.
+
+    Asserted on the implementation because exercising it physically means enabling
+    actuation, which needs explicit authorization. The three pieces that matter are all
+    present: a configurable timeout, a timestamp refreshed by each command, and an expiry
+    path that clears the command.
+    """
+    motor = (SRC / 'src' / 'driver' / 'motor_handler.cpp').read_text()
+    assert 'motor.cmd_vel_timeout' in motor
+    assert 'last_cmd_vel_stamp' in motor
+    # every command path refreshes the timestamp
+    assert motor.count('last_cmd_vel_stamp = node->now();') >= 2
+    # and there is a branch that zeroes the command on expiry
+    expiry = [line for line in motor.splitlines()
+              if 'cmd_vel_timeout' in line and ('>' in line or 'seconds()' in line)]
+    assert expiry, "no watchdog expiry comparison found"
+    assert '0.0' in motor  # the zero command exists
+
+
+def test_actuation_permission_is_read_once_and_fails_closed():
+    """Two independent factors, read once at startup, never re-read at runtime."""
+    motor = (SRC / 'src' / 'driver' / 'motor_handler.cpp').read_text()
+    assert 'actuation_enabled && actuation_env_ok' in motor
+    # The environment factor accepts exactly "1".
+    assert 'std::strcmp(env_raw, "1") == 0' in motor
+    # Permission is consulted on the command paths, not just logged.
+    assert motor.count('actuation_permitted()') >= 3

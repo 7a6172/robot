@@ -125,11 +125,15 @@ int main(int argc, char **argv)
 	tf2_ros::TransformListener tf_listener(*tf_buffer);
 
 	// 监听雷达到基座的 tf 数据
+	// How long to wait for the required transform. Configurable so a missing frame is
+	// reported in seconds rather than blocking startup for a minute, and so a test can
+	// exercise the failure without waiting. Default preserves the ROS 2 port's behaviour.
+	const double tf_wait_s = node->declare_parameter<double>("obstacle.tf_wait_timeout", 60.0);
 	try
 	{
 		tf_lidar_to_base = tf_buffer->lookupTransform(
 			LOCALIZATION_BASE_LINK, LOCALIZATION_LIDAR_LINK,
-			tf2::TimePoint(), tf2::durationFromSec(60));
+			tf2::TimePoint(), tf2::durationFromSec(tf_wait_s));
 	}
 	catch (tf2::TransformException &ex)
 	{
