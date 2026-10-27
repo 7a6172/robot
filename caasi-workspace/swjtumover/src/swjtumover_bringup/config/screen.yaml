@@ -1,0 +1,7 @@
+# screen_handler parameters, converted from ~screen/* to the ROS 2 per-node form.
+screen_handler:
+  ros__parameters:
+    screen:
+      control_freq: 5
+      ip_address: "192.168.100.100"
+      port: 26

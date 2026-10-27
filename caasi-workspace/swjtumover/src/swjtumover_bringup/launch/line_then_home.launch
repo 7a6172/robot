@@ -1,0 +1,25 @@
+<launch>
+    <!-- 单独启动整套实验；若已有硬件节点，可设 start_hardware:=false。 -->
+    <arg name="start_hardware" default="true" />
+    <arg name="map" default="nav.yaml" />
+    <group if="$(arg start_hardware)">
+        <include file="$(find swjtumover_bringup)/launch/bringup.launch">
+            <arg name="enable_teleop" value="false" />
+        </include>
+    </group>
+    <include file="$(find swjtumover_bringup)/launch/map_server.launch">
+        <arg name="map" value="$(arg map)" />
+    </include>
+    <include file="$(find swjtumover_bringup)/launch/amcl.launch" />
+    <group>
+        <remap from="cmd_vel" to="/cmd_vel/nav" />
+        <include file="$(find swjtumover_bringup)/launch/move_base.launch" />
+    </group>
+    <node pkg="swjtumover_bringup" type="omove_following_feng.py" name="omove_following" output="screen" required="true">
+        <param name="enabled" value="false" />
+        <param name="end_confirm_frames" value="5" />
+        <param name="image_timeout" value="0.5" />
+        <remap from="/cmd_vel" to="/cmd_vel/line" />
+    </node>
+    <node pkg="swjtumover_bringup" type="line_then_home.py" name="line_then_home" output="screen" required="true" />
+</launch>

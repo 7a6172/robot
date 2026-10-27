@@ -1,0 +1,65 @@
+<!-- 文件描述：加载机器人基础硬件系统 -->
+<launch>
+    <!-- 设置时间参数 -->
+    <arg name="use_sim_time" default="false" />
+    <!-- 是否启用 Rviz 可视化 -->
+    <arg name="enable_visualization" value="true" />
+    <arg name="visualization_config_file_bringup" value="$(find swjtumover_bringup)/config/bringup.rviz" />
+
+    <!--是否默认允许键盘控制-->
+    <arg name="enable_teleop" default="true" />
+
+    <!-- 启动机器人状态和关节状态发布节点 -->
+    <param name="robot_description" textfile="$(find swjtumover_bringup)/urdf/robot_description.urdf" />
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"></node>
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher"></node>
+
+    <!-- 启动机器人RealSense相机节点 -->
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+        <!-- 设备基础 -->
+        <arg name="camera" value="d415"/>
+        <arg name="serial_no" value=""/>
+        <arg name="initial_reset" value="true"/>
+        <arg name="publish_tf" value="true"/>
+        <!-- 点云对齐 -->
+        <arg name="align_depth" value="true"/>
+        <arg name="filters" value="pointcloud"/>
+        <!-- 画面参数 -->
+        <arg name="color_width" value="640"/>
+        <arg name="color_height" value="480"/>
+        <arg name="color_fps" value="30"/>
+        <arg name="depth_width" value="640"/>
+        <arg name="depth_height" value="480"/>
+        <arg name="depth_fps" value="30"/>
+        <!-- 最大深度距离 -->
+        <arg name="clip_distance" value="3.0"/>
+    </include>
+
+    <!-- 启动机器人雷达节点 -->
+    <node pkg="vanjee_lidar_sdk" name="vanjee_lidar_sdk_node" type="vanjee_lidar_sdk_node" output="screen" respawn="true">
+        <param name="config_path" value="$(find swjtumover_bringup)/config/lidar.yaml"/>
+    </node>
+
+    <!-- 启动机器人驱动节点 -->
+    <node pkg="swjtumover_bringup" type="motor_node" name="motor_node" output="screen" respawn="true">
+        <rosparam file="$(find swjtumover_bringup)/config/motor.yaml" command="load" />
+    </node>
+    <node pkg="swjtumover_bringup" type="screen_node" name="screen_node" output="screen" respawn="true">
+        <rosparam file="$(find swjtumover_bringup)/config/screen.yaml" command="load" />
+    </node>
+
+    <!-- 键盘控制 -->
+    <!-- <node pkg="swjtumover_bringup" type="teleop_node.py" name="teleop_node" output="screen" respawn="true">
+        <rosparam file="$(find swjtumover_bringup)/config/teleop.yaml" command="load" />
+    </node> -->
+
+    <node if="$(arg enable_teleop)" pkg="swjtumover_bringup" type="teleop_node.py" name="teleop_node" output="screen" respawn="true">
+        <rosparam file="$(find swjtumover_bringup)/config/teleop.yaml" command="load" />
+    </node>
+
+    <!-- 启动可视化 -->
+    <group if="$(arg enable_visualization)">
+        <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg visualization_config_file_bringup)">
+        </node>
+    </group>
+</launch>

@@ -1,0 +1,15 @@
+# Vanjee 718H parameters, converted from the ROS 1 lidar.yaml (the vendor SDK's nested
+# common/lidar schema) to this adapter's flat ROS 2 parameters. Values are unchanged from the
+# ROS 1 file, which is what the validated scan contract was measured against.
+vanjee_lidar_node:
+  ros__parameters:
+    lidar_type: vanjee_718h
+    host_address: "192.168.110.10"    # robot interface facing the LiDAR
+    lidar_address: "192.168.110.100"
+    host_msop_port: 7000
+    lidar_msop_port: 5000
+    topic: scan                       # -> /scan, the validated contract
+    frame_id: lidar_link
+    min_distance: 0.25
+    max_distance: 25.0
+    use_lidar_clock: false            # wall-clock stamps, as in ROS 1

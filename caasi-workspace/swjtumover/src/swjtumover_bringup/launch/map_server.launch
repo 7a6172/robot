@@ -1,0 +1,4 @@
+<launch>
+    <arg name="map" default="nav.yaml" />
+    <node pkg="map_server" type="map_server" name="map_server" args="$(find swjtumover_bringup)/map/$(arg map)" />
+</launch>

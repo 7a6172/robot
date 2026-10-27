@@ -1,0 +1,8 @@
+# teleop_node parameters, converted from ~teleop/* to the ROS 2 per-node form.
+teleop_node:
+  ros__parameters:
+    teleop:
+      velocity_x: 0.2
+      velocity_yaw: 0.4
+      max_x_acc: 0.2
+      max_yaw_acc: 0.4

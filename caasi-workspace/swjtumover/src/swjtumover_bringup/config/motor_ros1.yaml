@@ -1,0 +1,22 @@
+# 电机
+motor:
+  # 控制频率
+  control_freq: 50
+
+  ip_address: "192.168.100.100"
+  port: 23
+
+  # 车轮最高速度（RPM）
+  wheel_max_speed_rpm: 300
+  # 加速度（RPM/s^2）
+  wheel_acc: 1800
+
+  # 底盘回转半径（m）
+  chassis_radius: 0.103
+  # 车轮半径
+  wheel_radius: 0.05035
+  # 里程计真值补偿系数
+  odom_compensation_ratio: 1.047
+
+  # 是否发布里程计tf
+  publish_tf: true

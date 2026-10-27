@@ -1,0 +1,18 @@
+# motor_node parameters. Converted from the ROS 1 private-namespace form (~motor/*) to the
+# ROS 2 per-node form, so the parameter *names* are unchanged: motor.control_freq etc.
+motor_node:
+  ros__parameters:
+    motor:
+      control_freq: 50
+      ip_address: "192.168.100.100"
+      port: 23
+      wheel_max_speed_rpm: 300
+      wheel_acc: 1800
+      chassis_radius: 0.103
+      wheel_radius: 0.05035
+      odom_compensation_ratio: 1.047
+      publish_tf: true
+      # Not present in ROS 1 (its motor_node had no watchdog). Defaults come from the
+      # hardened swjtumover01 node; listed here so the robot's values are explicit.
+      cmd_vel_timeout: 0.5
+      motor_feedback_timeout: 0.5

@@ -1,0 +1,86 @@
+<launch>
+    <!-- 基础模块开关 -->
+    <arg name="use_bringup" default="true" />
+    <arg name="use_map_server" default="true" />
+    <arg name="use_amcl" default="true" />
+    <arg name="use_move_base" default="true" />
+    <arg name="use_line_following" default="true" />
+    <arg name="use_nav_goals" default="true" />
+
+    <!-- 正式考核为 true；单独测试导航时改为 false -->
+    <arg name="wait_line_finished" default="true" />
+    <arg name="show_line_window" default="false" />
+
+    <!--
+      AMCL 初始位姿：当前暂按“最终停车点就是起点”填写。
+      若小车每次启动时的实际车头方向不同，请重新在 RViz 中记录起点位姿后修改。
+    -->
+    <arg name="initial_pose_x" default="-0.04358017444610596" />
+    <arg name="initial_pose_y" default="-0.28503382205963135" />
+    <arg name="initial_pose_yaw" default="0.025280" />
+
+    <!-- 清除上一次运行残留状态 -->
+    <param name="/exam/line_finished" value="false" />
+    <param name="/exam/localization_ready" value="false" />
+
+    <include if="$(arg use_bringup)"
+             file="$(find swjtumover_bringup)/launch/bringup.launch" />
+    <include if="$(arg use_map_server)"
+             file="$(find swjtumover_bringup)/launch/map_server.launch" />
+    <include if="$(arg use_amcl)"
+             file="$(find swjtumover_bringup)/launch/amcl.launch" />
+    <include if="$(arg use_move_base)"
+             file="$(find swjtumover_bringup)/launch/move_base.launch" />
+
+    <node if="$(arg use_nav_goals)"
+          pkg="swjtumover_bringup"
+          type="exam_nav_goals.py"
+          name="exam_nav_goals"
+          output="screen">
+        <!-- 加载到 /exam_nav_goals/goals，代码必须通过 ~goals 读取 -->
+        <rosparam command="load"
+                  file="$(find swjtumover_bringup)/param/exam_goals.yaml" />
+        <param name="wait_line_finished" value="$(arg wait_line_finished)" />
+        <param name="goal_timeout" value="90.0" />
+        <param name="frame_id" value="map" />
+
+        <param name="publish_initial_pose" value="true" />
+        <param name="initial_pose_x" value="$(arg initial_pose_x)" />
+        <param name="initial_pose_y" value="$(arg initial_pose_y)" />
+        <param name="initial_pose_yaw" value="$(arg initial_pose_yaw)" />
+        <param name="initial_pose_repeat" value="5" />
+        <param name="initial_pose_settle_time" value="3.0" />
+        <param name="clear_costmaps_before_goals" value="true" />
+        <param name="localization_ready_param" value="/exam/localization_ready" />
+    </node>
+
+    <node if="$(arg use_line_following)"
+          pkg="swjtumover_bringup"
+          type="exam_line_following.py"
+          name="exam_line_following"
+          output="screen">
+        <param name="image_topic" value="/d415/color/image_raw" />
+        <param name="cmd_topic" value="/cmd_vel" />
+
+        <!-- 必须与已经单独测试成功的循线参数保持一致 -->
+        <rosparam param="lower_bgr">[20, 30, 20]</rosparam>
+        <rosparam param="upper_bgr">[75, 85, 75]</rosparam>
+        <param name="linear_speed" value="0.10" />
+        <param name="kp_angular" value="1.00" />
+        <param name="max_linear_speed" value="0.50" />
+        <param name="max_angular_speed" value="0.30" />
+        <param name="roi_y_start_ratio" value="0.55" />
+        <param name="target_x_ratio" value="0.62" />
+        <param name="lost_stop_frames" value="3" />
+        <param name="end_marker_min_width_ratio" value="0.30" />
+        <param name="end_marker_slope_abs_max" value="0.20" />
+        <param name="end_confirm_frames" value="6" />
+        <param name="handoff_stop_time" value="1.0" />
+        <param name="show_window" value="$(arg show_line_window)" />
+
+        <!-- 一键启动时先等 AMCL 和 move_base 准备完毕 -->
+        <param name="wait_localization_ready" value="true" />
+        <param name="localization_ready_param" value="/exam/localization_ready" />
+        <param name="localization_wait_timeout" value="30.0" />
+    </node>
+</launch>

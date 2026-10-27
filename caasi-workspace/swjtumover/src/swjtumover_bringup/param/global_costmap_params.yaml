@@ -1,0 +1,49 @@
+global_costmap:
+  # 坐标系
+  global_frame: map
+  robot_base_frame: base_link
+  transform_tolerance: 0.2
+
+  # 全局代价地图通常来自静态栅格地图
+  rolling_window: false
+  track_unknown_space: true     # 允许未知区域（需与全局规划器 allow_unknown 配合）
+  resolution: 0.05
+
+  # 频率
+  update_frequency: 5.0
+  publish_frequency: 5.0
+
+  # 机器人足迹（与局部一致，放在这里可独立运行）
+  footprint: [[0.16, 0.15], [0.16, -0.15], [-0.16, -0.15], [-0.16, 0.15]]
+  footprint_padding: 0.02
+
+  # 插件：静态层 +（可选）障碍层 + 膨胀层
+  plugins:
+    - {name: static_layer,   type: "costmap_2d::StaticLayer"}
+    - {name: obstacle_layer, type: "costmap_2d::ObstacleLayer"}
+    - {name: inflation_layer,type: "costmap_2d::InflationLayer"}
+
+  # 静态地图层：从 map_server 订阅
+  static_layer:
+    map_topic: /map
+    subscribe_to_updates: true
+
+  # 全局也可叠加障碍，避免在全局路径上穿过新障碍
+  obstacle_layer:
+    max_obstacle_height: 0.60
+    obstacle_range: 4.0
+    raytrace_range: 5.0
+    observation_sources: scan
+    scan:
+      data_type: LaserScan
+      topic: /scan
+      expected_update_rate: 0.0
+      clearing: true
+      marking: true
+      inf_is_valid: true
+    track_unknown_space: true
+
+  # 膨胀层
+  inflation_layer:
+    inflation_radius: 0.08              # 全局可稍大一些，更保守
+    cost_scaling_factor: 8.0

@@ -1,0 +1,12 @@
+<launch>
+    <!-- 沿用用户当前已调好的寻线 launch，包括 omove_following_feng.py。 -->
+    <arg name="start_hardware" default="true" />
+    <arg name="map" default="nav.yaml" />
+    <arg name="route_file" default="$(find swjtumover_bringup)/config/return_waypoints.yaml" />
+    <include file="$(find swjtumover_bringup)/launch/line_then_home.launch">
+        <arg name="start_hardware" value="$(arg start_hardware)" />
+        <arg name="map" value="$(arg map)" />
+    </include>
+    <!-- 所有参数会在节点启动前加载；属于主控节点的私有参数。 -->
+    <rosparam command="load" file="$(arg route_file)" ns="line_then_home" />
+</launch>

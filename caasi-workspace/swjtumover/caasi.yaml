@@ -1,0 +1,25 @@
+schema: 1
+name: swjtumover
+version: 0.1.0
+# ROS 2 migration of the swjtumover ROS 1 workspace (~/swjtumover/swjtumover_ws on the robot).
+# Scope of this project: the core bringup only -- motor node, screen node, teleoperation, the
+# motor_state message, the bringup launch, its configuration and the robot model. The ROS 1 task
+# scripts (line following, exam, nav goals) and the gmapping/amcl/move_base navigation stack are
+# deliberately NOT part of it yet; see plan/ for the staged plan.
+components:
+  ros2: true
+requires:
+  ros2:
+    version: jazzy
+  # Teleoperation only; the rest of bringup runs without it.
+  python3-pynput:
+    optional_for: [bringup, build]
+    note: "teleoperation only; also needs an operator DISPLAY"
+project_layout:
+  src: src
+  config: config
+  experiments: experiments
+tested:
+  - os: linux
+    arch: x86_64
+    ros_distro: jazzy

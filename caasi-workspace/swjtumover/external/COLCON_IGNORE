@@ -1,0 +1,6 @@
+Vendored source, not a workspace package.
+
+The Vanjee driver is an unmodified copy of the vendor tree, used only through its headers
+by src/openmover_vanjee. Without this file colcon's CMake package identification treats
+external/vanjee_driver as a package and tries to build it (which installs CMake config
+files to /usr/local and fails). This file is the standard colcon opt-out.

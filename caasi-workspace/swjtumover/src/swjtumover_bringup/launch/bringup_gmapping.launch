@@ -1,0 +1,105 @@
+<!-- 文件名：bringup_gmapping.launch -->
+<launch>
+    <!-- 是否使用仿真时间 -->
+    <arg name="use_sim_time" default="false" />
+
+    <!-- 是否启用 Rviz 可视化 -->
+    <arg name="enable_visualization" default="true" />
+    <!-- <arg name="visualization_config_file_bringup" default="$(find swjtumover_bringup)/config/bringup.rviz" /> -->
+
+    <!-- =========================
+         ① 启动机器人基础模块
+         ========================= -->
+    <param name="robot_description" textfile="$(find swjtumover_bringup)/urdf/robot_description.urdf" />
+
+    <!-- 状态发布 -->
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" />
+
+    <!-- RealSense 相机 -->
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+        <arg name="camera" value="d415"/>
+        <arg name="serial_no" value=""/>
+        <arg name="initial_reset" value="true"/>
+        <arg name="publish_tf" value="true"/>
+        <arg name="align_depth" value="true"/>
+        <arg name="filters" value="pointcloud"/>
+        <arg name="color_width" value="640"/>
+        <arg name="color_height" value="480"/>
+        <arg name="color_fps" value="30"/>
+        <arg name="depth_width" value="640"/>
+        <arg name="depth_height" value="480"/>
+        <arg name="depth_fps" value="30"/>
+        <arg name="clip_distance" value="3.0"/>
+    </include>
+
+    <!-- 雷达节点 -->
+    <node pkg="vanjee_lidar_sdk" name="vanjee_lidar_sdk_node" type="vanjee_lidar_sdk_node" output="screen" respawn="true">
+        <param name="config_path" value="$(find swjtumover_bringup)/config/lidar.yaml"/>
+    </node>
+
+    <!-- 电机与显示 -->
+    <node pkg="swjtumover_bringup" type="motor_node" name="motor_node" output="screen" respawn="true">
+        <rosparam file="$(find swjtumover_bringup)/config/motor.yaml" command="load" />
+    </node>
+    <node pkg="swjtumover_bringup" type="screen_node" name="screen_node" output="screen" respawn="true">
+        <rosparam file="$(find swjtumover_bringup)/config/screen.yaml" command="load" />
+    </node>
+
+    <!-- 键盘控制 -->
+    <node pkg="swjtumover_bringup" type="teleop_node.py" name="teleop_node" output="screen" respawn="true">
+        <rosparam file="$(find swjtumover_bringup)/config/teleop.yaml" command="load" />
+    </node>
+
+    <!-- =========================
+         ② 启动 gmapping 建图节点
+         ========================= -->
+    <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
+        <!-- 关键话题：与雷达匹配 -->
+        <remap from="scan" to="scan"/>
+
+        <!-- 坐标系 -->
+        <param name="base_frame" value="base_link"/>
+        <param name="map_frame" value="map"/>
+        <param name="odom_frame" value="odom"/>
+
+        <!-- gmapping 参数 -->
+        <param name="map_update_interval" value="5.0"/>
+        <param name="maxUrange" value="16.0"/>
+        <param name="sigma" value="0.05"/>
+        <param name="kernelSize" value="1"/>
+        <param name="lstep" value="0.05"/>
+        <param name="astep" value="0.05"/>
+        <param name="iterations" value="5"/>
+        <param name="lsigma" value="0.075"/>
+        <param name="ogain" value="3.0"/>
+        <param name="lskip" value="0"/>
+        <param name="srr" value="0.1"/>
+        <param name="srt" value="0.2"/>
+        <param name="str" value="0.1"/>
+        <param name="stt" value="0.2"/>
+        <param name="linearUpdate" value="1.0"/>
+        <param name="angularUpdate" value="0.5"/>
+        <param name="temporalUpdate" value="3.0"/>
+        <param name="resampleThreshold" value="0.5"/>
+        <param name="particles" value="30"/>
+        <param name="xmin" value="-50.0"/>
+        <param name="ymin" value="-50.0"/>
+        <param name="xmax" value="50.0"/>
+        <param name="ymax" value="50.0"/>
+        <param name="delta" value="0.05"/>
+        <param name="llsamplerange" value="0.01"/>
+        <param name="llsamplestep" value="0.01"/>
+        <param name="lasamplerange" value="0.005"/>
+        <param name="lasamplestep" value="0.005"/>
+    </node>
+
+    <!-- =========================
+         ③ 启动 RViz 可视化
+         ========================= -->
+    <group if="$(arg enable_visualization)">
+        <!-- <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg visualization_config_file_bringup)" /> -->
+        <node pkg="rviz" type="rviz" name="rviz" output="screen"/>
+    </group>
+
+</launch>
