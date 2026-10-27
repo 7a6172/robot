@@ -42,7 +42,9 @@ install(PROGRAMS
 install(TARGETS motor_node screen_node DESTINATION lib/${PROJECT_NAME})
 
 # Launch, configuration, model and the ROS 1 parity data that the tests compare against.
-install(DIRECTORY launch config urdf param rviz
+# `map/` holds nav.pgm + nav.yaml, the map the ROS 1 navigation used and navigation.launch.py
+# defaults to. It is installed so the launch file works from the installed package.
+install(DIRECTORY launch config urdf param rviz map
         DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
