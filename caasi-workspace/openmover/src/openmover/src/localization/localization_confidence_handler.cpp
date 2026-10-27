@@ -115,6 +115,11 @@ int main(int argc, char **argv)
     z_hit = node->declare_parameter<float>("localization_confidence.z_hit", 1.0f);
     z_rand = node->declare_parameter<float>("localization_confidence.z_rand", 0.0f);
     max_tolerance_dist = node->declare_parameter<float>("localization_confidence.max_tolerance_dist", 3.0f);
+    // The scan interface belongs to the hardware profile, not to this node: the lab fit
+    // merges two scanners into the shared topic while a single 360 degree scanner publishes
+    // /scan. Default preserves the historical topic so existing maps are unaffected.
+    const std::string scan_topic = node->declare_parameter<std::string>(
+        "localization_confidence.scan_topic", "openmover/hardware/lidar/scan");
     occupied_threshold = node->declare_parameter<int>("localization_confidence.occupied_threshold", 50);
 
     // 初始化 tf 组件
@@ -132,7 +137,7 @@ int main(int argc, char **argv)
         "openmover/mapping/map", rclcpp::QoS(1).reliable().transient_local(), map_callback);
     // 雷达订阅器
     auto laser_scan_sub = node_ptr->create_subscription<sensor_msgs::msg::LaserScan>(
-        "openmover/hardware/lidar/scan", rclcpp::SensorDataQoS(), laser_scan_callback);
+        scan_topic, rclcpp::SensorDataQoS(), laser_scan_callback);
 
     // confidence 话题发布器
     confidence_pub = node_ptr->create_publisher<std_msgs::msg::Float32>("openmover/localization/confidence", 1);

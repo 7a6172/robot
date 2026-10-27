@@ -346,3 +346,74 @@ def test_io_board_handler_only_starts_for_the_io_board_profile(launch):
     assert swj.find('io_board_handler') is None
     assert lab.find('screen_handler.py') is None
     assert swj.find('screen_handler.py') is not None
+
+
+# ------------------------------------------------- scan interface -> localization
+
+def _include_args(module, **launch_args):
+    """The launch-arguments dict of each localization include, as resolved strings."""
+    from launch import LaunchContext
+
+    context = LaunchContext()
+    description = module.generate_launch_description()
+    configs = {}
+    for entity in description.entities:
+        if type(entity).__name__ == 'DeclareLaunchArgument' and entity.default_value:
+            configs[entity.name] = _perform(entity.default_value, context)
+    configs.update({k: str(v) for k, v in launch_args.items()})
+    context._LaunchContext__launch_configurations = configs
+
+    found = []
+
+    def visit(entity):
+        condition = getattr(entity, 'condition', None)
+        if condition is not None and not condition.evaluate(context):
+            return
+        if type(entity).__name__ == 'OpaqueFunction':
+            for produced in entity.execute(context):
+                visit(produced)
+            return
+        if type(entity).__name__ == 'SetLaunchConfiguration':
+            entity.execute(context)
+            return
+        if type(entity).__name__ == 'IncludeLaunchDescription':
+            args = getattr(entity, 'launch_arguments', None) or []
+            resolved = {}
+            for key, value in args:
+                resolved[_perform(key, context)] = _perform(value, context)
+            found.append(resolved)
+
+    for entity in description.entities:
+        visit(entity)
+    return found
+
+
+def test_swjtumover_points_localization_at_the_real_scan(launch):
+    """The physical scanner publishes /scan; localization must be told so, not guess."""
+    includes = _include_args(launch, hardware='swjtumover')
+    assert includes, "localization include not found"
+    for args in includes:
+        assert args.get('scan_topic') == '/scan', args
+
+
+def test_lab_profile_keeps_the_merged_scan_topic(launch):
+    includes = _include_args(launch, hardware='openmover_lab')
+    for args in includes:
+        assert args.get('scan_topic') == 'openmover/hardware/lidar/scan', args
+
+
+def test_scan_topic_is_derived_from_the_selected_driver(launch):
+    """One resolution, used by every consumer: they cannot disagree about the topic."""
+    swj = _include_args(launch, hardware='swjtumover')
+    lab = _include_args(launch, hardware='openmover_lab')
+    assert {a['scan_topic'] for a in swj} == {'/scan'}
+    assert {a['scan_topic'] for a in lab} == {'openmover/hardware/lidar/scan'}
+
+
+def test_simulation_still_gets_a_scan_topic(launch):
+    """The Gazebo include has no scan; the localization include must still get one."""
+    includes = [a for a in _include_args(launch, system_mode='0', sim_area='0')
+                if 'system_mode' in a]
+    assert includes, "simulation localization include not found"
+    for args in includes:
+        assert args.get('scan_topic'), args

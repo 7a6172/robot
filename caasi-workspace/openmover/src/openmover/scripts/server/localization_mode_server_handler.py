@@ -119,6 +119,12 @@ def localization_mode_server():
 
     launch_file_map = node.declare_parameter('launch_file_map', '').value
 
+    # The scan interface is a hardware-profile decision, not a constant: the lab fit merges
+    # two scanners into the shared topic, a single 360 degree scanner publishes /scan. The
+    # default keeps the historical topic so existing maps and configs are unaffected.
+    scan_topic = node.declare_parameter(
+        'scan_topic', 'openmover/hardware/lidar/scan').value
+
     _ = node.create_service(
         WorkModeRequest, 'openmover/server/set_localization_mode', service_callback)
 
@@ -128,7 +134,8 @@ def localization_mode_server():
     spinner = threading.Thread(target=executor.spin, daemon=True)
     spinner.start()
 
-    launch_map = launch_manager.LaunchHandle(launch_file_map, name='localization_map')
+    launch_map = launch_manager.LaunchHandle(
+        launch_file_map, args={'scan_topic': scan_topic}, name='localization_map')
 
     loop_period = 1.0 / config.config_server_loop_rate
 

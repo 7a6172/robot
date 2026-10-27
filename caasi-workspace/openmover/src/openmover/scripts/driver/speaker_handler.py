@@ -93,14 +93,23 @@ def speaker():
                 if pygame.mixer.music.get_busy():
                     pygame.mixer.music.stop()
 
-                node.get_logger().info('%s：开始播放：%s。' % (TAG, sound_filename))
-
-                try:
-                    if (sound_filename != ''):
+                # Report what actually happened. The previous code logged "starting
+                # playback" and then swallowed the failure, so a missing sound file looked
+                # like a successful request -- and on the robot the sounds directory does
+                # not exist at all.
+                if sound_filename == '':
+                    node.get_logger().warn('%s：未指定音频文件，忽略播放请求。' % TAG)
+                elif not os.path.isfile(sound_filename):
+                    node.get_logger().warn(
+                        '%s：音频文件不存在，无法播放：%s' % (TAG, sound_filename))
+                else:
+                    node.get_logger().info('%s：开始播放：%s。' % (TAG, sound_filename))
+                    try:
                         pygame.mixer.music.load(sound_filename)
                         pygame.mixer.music.play(loops=sound_loop_times)
-                except:
-                    pass
+                    except Exception as err:
+                        node.get_logger().warn(
+                            '%s：播放失败：%s（%s）' % (TAG, sound_filename, err))
 
                 request_updated = False
 

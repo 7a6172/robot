@@ -265,6 +265,7 @@ def generate_launch_description():
                  arguments=['-file', urdf_file, '-name', 'robot_description',
                             '-x', x, '-y', y, '-z', z, '-Y', yaw]),
             IncludeLaunchDescription(localization_launch, launch_arguments={
+                'scan_topic': lidar_scan_topic,
                 'init_diff_x': x,
                 'init_diff_y': y,
                 'init_diff_z': z,
@@ -279,6 +280,9 @@ def generate_launch_description():
         return [IncludeLaunchDescription(localization_launch, launch_arguments={
             'system_mode': system_mode.perform(context),
             'use_sim_time': use_sim_time.perform(context),
+            # The same resolved interface the consumers above use, so the localization
+            # processor and the scan source cannot disagree about the topic.
+            'scan_topic': lidar_scan_topic,
         }.items())]
 
     # Gazebo Harmonic 资源路径（package://openmover/... 网格解析）

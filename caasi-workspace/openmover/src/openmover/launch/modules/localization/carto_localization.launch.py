@@ -33,7 +33,7 @@ def generate_launch_description():
             '-load_state_filename', pbstream_filename,
         ],
         remappings=[
-            ('scan', 'openmover/hardware/lidar/scan'),
+            ('scan', LaunchConfiguration('scan_topic')),
             # odom 必须接 nav_msgs/Odometry 类型的 odom_legacy：
             # localization/odom 是 PoseWithCovarianceStamped，类型不匹配
             ('odom', 'openmover/localization/odom_legacy'),
@@ -71,6 +71,11 @@ def generate_launch_description():
             default_value=os.path.join(share_dir, 'maps_defaults',
                                        'simulation', 'navigation.pbstream')),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
+        # The scan interface is chosen by the hardware profile: the lab fit merges two
+        # bluesea2 scans into the shared topic, while a single 360 degree scanner
+        # publishes /scan directly. Default keeps the historical behaviour.
+        DeclareLaunchArgument('scan_topic',
+                              default_value='openmover/hardware/lidar/scan'),
         cartographer_node,
         cartographer_occupancy_grid_node,
         initialpose_adapter,
