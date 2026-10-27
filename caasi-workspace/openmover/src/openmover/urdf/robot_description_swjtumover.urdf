@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<!--
+  Physical robot model for the swjtumover hardware fit.
+
+  Frames and mounting transforms are taken from the original ROS 1 model
+  (swjtumover_bringup/urdf/robot_description.urdf in the immutable snapshot), not invented:
+  the LiDAR sits 0.14114 m above base_link and is pitched 0.02618 rad (1.500 deg) about x.
+  The wheel and caster origins are the same model's, and they cross-check against the motor
+  parameters verified separately on the robot (chassis_radius 0.103 m, wheel_radius
+  0.050346 m).
+
+  Meshes are deliberately omitted: this file exists to define the TF tree, and the vendor
+  meshes live in a package this workspace does not build. Visual and collision geometry do
+  not affect frames.
+
+  The lab fit keeps its own model (robot_description.urdf) with lidar_forward_link /
+  lidar_rear_link; this file is selected by the hardware profile.
+-->
+<robot name="openmover_swjtumover">
+
+  <link name="base_link"/>
+
+  <link name="lidar_link"/>
+
+  <joint name="lidar_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar_link"/>
+    <!-- Height above base_link and the mounting pitch are measured, not assumed. -->
+    <origin xyz="0 0 0.14114" rpy="0.02618 0 0"/>
+  </joint>
+
+  <link name="wheel_left_link"/>
+  <joint name="wheel_left_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="wheel_left_link"/>
+    <origin xyz="0 0.103 0.050346" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="wheel_right_link"/>
+  <joint name="wheel_right_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="wheel_right_link"/>
+    <origin xyz="0 -0.103 0.050346" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="ball_forward_left_link"/>
+  <joint name="ball_forward_left_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="ball_forward_left_link"/>
+    <origin xyz="0.10843 0.1 0.0305" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="ball_forward_right_link"/>
+  <joint name="ball_forward_right_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="ball_forward_right_link"/>
+    <origin xyz="0.10843 -0.1 0.0305" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="ball_rear_left_link"/>
+  <joint name="ball_rear_left_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="ball_rear_left_link"/>
+    <origin xyz="-0.10843 0.1 0.0305" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="ball_rear_right_link"/>
+  <joint name="ball_rear_right_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="ball_rear_right_link"/>
+    <origin xyz="-0.10843 -0.1 0.0305" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+</robot>

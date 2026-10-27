@@ -515,11 +515,39 @@ def test_urdf_does_not_claim_the_scanner_or_odom_frames(launch):
     assert 'odom' not in links
 
 
-def test_bringup_provides_exactly_one_lidar_link_transform(launch):
-    sel = selected(launch, hardware='swjtumover')
-    providers = [n for n in sel.nodes
-                 if n['executable'] == 'static_transform_publisher']
-    assert len(providers) == 1, [n['name'] for n in providers]
+def test_no_static_publisher_competes_with_the_model(launch):
+    """The model publishes base_link -> lidar_link; a static publisher would duplicate it."""
+    for profile in ('swjtumover', 'openmover_lab'):
+        sel = selected(launch, hardware=profile)
+        assert [n for n in sel.nodes if n['executable'] == 'static_transform_publisher'] == [], profile
+
+
+def test_physical_mount_geometry_matches_the_ros1_reference(launch):
+    """The LiDAR mount is measured, not invented: 141.14 mm up and 1.5 degrees of pitch."""
+    import math
+    import re
+    text = (SRC / 'urdf' / 'robot_description_swjtumover.urdf').read_text()
+    joint = re.search(r'<joint name="lidar_joint".*?</joint>', text, re.S).group(0)
+    xyz = re.search(r'xyz="([^"]+)"', joint).group(1).split()
+    rpy = re.search(r'rpy="([^"]+)"', joint).group(1).split()
+    assert [float(v) for v in xyz] == [0.0, 0.0, 0.14114]
+    assert abs(float(rpy[0]) - 0.02618) < 1e-9
+    assert abs(math.degrees(float(rpy[0])) - 1.500) < 0.01
+
+
+def test_physical_model_wheels_agree_with_the_motor_parameters(launch):
+    """Independent cross-check: the model and the calibrated motor config must match."""
+    import re
+    import yaml
+
+    text = (SRC / 'urdf' / 'robot_description_swjtumover.urdf').read_text()
+    left = re.search(r'<joint name="wheel_left_joint".*?</joint>', text, re.S).group(0)
+    xyz = [float(v) for v in re.search(r'xyz="([^"]+)"', left).group(1).split()]
+    profile = yaml.safe_load(
+        (SRC / 'config_defaults' / 'hardware' / 'swjtumover.yaml').read_text())
+    motor = profile['/**']['ros__parameters']['motor']
+    assert abs(xyz[1] - motor['chassis_radius']) < 1e-6
+    assert abs(xyz[2] - motor['wheel_radius']) < 1e-5
 
 
 def test_urdf_is_the_lab_fit_and_is_documented_as_such(launch):

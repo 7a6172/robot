@@ -60,6 +60,13 @@ hardwares_yaml = PythonExpression([
 ])
 modules_yaml = os.path.join(config_dir, 'modules.yaml')
 
+# The model follows the hardware fit. The lab robot has two bluesea2 scanners
+# (lidar_forward_link/lidar_rear_link); the physical fit has one Vanjee on lidar_link, mounted
+# 0.14114 m above base_link with a 0.02618 rad pitch, taken from the original ROS 1 model.
+URDF_BY_PROFILE = {
+    'openmover_lab': 'robot_description.urdf',
+    'swjtumover': 'robot_description_swjtumover.urdf',
+}
 urdf_file = os.path.join(share_dir, 'urdf', 'robot_description.urdf')
 world_file = os.path.join(share_dir, 'worlds', 'simulation.world')
 bridge_yaml = os.path.join(config_dir, 'gz_bridge.yaml')
@@ -262,7 +269,15 @@ def generate_launch_description():
 
     # 启动机器人状态发布节点（读取 URDF 文件内容作为参数）
     def publish_robot_description(context):
-        with open(urdf_file, 'r') as f:
+        profile = context.launch_configurations.get('hardware', 'openmover_lab')
+        model = URDF_BY_PROFILE.get(profile, 'robot_description.urdf')
+        path = os.path.join(share_dir, 'urdf', model)
+        if not os.path.isfile(path):
+            raise RuntimeError(
+                f"hardware profile {profile!r} needs robot model {path}, which is not "
+                f"present in the installed package"
+            )
+        with open(path, 'r') as f:
             robot_description = f.read()
         return [Node(
             package='robot_state_publisher', executable='robot_state_publisher',
@@ -396,11 +411,10 @@ def generate_launch_description():
         Node(package='joint_state_publisher', executable='joint_state_publisher',
              name='joint_state_publisher',
              parameters=[{'use_sim_time': use_sim_time}]),
-        Node(package='tf2_ros', executable='static_transform_publisher',
-             name='base_to_lidar',
-             arguments=['--frame-id', 'base_link',
-                        '--child-frame-id', 'lidar_link'],
-             parameters=[{'use_sim_time': use_sim_time}]),
+        # base_link -> lidar_link comes from the robot model for the physical fit; for the lab
+        # fit the two scanner frames are in that model too. No static publisher: a second
+        # owner of the same transform is exactly the duplicate-TF defect to avoid.
+
 
         # 启动扬声器驱动
         Node(package='openmover', executable='speaker_handler.py',
