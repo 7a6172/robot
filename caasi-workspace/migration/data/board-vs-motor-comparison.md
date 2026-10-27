@@ -40,3 +40,39 @@ remembering when comparing ROS 1 against ROS 2 later, but not evidence of a faul
 Robot B was used read-only apart from three short motor runs (0.06–0.08 m/s, ≤ 0.35 m each,
 wheels on the floor). Every script was run from `/tmp` and deleted afterwards, and all ROS
 processes were stopped; `/tmp` is clean and port 7000 is free on both robots.
+
+---
+
+# Swap test (decisive)
+
+The two controllers were physically exchanged, which turns the comparison into a controlled
+experiment: whichever robot holds the suspect board should show the fault.
+
+| | A — `swjtumover05` (.95)<br>now has board `…00:01:df` | B — `swjtumover01` (.194)<br>now has board `…00:29:79` |
+| --- | --- | --- |
+| zero-speed frames | **40 replies** | **0 replies** |
+| `/odom` | **~50 Hz** (277 msgs) | no messages |
+| `/motor_state/*` | **~50 Hz** (278 msgs) | no messages |
+| `/scan` | 14 Hz | 14 Hz |
+| slow forward 0.06 m/s × 6 s | **0.3395 m, ratio 0.943, yaw −0.0915 rad** | no odometry, no motion |
+| slow reverse 0.06 m/s × 6 s | **0.3399 m, ratio 0.944, yaw +0.0888 rad** | — |
+
+The fault moved with the board, and functionality moved with the good board. Therefore:
+
+* the fault is **the controller board** (`00:04:a3:00:29:79`), not the motors, not the robot
+  chassis, not the wiring, and not any software on either OS;
+* `swjtumover05` is functional again with the swapped-in controller;
+* `swjtumover01` is now the one carrying the dead board and should be swapped back before it
+  is used again.
+
+Two further observations worth keeping:
+
+1. **`swjtumover05`'s odometry was already degraded before the failure.** With its original
+   board it reported 25 Hz; with the replacement it reports 50 Hz, identical to
+   `swjtumover01`. So the board that died was running at half rate for an unknown period —
+   which also explains why the earlier ROS 1 baseline from this robot (25.245 Hz) differs from
+   a healthy sibling.
+2. **`swjtumover05` steers less straight than `swjtumover01`**: yaw drift ±0.09 rad over
+   0.34 m versus ±0.006–0.013 rad on the other robot, with the *same* controller and software.
+   That is a chassis/mechanical difference (wheel alignment or caster drag), not a code
+   difference, and it matters for navigation tuning later.
