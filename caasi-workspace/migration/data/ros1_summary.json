@@ -1,0 +1,101 @@
+{
+  "source": "ros1",
+  "environment": {
+    "os": "Ubuntu 20.04.6 LTS",
+    "kernel": "6.1.65-060165-generic",
+    "ros": "noetic",
+    "arch": "x86_64"
+  },
+  "scan": {
+    "rate_hz": 14.059,
+    "samples": 1440,
+    "frame": "lidar_link",
+    "angle_min": -3.141592503,
+    "angle_max": 3.141592503,
+    "angle_increment": 0.004363323,
+    "range_min": 0.25,
+    "range_max": 25.0,
+    "scan_time": 0.071428575,
+    "time_increment": 4.96e-05,
+    "measurements": {
+      "valid": 1401,
+      "nan": 39,
+      "inf": 0
+    },
+    "stamp_minus_wallclock_s": -0.124
+  },
+  "odom": {
+    "rate_hz": 25.245,
+    "frame": "odom",
+    "child": "base_link",
+    "quaternion_norm": 1.0
+  },
+  "tf": {
+    "base_link->lidar_link": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.14114
+      ],
+      "rpy": [
+        0.02618,
+        0.0,
+        0.0
+      ],
+      "owner": "robot_state_publisher"
+    },
+    "odom->base_link": {
+      "owner": "motor_node"
+    },
+    "map->odom": {
+      "owner": "slam_gmapping"
+    }
+  },
+  "motion": {
+    "zero_command_drift_m": 5e-06,
+    "forward_0.10mps_2s": [
+      {
+        "measured_m": 0.195268,
+        "ratio": 0.9763,
+        "yaw_rad": 0.016733
+      },
+      {
+        "measured_m": 0.176191,
+        "ratio": 0.881,
+        "yaw_rad": 0.014329
+      }
+    ],
+    "rotate_0.5rps_1s": {
+      "measured_rad": 0.50955,
+      "ratio": 1.0191
+    }
+  },
+  "safety": {
+    "motor_watchdog": "NONE (motor_node holds the last cmd_vel indefinitely)",
+    "actuation_gate": "NONE in ROS 1; any cmd_vel publisher moves the robot"
+  },
+  "map": {
+    "file": "data/map_run1.pgm",
+    "resolution_m": 0.05,
+    "origin": [
+      -25.0,
+      -25.0
+    ],
+    "occupied_cells": 1082,
+    "wall_extent_m": [
+      6.2,
+      6.2
+    ],
+    "scan_to_map_median_offset_cm": 2.6
+  },
+  "exploration": {
+    "duration_s": 111.0,
+    "commanded_travel_m": 10.99,
+    "turns": 182,
+    "strategy": "reactive: advance when front clearance > 0.55 m"
+  },
+  "recordings": {
+    "bag": "/tmp/ros1_map_run.bag (71 MB, 150 s; scan/odom/tf/tf_static/map/motor_state)",
+    "trace": "data/ros1_trace.json (1649 odom poses, 25 scan snapshots)"
+  }
+}
