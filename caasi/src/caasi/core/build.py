@@ -152,6 +152,37 @@ class BuildResult:
     def ok(self) -> bool:
         return self.returncode == 0
 
+    def dependency_hint(self) -> str | None:
+        """A next step when the build failed only because dependencies were not built.
+
+        colcon reports this as "Failed to find ... package.sh" plus "Check that the
+        following packages have been built". The useful answer is the build-up-to command,
+        not a suggestion to rebuild the whole workspace.
+        """
+        if self.ok or "package.sh" not in self.output:
+            return None
+        missing = sorted({
+            line.strip().lstrip("- ").strip()
+            for line in self.output.splitlines()
+            if "/share/" in line and line.strip().startswith("- ")
+        })
+        names: list[str] = []
+        for path in missing:
+            parts = [p for p in path.split("/") if p and p != "install"]
+            if "share" in parts:
+                index = parts.index("share")
+                if index + 1 < len(parts):
+                    names.append(parts[index + 1])
+        names = sorted(set(names))
+        if not names:
+            return None
+        target_flag = "" if self.target_name == "local" else f" --target {self.target_name}"
+        return (
+            f"These packages have not been built: {', '.join(names)}. "
+            f"Build them and their dependencies with: "
+            f"caasi build{target_flag} --packages-up-to {names[0]}"
+        )
+
     def to_dict(self) -> dict:
         data = {
             "ok": self.ok,

@@ -104,5 +104,8 @@ def build_command(
             output.echo(
                 f"[red]{_('build.failed', code=res.returncode)}[/red]"
             )
+            hint = res.dependency_hint()
+            if hint:
+                output.echo(f"[yellow]{hint}[/yellow]")
 
     raise typer.Exit(res.returncode)

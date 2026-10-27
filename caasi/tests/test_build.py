@@ -166,3 +166,41 @@ def test_cli_build_missing_src(tmp_path, monkeypatch):
     result = runner.invoke(app, ["build"])
     assert result.exit_code != 0
     assert "not found" in result.output or "Error" in result.output
+
+
+def test_dependency_failure_suggests_build_up_to():
+    """A missing dependency build is a build-order problem, not a broken workspace."""
+    from caasi.core.build import BuildResult
+
+    res = BuildResult(
+        returncode=1, command=["colcon"], root="/w", workers=1, duration=0.1,
+        packages=["openmover"], target_name="swjtumover05",
+        output=(
+            "Failed to find the following files:\n"
+            "- /w/install/openmover_msgs/share/openmover_msgs/package.sh\n"
+            "- /w/install/bluesea2/share/bluesea2/package.sh\n"
+            "Check that the following packages have been built:\n"
+            "- openmover_msgs\n- bluesea2\n"
+        ),
+    )
+    hint = res.dependency_hint()
+    assert hint is not None
+    assert "--packages-up-to" in hint
+    assert "openmover_msgs" in hint and "bluesea2" in hint
+    assert "--target swjtumover05" in hint
+
+
+def test_unrelated_failure_gets_no_dependency_hint():
+    from caasi.core.build import BuildResult
+
+    res = BuildResult(returncode=1, command=["colcon"], root="/w", workers=1,
+                      duration=0.1, output="error: expected ';' before '}'")
+    assert res.dependency_hint() is None
+
+
+def test_successful_build_gets_no_hint():
+    from caasi.core.build import BuildResult
+
+    res = BuildResult(returncode=0, command=["colcon"], root="/w", workers=1,
+                      duration=0.1, output="package.sh fine")
+    assert res.dependency_hint() is None

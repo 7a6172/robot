@@ -9,6 +9,22 @@ environment-oriented tool; 0.4.0 makes targets — remote machines and robots �
 concept end to end. Everything below is implemented and validated, and the release is
 defined by that set rather than by a date.
 
+### Fixed — `caasi exec -- <args>` now expands a target-side `~/` path
+
+Passing a target path as an argument silently produced a literal `~` directory, or — worse —
+the local shell had already expanded it to a *local* path. Only a leading `~/` (or a bare
+`~`) is rewritten, and the remainder stays quoted, so `$HOME` is the only substitution and no
+arbitrary shell evaluation is introduced. Verified on the robot: an argument of
+`~/caasi/robots/swjtumover05/install/setup.bash` now arrives as
+`/home/swjtumover/caasi/...`.
+
+### Added — `caasi build` explains a dependency build-order failure
+
+When a build fails only because dependency packages have not been built, colcon reports
+"Failed to find … package.sh". The error now names the missing packages and the command that
+fixes it (`caasi build --target <t> --packages-up-to <pkg>`) instead of leaving the user to
+infer it. Unrelated build failures get no hint.
+
 ### Added — stable target identity and verified endpoint rediscovery
 
 A target's name is its identity; its address is only a current endpoint. `caasi` can now

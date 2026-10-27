@@ -24,6 +24,7 @@ Design notes that matter:
 
 from __future__ import annotations
 
+import os
 import shlex
 from dataclasses import dataclass, field
 
@@ -207,6 +208,23 @@ def _classify(result: "shell.ShellResult", request: ExecRequest, target_name: st
     return out
 
 
+def render_argv_word(word: str) -> str:
+    """Render one command argument for the shell that will exec it.
+
+    A word that names a target-side path (``~`` or ``~/...``) is the one case a plain quote
+    gets wrong: quoting it whole passes a literal ``~`` to the program, which is what made
+    ``caasi exec -- ... ~/caasi/robots/x`` fail on a real robot. ``$HOME`` is therefore
+    expanded by the target shell and everything after it stays quoted -- no other
+    substitution is introduced, and no other argument is rewritten.
+    """
+    if word in ("~", "~/"):
+        return '"$HOME"'
+    if word.startswith("~/"):
+        rest = word[2:]
+        return '"$HOME"/' + shlex.quote(rest) if rest else '"$HOME"'
+    return shlex.quote(word)
+
+
 def run_on_target(target: "targets_core.Target", request: ExecRequest) -> ExecResult:
     """Run *request* on *target*, capturing output and classifying the outcome."""
     if target.transport != "ssh":
@@ -214,13 +232,21 @@ def run_on_target(target: "targets_core.Target", request: ExecRequest) -> ExecRe
         # semantics (setup checks, argv handling, exit codes) are identical.
         snippet = build_snippet(request)
         raw = shell.run_cmd(
-            ["bash", "-c", snippet, "--", *request.argv], timeout=request.timeout
+            ["bash", "-c", snippet, "--",
+             *[os.path.expanduser(a) if a == "~" or a.startswith("~/") else a
+               for a in request.argv]],
+            timeout=request.timeout,
         )
         return _classify(raw, request, target.name)
 
     prefix = targets_core.target_ssh_prefix(target)
     snippet = build_snippet(request)
-    remote_cmd = shlex.join(["bash", "-c", snippet, "--", *request.argv])
+    # The snippet is one quoted program; the target's own arguments are rendered word by
+    # word so that a '~/...' path expands on the target rather than arriving as a literal.
+    remote_cmd = " ".join(
+        [shlex.quote("bash"), shlex.quote("-c"), shlex.quote(snippet), "--"]
+        + [render_argv_word(a) for a in request.argv]
+    )
     raw = shell.run_cmd([*prefix, remote_cmd], timeout=request.timeout)
     return _classify(raw, request, target.name)
 

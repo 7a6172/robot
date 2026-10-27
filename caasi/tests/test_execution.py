@@ -231,3 +231,19 @@ def test_target_without_ros_still_returns_none(monkeypatch):
         execution.targets_core, "discover_target", lambda *a, **k: Inspection())
     target = Target(name="r1", transport="ssh", host="h", user="u")
     assert execution.ros_setup_for(target) is None
+
+
+def test_argv_tilde_is_expanded_on_the_target_not_quoted():
+    """`caasi exec -- ... ~/x` used to pass a literal '~' to the program.
+
+    Reproduced on a real robot; only a leading '~/' is rewritten, and the remainder stays
+    quoted, so no arbitrary shell evaluation is introduced.
+    """
+    from caasi.core.execution import render_argv_word
+
+    assert render_argv_word("~/caasi/robots/r1") == '"$HOME"/caasi/robots/r1'
+    assert render_argv_word("~") == '"$HOME"'
+    # everything else is a plain quote, including words that merely contain a tilde
+    assert render_argv_word("/opt/x") == "/opt/x"
+    assert render_argv_word("a~b") == "'a~b'"  # quoted, never expanded
+    assert render_argv_word("~/a b") == '"$HOME"/\'a b\''
