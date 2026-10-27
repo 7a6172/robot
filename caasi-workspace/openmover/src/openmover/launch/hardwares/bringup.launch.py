@@ -16,7 +16,8 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (DeclareLaunchArgument, IncludeLaunchDescription,
-                            OpaqueFunction, SetEnvironmentVariable)
+                            OpaqueFunction, SetEnvironmentVariable,
+                            SetLaunchConfiguration)
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
@@ -28,17 +29,34 @@ config_dir = os.path.join(share_dir, 'config_defaults')
 # Hardware profile selection. The parameter file is chosen by the `hardware` launch
 # argument instead of being hardcoded, so one project can describe more than one real
 # hardware fit. Defaults to the lab profile, which is exactly the previous behaviour.
+# A profile is named once and everything else follows from it: the parameter file AND the
+# drivers, so `hardware:=swjtumover` is enough on its own. Listing the drivers here is what
+# makes the launch arguments meaningful -- previously they were validated and then ignored,
+# while the node list stayed hardcoded to the lab drivers.
 HARDWARE_PROFILES = {
-    'openmover_lab': 'hardwares.yaml',        # bluesea2 x2, io_board, 0.162 m track
-    'swjtumover': 'hardware/swjtumover.yaml',  # Vanjee 718H, screen display, 0.103 m track
+    'openmover_lab': {
+        'yaml': 'hardwares.yaml',           # bluesea2 x2 + io_board, 0.162 m track
+        'lidar_driver': 'bluesea2',
+        'io_driver': 'io_board',
+    },
+    'swjtumover': {
+        'yaml': 'hardware/swjtumover.yaml',  # Vanjee 718H + screen, 0.103 m track
+        'lidar_driver': 'vanjee',
+        'io_driver': 'screen',
+    },
 }
+
+# Which components each driver choice means, so a typo can never select nothing silently.
+LIDAR_DRIVERS = ('bluesea2', 'vanjee')
+IO_DRIVERS = ('io_board', 'screen')
 
 # The parameter file follows the profile. Expressed as a substitution so the choice is
 # made at launch time and the same file serves both hardware fits without duplicating
 # the launch description.
 hardwares_yaml = PythonExpression([
-    "'", config_dir, "/' + ", repr(HARDWARE_PROFILES), ".get('",
-    LaunchConfiguration('hardware'), "', 'hardwares.yaml')",
+    "'", config_dir, "/' + ",
+    repr({name: spec['yaml'] for name, spec in HARDWARE_PROFILES.items()}),
+    ".get('", LaunchConfiguration('hardware'), "', 'hardwares.yaml')",
 ])
 modules_yaml = os.path.join(config_dir, 'modules.yaml')
 
@@ -126,33 +144,58 @@ def generate_launch_description():
         "'1' if '", motor_actuation_enabled, "' == 'true' else '0'"
     ])
 
-    def _validate_hardware(context, *args, **kwargs):
-        # Unknown profile or a driver that contradicts the profile is a configuration
-        # error, not something to guess at. Failing here means an incompatible pair can
-        # never reach the point where two drivers would start.
-        profile = context.launch_configurations.get('hardware', 'openmover_lab')
-        lidar = context.launch_configurations.get('lidar_driver')
-        io_drv = context.launch_configurations.get('io_driver')
+    def _resolve_hardware(context, *args, **kwargs):
+        """Resolve the driver set from the hardware profile, before any node is built.
 
-        if profile not in HARDWARE_PROFILES:
+        The profile is authoritative: leaving the driver arguments empty follows it, and
+        passing one that contradicts it is an error rather than something to guess at.
+        Everything downstream keys off the resolved values, so a driver choice cannot be
+        accepted here and then ignored when the nodes are created.
+        """
+        profile = context.launch_configurations.get('hardware', 'openmover_lab')
+        spec = HARDWARE_PROFILES.get(profile)
+        if spec is None:
             raise RuntimeError(
                 f"unknown hardware profile {profile!r}; known profiles: "
                 f"{sorted(HARDWARE_PROFILES)}"
             )
 
-        expected = {'openmover_lab': ('bluesea2', 'io_board'),
-                    'swjtumover': ('vanjee', 'screen')}[profile]
-        if lidar is not None and lidar != expected[0]:
+        actions = []
+        for arg_name, known in (('lidar_driver', LIDAR_DRIVERS),
+                                ('io_driver', IO_DRIVERS)):
+            requested = (context.launch_configurations.get(arg_name) or '').strip()
+            expected = spec[arg_name]
+            if requested and requested != expected:
+                raise RuntimeError(
+                    f"hardware profile {profile!r} expects {arg_name}:={expected!r}, "
+                    f"got {requested!r} -- these drivers are mutually exclusive by "
+                    f"profile, so they cannot both run"
+                )
+            context.launch_configurations[arg_name] = expected
+            actions.append(SetLaunchConfiguration(arg_name, expected))
+
+        # A profile whose parameter file is missing must fail here, by name, rather than
+        # as an unexplained parameter-file error from whichever node starts first.
+        params_file = os.path.join(config_dir, spec['yaml'])
+        if not os.path.isfile(params_file):
             raise RuntimeError(
-                f"hardware profile {profile!r} expects lidar_driver:={expected[0]!r}, "
-                f"got {lidar!r} -- these drivers are mutually exclusive by profile"
+                f"hardware profile {profile!r} needs {params_file}, which is not present "
+                f"in the installed package"
             )
-        if io_drv is not None and io_drv != expected[1]:
-            raise RuntimeError(
-                f"hardware profile {profile!r} expects io_driver:={expected[1]!r}, "
-                f"got {io_drv!r} -- these drivers are mutually exclusive by profile"
-            )
-        return []
+
+        # Only check the driver package when that driver is actually selected, so the lab
+        # profile still launches on a host where the Vanjee driver was never built.
+        if spec['lidar_driver'] == 'vanjee':
+            try:
+                get_package_share_directory('openmover_vanjee')
+            except Exception:
+                raise RuntimeError(
+                    f"hardware profile {profile!r} selects the Vanjee LiDAR driver but "
+                    f"package 'openmover_vanjee' is not installed; build it or use "
+                    f"hardware:=openmover_lab"
+                ) from None
+
+        return actions
 
     def _validate_motor_actuation(context, *args, **kwargs):
         # Reject ambiguous spellings before any node starts. ROS 2 launch parses
@@ -169,6 +212,33 @@ def generate_launch_description():
 
     sim_cond = IfCondition(PythonExpression([system_mode, ' == 0']))
     real_cond = IfCondition(PythonExpression([system_mode, ' == 1']))
+
+    def real_with(configuration, expected):
+        """Real hardware mode AND a specific driver selected.
+
+        Real mode alone is not enough: both LiDAR drivers and both chassis IO drivers are
+        mutually exclusive, so each set is gated on its own resolved selection. This is
+        what stops one profile's drivers from starting under another profile.
+        """
+        return IfCondition(PythonExpression(
+            ["'", system_mode, "' == '1' and '", configuration,
+             "' == '", expected, "'"]))
+
+    vanjee_cond = real_with(lidar_driver, 'vanjee')
+    bluesea_cond = real_with(lidar_driver, 'bluesea2')
+    io_board_cond = real_with(io_driver, 'io_board')
+    screen_cond = real_with(io_driver, 'screen')
+
+    # The two-lidar fusion only makes sense for the two-bluesea fit. A single 360 degree
+    # Vanjee publishes /scan directly, so merging two non-existent topics would replace a
+    # working scan with an empty one.
+    merger_cond = IfCondition(PythonExpression(["'", lidar_driver, "' == 'bluesea2'"]))
+
+    # Consumers subscribe the merged topic by name. It becomes the Vanjee's /scan when
+    # there is nothing to merge, so downstream stays wired without a second scan type.
+    lidar_scan_topic = PythonExpression([
+        "'openmover/hardware/lidar/scan' if '", lidar_driver, "' == 'bluesea2' else '/scan'",
+    ])
     # Gazebo 本体（仿真器 + 桥接 + 生成模型）：仅仿真模式且 launch_gazebo:=1。
     # launch_gazebo:=0 时由外部仿真器（Isaac）顶上，其余仿真节点不变。
     gz_cond = IfCondition(PythonExpression(
@@ -256,13 +326,16 @@ def generate_launch_description():
                         'openmover_lab = bluesea2 x2 + io_board + 0.162 m track; '
                         'swjtumover = Vanjee 718H + screen display + 0.103 m track.'),
         DeclareLaunchArgument(
-            'lidar_driver', default_value='bluesea2',
-            description='LiDAR driver to start. Must match the hardware profile; the two '
-                        'drivers are mutually exclusive, so they cannot both run.'),
+            'lidar_driver', default_value='',
+            description='LiDAR driver to start: bluesea2 or vanjee. Leave empty (default) '
+                        'to follow the hardware profile, which is what makes '
+                        'hardware:=swjtumover sufficient on its own. The two drivers are '
+                        'mutually exclusive, so they can never both run.'),
         DeclareLaunchArgument(
-            'io_driver', default_value='io_board',
-            description='Chassis IO driver to start. Must match the hardware profile.'),
-        OpaqueFunction(function=_validate_hardware),
+            'io_driver', default_value='',
+            description='Chassis IO driver: io_board or screen. Leave empty (default) to '
+                        'follow the hardware profile.'),
+        OpaqueFunction(function=_resolve_hardware),
         OpaqueFunction(function=_validate_motor_actuation),
         DeclareLaunchArgument(
             'motor_actuation_enabled', default_value='false',
@@ -295,7 +368,7 @@ def generate_launch_description():
 
         # 启动雷达数据融合（ira_laser_tools，Stage 9 移植）
         Node(package='ira_laser_tools', executable='laserscan_multi_merger',
-             name='laserscan_multi_merger', output='screen',
+             name='laserscan_multi_merger', output='screen', condition=merger_cond,
              parameters=[{
                  'destination_frame': 'lidar_link',
                  'cloud_destination_topic': 'openmover/hardware/lidar/pointcloud',
@@ -332,10 +405,17 @@ def generate_launch_description():
         # 以下为真机环境使用
         bluesea2_node('bluesea2_node_forward', 'openmover/hardware/lidar_forward/scan',
                       'lidar_forward_link', 6667, '192.168.100.101', use_sim_time,
-                      condition=real_cond),
+                      condition=bluesea_cond),
         bluesea2_node('bluesea2_node_rear', 'openmover/hardware/lidar_rear/scan',
                       'lidar_rear_link', 6668, '192.168.100.102', use_sim_time,
-                      condition=real_cond),
+                      condition=bluesea_cond),
+        # Vanjee 718H: one 360 degree scanner publishing /scan in lidar_link. Its
+        # parameters (including the per-robot addresses) live in the profile YAML, so a
+        # second robot with different addresses changes config, not launch code.
+        Node(package='openmover_vanjee', executable='vanjee_scan_node',
+             name='vanjee_lidar_node', output='screen', respawn=True,
+             condition=vanjee_cond,
+             parameters=[hardwares_yaml, {'use_sim_time': use_sim_time}]),
         OpaqueFunction(function=real_localization, condition=real_cond),
         Node(package='openmover', executable='motor_handler', name='motor_handler',
              output='screen', respawn=True, condition=real_cond,
@@ -349,7 +429,13 @@ def generate_launch_description():
                          {'use_sim_time': use_sim_time}],
              additional_env={'CAASI_MOTOR_ACTUATION': motor_actuation_env}),
         Node(package='openmover', executable='io_board_handler', name='io_board_handler',
-             output='screen', respawn=True, condition=real_cond,
+             output='screen', respawn=True, condition=io_board_cond,
+             parameters=[hardwares_yaml, modules_yaml,
+                         {'use_sim_time': use_sim_time}]),
+        # Chassis IO for the swjtumover fit is the screen/IO board at 192.168.100.100:26.
+        # Starting it is selection only: no payload is sent until the stack asks for one.
+        Node(package='openmover', executable='screen_handler.py', name='screen_handler',
+             output='screen', respawn=True, condition=screen_cond,
              parameters=[hardwares_yaml, modules_yaml,
                          {'use_sim_time': use_sim_time}]),
         teleop_node(use_sim_time, condition=real_cond),
@@ -359,6 +445,5 @@ def generate_launch_description():
              output='screen',
              parameters=[hardwares_yaml, modules_yaml,
                          {'use_sim_time': use_sim_time}],
-             remappings=[('openmover/hardware/lidar/scan/obstacle',
-                          'openmover/hardware/lidar/scan')]),
+             remappings=[('openmover/hardware/lidar/scan/obstacle', lidar_scan_topic)]),
     ])

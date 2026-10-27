@@ -28,3 +28,29 @@
       chassis_radius: 0.103
       wheel_radius: 0.05035
       odom_compensation_ratio: 1.047
+
+# Vanjee 718H LiDAR. The addresses are this robot's internal sensor network, so they
+# belong here and not in the launch file: a second robot of the same fit only replaces
+# this file. Values are the ones validated on the real sensor (see phase-08 report).
+vanjee_lidar_node:
+  ros__parameters:
+    lidar_type: vanjee_718h
+    host_address: "192.168.110.10"     # robot interface facing the LiDAR
+    lidar_address: "192.168.110.100"   # the LiDAR itself
+    host_msop_port: 7000
+    lidar_msop_port: 5000
+    topic: scan                        # -> /scan, the validated contract
+    frame_id: lidar_link
+    min_distance: 0.25
+    max_distance: 25.0
+    use_lidar_clock: false             # wall-clock stamps, as in the ROS 1 baseline
+
+# Chassis IO for this fit is the screen board, at its own endpoint. This is deliberately
+# not the motor controller's port: the two share the host address and differ only by port,
+# so an inherited or copied value must never be able to reach the motor controller.
+screen_handler:
+  ros__parameters:
+    screen:
+      ip_address: "192.168.100.100"
+      port: 26
+      control_freq: 5.0

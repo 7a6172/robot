@@ -157,4 +157,13 @@ install(FILES
 install(DIRECTORY launch config_defaults maps_defaults worlds urdf meshes
     DESTINATION share/${PROJECT_NAME})
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_pytest REQUIRED)
+  # The hardware profile selection is the contract of hardwares/bringup.launch.py: which
+  # driver set a profile starts. These tests evaluate the real launch description.
+  ament_add_pytest_test(
+    hardware_launch_selection test/test_hardware_launch_selection.py
+    APPEND_ENV PYTHONPATH="${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
+
 ament_package()
