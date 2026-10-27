@@ -267,3 +267,47 @@ network.
 * The URDF shipped is the **lab** two-bluesea fit (`lidar_forward_link`, `lidar_rear_link`);
   it has no `lidar_link`, which is why the static publisher owns that frame for this profile.
   A per-profile URDF is a modelling change, not made here.
+
+## Final validation run (committed state)
+
+`caasi exec --detach … ros2 launch openmover bringup.launch.py hardware:=swjtumover
+system_mode:=1 interaction:=false`, with `CAASI_MOTOR_ACTUATION=0`:
+
+```
+lidar.socket               ok   UDP 7000: vanjee_scan_nod
+scan.messages              ok   8 messages, 13.99 Hz
+scan.samples               ok   1440 samples
+scan.frame                 ok   lidar_link
+scan.measurements          ok   1351 valid / 89 no-return / 0 infinite
+graph.scan_publishers      ok   1 publisher(s): vanjee_lidar_node
+graph.scan_consumers       ok   1 subscriber(s): obstacle_handler (settled after 1.6 s)
+tf.odom->base_link         ok   45 samples, drift 0.000030 m, qnorm 1.000000000
+tf.base_link->lidar_link   ok   46 samples, static, drift 0
+odom.messages              ok   5 messages, 46.40 Hz, age +0.01 s
+overall: True
+```
+
+Obstacle state on real hardware: `openmover/navigation/obstacle` at **20.001 Hz**, frame
+`base_link`, `size: 5`, with real distances (`3.294`, `inf`, `1.487`, `1.422` m). The
+complete path physical scan → obstacle state is therefore validated on the robot.
+
+Every run was stopped through caasi; the final state is no processes and port 7000 free.
+
+## Operator cheat-sheet
+
+```bash
+# stationarity / diagnosis (nothing physical is touched)
+caasi exec --target <t> --detach --name bringup --ros \
+  --overlay '~/caasi/robots/<t>/install/setup.bash' -e CAASI_MOTOR_ACTUATION=0 -- \
+  ros2 launch openmover bringup.launch.py hardware:=swjtumover system_mode:=1 interaction:=false
+
+# is it healthy?  (exit 0 = all required checks pass)
+caasi exec --target <t> --ros --overlay '~/caasi/robots/<t>/install/setup.bash' -- \
+  ros2 run openmover stack_check.py --require-odom
+
+caasi run status <run-id>;  caasi run logs <run-id>;  caasi run stop <run-id>
+```
+
+Healthy output is 20 lines of `[ok  ]` and `all required checks passed`. A `[FAIL] lidar.socket`
+naming something other than the Vanjee driver means another ROS process won UDP 7000: stop it,
+or raise `lidar_bind_lead`.
