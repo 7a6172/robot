@@ -1,0 +1,14 @@
+# line_then_home mission parameters. Values are the ROS 1 defaults from the script itself
+# (rospy.get_param('~...', default)); ROS 1 never set them in a YAML, so nothing is invented
+# here -- they are made explicit so an operator can see and change them.
+line_then_home:
+  ros__parameters:
+    cmd_timeout: 0.5            # s without a fresh command before a zero is sent
+    stop_duration: 0.7          # s of full stop between the line phase and navigation
+    follow_timeout: 300.0       # s allowed for line following
+    nav_timeout: 180.0          # s allowed for the return navigation
+    tf_timeout: 1.0             # s to wait for a transform / action server
+    map_frame: map
+    base_frame: base_link
+    require_return_waypoints: false
+    return_waypoints: []        # filled by the ~record_waypoints service

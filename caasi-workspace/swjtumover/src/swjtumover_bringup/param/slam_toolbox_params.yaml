@@ -1,0 +1,59 @@
+# slam_toolbox parameters, the ROS 2 replacement for bringup_gmapping.launch (gmapping).
+#
+# gmapping has no ROS 2 port. slam_toolbox is the closest like-for-like: it produces the same
+# map -> odom transform contract that amcl/move_base and the task scripts assume, and it is
+# nav2's default SLAM. Values below are chosen to match the ROS 1 gmapping settings where a
+# field maps 1:1 (resolution 0.05, max usable range 16 m); the rest are slam_toolbox defaults.
+#
+# Not a 1:1 equivalence: gmapping is a particle filter with 30 particles, slam_toolbox is a
+# graph-based pose-graph SLAM. Map quality and loop closure behaviour will differ. This is
+# recorded rather than hidden -- the ROS 1 map remains the reference for comparison.
+slam_toolbox:
+  ros__parameters:
+    use_sim_time: false
+    mode: mapping
+
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_link
+    scan_topic: /scan
+
+    resolution: 0.05            # same as gmapping 'delta'
+    max_laser_range: 16.0       # same as gmapping 'maxUrange'
+    min_laser_range: 0.25       # matches the LiDAR contract
+    transform_publish_period: 0.02
+    map_update_interval: 3.0    # gmapping used 5.0; shorter so the map appears sooner
+
+    minimum_time_interval: 0.2
+    transform_timeout: 0.2
+
+    use_scan_matching: true
+    use_scan_barycenter: true
+    minimum_travel_distance: 0.3     # gmapping linearUpdate 1.0, tighter here
+    minimum_travel_heading: 0.2      # gmapping angularUpdate 0.5, tighter here
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 10.0
+    link_match_minimum_response_fine: 0.1
+    link_scan_maximum_distance: 1.5
+    do_loop_closing: true
+    loop_search_maximum_distance: 3.0
+    loop_match_minimum_chain_size: 10
+    loop_match_maximum_variance_coarse: 3.0
+    loop_match_minimum_response_coarse: 0.35
+    loop_match_minimum_response_fine: 0.45
+
+    correlation_search_space_dimension: 0.5
+    correlation_search_space_resolution: 0.01
+    correlation_search_space_smear_deviation: 0.1
+    loop_search_space_dimension: 8.0
+    loop_search_space_resolution: 0.05
+    loop_search_space_smear_deviation: 0.03
+
+    distance_variance_penalty: 0.5
+    angle_variance_penalty: 1.0
+    fine_search_angle_offset: 0.00349
+    coarse_search_angle_offset: 0.349
+    coarse_angle_resolution: 0.0349
+    minimum_angle_penalty: 0.9
+    minimum_distance_penalty: 0.5
+    use_response_expansion: true

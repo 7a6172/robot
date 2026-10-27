@@ -77,3 +77,65 @@ So: B = A + safety hardening + task scripts (line following, exam, navigation go
 3. Motion parity against the ROS 1 reference already measured on this robot
    (0.06 m/s × 6 s → 0.3396 m / 0.3399 m, ratio 0.943).
 4. Then decide on the task scripts and the navigation stack.
+
+---
+
+# Second pass: task behaviour and navigation (complete)
+
+Decisions taken for this pass: **nav2** for navigation, **slam_toolbox** for SLAM, and the
+**behaviour scripts only** (the exam/evaluation scripts stay ROS 1).
+
+## Task behaviour ported
+
+| ROS 1 script | ROS 2 | what is preserved |
+| --- | --- | --- |
+| `omove_following_feng.py` (line follower, started by the mission launch) | `scripts/omove_following_feng.py` | the whole vision pipeline unchanged: crop `height//2+100`, BGR thresholds `[10,20,10]`/`[40,50,40]`, moments centroid, `yaw=(x-width/2)/320`, Hough end detection with the same `minLineLength=100`/`maxLineGap=10`/`|slope|<0.2`, same `0.12 m/s` command with `-yaw*0.6`, same `end_confirm_frames`/`image_timeout` defaults, same topics |
+| `line_then_home.py` (mission supervisor) | `scripts/line_then_home.py` | `~start`/`~stop`/`~record_waypoints` Trigger services, `/cmd_vel/line` + `/cmd_vel/nav` arbitration onto `/cmd_vel`, `/amcl_pose` home pose, `/clicked_point` waypoint recording, `~state`, and every timeout parameter with the same default |
+| `obstacle_rplidar.py` (front guard) | `scripts/obstacle_rplidar.py` | `LINEAR_VEL 0.2`, `STOP_DISTANCE 0.8`, `LIDAR_ERROR 0.05`, `FRONT_ANGLE_DEG 10`, the same NaN/inf filtering and go/stop rule |
+
+## Navigation ported
+
+| ROS 1 | ROS 2 | notes |
+| --- | --- | --- |
+| `map_server.launch` | `nav2_map_server` inside `navigation.launch.py` | same `nav.yaml` |
+| `amcl.launch` | `nav2_amcl` | particle counts, `laser_max_range 10`, `update_min_d/a`, beam skipping, `z_hit/z_rand/sigma_hit`, `odom_alpha1..5` carried over; `odom_model_type: diff` → `nav2_amcl::DifferentialMotionModel` |
+| `move_base.launch` | `planner_server` + `controller_server` + `behavior_server` + `bt_navigator` + `velocity_smoother` | `global_planner/GlobalPlanner` → `nav2_navfn_planner/NavfnPlanner` (same family, `allow_unknown: true`, `tolerance 0.5`); both costmaps carried over value for value (4×4 rolling local at 0.05 m, global with `track_unknown_space`, same footprint and observation sources) |
+| `bringup_gmapping.launch` | `slam.launch.py` + `slam_toolbox` | resolution 0.05 and `max_laser_range 16` carried over |
+
+### The one real behavioural substitution
+
+ROS 1 used **TEB** (`teb_local_planner/TebLocalPlannerROS`) as the local planner. nav2's default
+is **DWB**, and the ROS 2 TEB port's availability on the robot is unverified. So the migrated
+stack uses DWB with the TEB kinematics (`max_vel_x 0.6`, `max_vel_theta 1.0`, `acc_lim_x 0.5`,
+`acc_lim_theta 1.0`, `xy_goal_tolerance 0.2`, `yaw_goal_tolerance 0.1`). Expect different
+cornering and obstacle-margin behaviour. The ROS 1 TEB file is kept verbatim as
+`param/teb_local_planner_params.yaml` for when this is revisited.
+
+gmapping → slam_toolbox is the same kind of substitution: both produce `map → odom`, but a
+particle filter and a pose graph do not produce identical maps. The ROS 1 map stays the
+reference.
+
+## Command arbitration preserved
+
+This is the part most easily lost in a port. In ROS 1:
+
+* the line follower published `/cmd_vel`, **remapped to `/cmd_vel/line`** by the launch;
+* `move_base`'s output was **remapped to `/cmd_vel/nav`**;
+* the mission node was the only publisher of the real `/cmd_vel`.
+
+The ROS 2 launch reproduces exactly that: the line follower is remapped to `/cmd_vel/line`,
+nav2's `cmd_vel_topic` argument defaults to `/cmd_vel/nav`, and `line_then_home.py` forwards
+one of them to `/cmd_vel`.
+
+## Not ported, by decision
+
+`exam_full.py`, `exam_nav_goals.py`, `exam_line_following.py`, `assessment_run.py`, `ok.py`,
+`test.py`, `omove_following.py`, `omove_following_1.py`, `exam_project.launch`, and the
+`swjtumover05`-only `final.py`, `nav_goal.py`, `ok2.py`, `scan_filter_120deg.py`. All remain in
+the ROS 1 workspace and, where they share a name with a ported script, in
+`src/swjtumover_bringup/scripts/ros1_reference/`.
+
+## Test status
+
+31 tests, 0 failures: 13 parity (interfaces, constants, parameters, message fields, model),
+4 launch selection, 13 task-migration, plus the message-package build.

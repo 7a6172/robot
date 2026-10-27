@@ -1,170 +1,121 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""ROS 2 port of swjtumover_bringup/scripts/obstacle_rplidar.py.
 
-import rospy
+A front-facing guard: drive forward while the corridor ahead is clear, stop otherwise. The
+constants, the front sector, the NaN filtering and the go/stop decision are unchanged from
+ROS 1 -- this is a safety behaviour, so its numbers are not mine to tune.
+
+Two deliberate differences:
+  * it is a wall-timer loop rather than `while not rospy.is_shutdown()`;
+  * a zero command is published on shutdown, because the controller keeps whatever command it
+    last received.
+"""
+
+from __future__ import annotations
+
 import math
-from sensor_msgs.msg import LaserScan
+
+import rclpy
 from geometry_msgs.msg import Twist
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy
+from sensor_msgs.msg import LaserScan
 
-
-LINEAR_VEL = 0.2          
-STOP_DISTANCE = 0.8    
-LIDAR_ERROR = 0.05       
+LINEAR_VEL = 0.2          # m/s, unchanged from ROS 1
+STOP_DISTANCE = 0.8       # m
+LIDAR_ERROR = 0.05
 SAFE_STOP_DISTANCE = STOP_DISTANCE + LIDAR_ERROR
+FRONT_ANGLE_DEG = 10      # half-width of the front sector
 
-FRONT_ANGLE_DEG = 10     
 
-
-class ObstacleAvoidance:
-    def __init__(self):
-        rospy.init_node('omove_obstacle', anonymous=False)
-
-        self.cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
-
+class ObstacleAvoidance(Node):
+    def __init__(self) -> None:
+        super().__init__('omove_obstacle')
+        self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 1)
         self.scan_msg = None
         self.moving = False
 
-        rospy.Subscriber('/scan', LaserScan, self.scan_callback)
+        scan_qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
+        self.create_subscription(LaserScan, '/scan', self.scan_callback, scan_qos)
+        self.create_timer(0.1, self.step)
 
-        rospy.on_shutdown(self.shutdown)
+        self.get_logger().info('避障节点已启动')
+        self.get_logger().info('检测范围：正前方 ±%.1f 度' % FRONT_ANGLE_DEG)
+        self.get_logger().info('安全停止距离：%.3f m' % SAFE_STOP_DISTANCE)
 
-        rospy.loginfo("避障节点已启动")
-        rospy.loginfo("检测范围：正前方 ±%.1f 度", FRONT_ANGLE_DEG)
-        rospy.loginfo("安全停止距离：%.3f m", SAFE_STOP_DISTANCE)
-
-    def scan_callback(self, msg):
+    def scan_callback(self, msg: LaserScan) -> None:
         self.scan_msg = msg
 
-    def get_front_distances(self):
-        """
-        获取小车正前方一定角度范围内的有效雷达距离
-        """
-
+    def get_front_distances(self) -> list:
+        """Valid ranges inside the front sector, with the ROS 1 NaN/inf filtering."""
         if self.scan_msg is None:
             return []
-
         scan = self.scan_msg
-
-        front_angle = 0.0
         half_angle = math.radians(FRONT_ANGLE_DEG)
-
-        start_angle = front_angle - half_angle
-        end_angle = front_angle + half_angle
-
-        start_index = int((start_angle - scan.angle_min) / scan.angle_increment)
-        end_index = int((end_angle - scan.angle_min) / scan.angle_increment)
-
+        start_index = int((-half_angle - scan.angle_min) / scan.angle_increment)
+        end_index = int((half_angle - scan.angle_min) / scan.angle_increment)
         start_index = max(0, start_index)
         end_index = min(len(scan.ranges) - 1, end_index)
-
-        front_ranges_raw = scan.ranges[start_index:end_index + 1]
-
-        valid_ranges = []
-
-        nan_count = 0
-        zero_count = 0
-        inf_count = 0
-        invalid_count = 0
-
-        for distance in front_ranges_raw:
-            if math.isnan(distance):
-                nan_count += 1
+        if end_index < start_index:
+            return []
+        valid = []
+        for value in scan.ranges[start_index:end_index + 1]:
+            if math.isnan(value) or math.isinf(value):
                 continue
-
-            if math.isinf(distance):
-                inf_count += 1
-                valid_ranges.append(scan.range_max)
+            if value < max(scan.range_min, 0.05) or value > scan.range_max:
                 continue
+            valid.append(value)
+        return valid
 
-            if distance <= 0.0:
-                zero_count += 1
-                continue
-
-            if distance < scan.range_min or distance > scan.range_max:
-                invalid_count += 1
-                continue
-
-            valid_ranges.append(distance)
-
-        rospy.loginfo_throttle(
-            1.0,
-            "front_index=[%d:%d], raw=%d, valid=%d, nan=%d, zero=%d, inf=%d, invalid=%d",
-            start_index,
-            end_index,
-            len(front_ranges_raw),
-            len(valid_ranges),
-            nan_count,
-            zero_count,
-            inf_count,
-            invalid_count
-        )
-
-        return valid_ranges
-
-    def stop_robot(self):
-        twist = Twist()
-        twist.linear.x = 0.0
-        twist.angular.z = 0.0
-        self.cmd_pub.publish(twist)
+    def stop_robot(self) -> None:
+        self.cmd_pub.publish(Twist())
         self.moving = False
 
-    def move_forward(self):
+    def move_forward(self) -> None:
         twist = Twist()
         twist.linear.x = LINEAR_VEL
         twist.angular.z = 0.0
         self.cmd_pub.publish(twist)
         self.moving = True
 
-    def run(self):
-        rate = rospy.Rate(10)
+    def step(self) -> None:
+        front = self.get_front_distances()
+        if not front:
+            self.get_logger().warn(
+                '前方没有有效雷达数据，出于安全考虑停车', throttle_duration_sec=1.0)
+            self.stop_robot()
+            return
+        min_distance = min(front)
+        if min_distance < SAFE_STOP_DISTANCE:
+            if self.moving:
+                self.get_logger().warn(
+                    'Stop! 前方障碍物距离 %.3f m 小于安全距离 %.3f m'
+                    % (min_distance, SAFE_STOP_DISTANCE))
+            self.stop_robot()
+        else:
+            self.move_forward()
+            self.get_logger().info(
+                'Go! 前方安全，距离 %.3f m' % min_distance, throttle_duration_sec=1.0)
 
-        while not rospy.is_shutdown():
-            front_distances = self.get_front_distances()
-
-            if not front_distances:
-                rospy.logwarn_throttle(
-                    1.0,
-                    "前方没有有效雷达数据，出于安全考虑停车"
-                )
-                self.stop_robot()
-                rate.sleep()
-                continue
-
-            min_distance = min(front_distances)
-
-            rospy.loginfo_throttle(
-                1.0,
-                "前方最小距离 min_distance = %.3f m, SAFE_STOP_DISTANCE = %.3f m",
-                min_distance,
-                SAFE_STOP_DISTANCE
-            )
-
-            if min_distance < SAFE_STOP_DISTANCE:
-                if self.moving:
-                    rospy.logwarn(
-                        "Stop! 前方障碍物距离 %.3f m 小于安全距离 %.3f m",
-                        min_distance,
-                        SAFE_STOP_DISTANCE
-                    )
-                self.stop_robot()
-            else:
-                self.move_forward()
-                rospy.loginfo_throttle(
-                    1.0,
-                    "Go! 前方安全，距离 %.3f m",
-                    min_distance
-                )
-
-            rate.sleep()
-
-    def shutdown(self):
-        rospy.loginfo("节点关闭，停止小车")
+    def shutdown(self) -> None:
+        self.get_logger().info('节点关闭，停止小车')
         self.stop_robot()
 
 
-if __name__ == '__main__':
+def main() -> int:
+    rclpy.init()
+    node = ObstacleAvoidance()
     try:
-        node = ObstacleAvoidance()
-        node.run()
-    except rospy.ROSInterruptException:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
         pass
+    finally:
+        node.shutdown()
+        node.destroy_node()
+        rclpy.try_shutdown()
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

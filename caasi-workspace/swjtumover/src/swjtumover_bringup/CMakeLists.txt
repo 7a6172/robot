@@ -32,8 +32,13 @@ ament_target_dependencies(motor_node
 add_executable(screen_node src/screen_node.cpp)
 ament_target_dependencies(screen_node rclcpp std_msgs)
 
-# teleop_node: operator keyboard control, publishes /cmd_vel.
-install(PROGRAMS scripts/teleop_node.py DESTINATION lib/${PROJECT_NAME})
+# Operator and task nodes, installed as programs so `ros2 run` and the launch files work.
+install(PROGRAMS
+  scripts/teleop_node.py
+  scripts/obstacle_rplidar.py
+  scripts/omove_following_feng.py
+  scripts/line_then_home.py
+  DESTINATION lib/${PROJECT_NAME})
 install(TARGETS motor_node screen_node DESTINATION lib/${PROJECT_NAME})
 
 # Launch, configuration, model and the ROS 1 parity data that the tests compare against.
@@ -47,6 +52,9 @@ if(BUILD_TESTING)
     APPEND_ENV PYTHONPATH="${CMAKE_CURRENT_SOURCE_DIR}")
   ament_add_pytest_test(
     launch_selection test/test_launch_selection.py
+    APPEND_ENV PYTHONPATH="${CMAKE_CURRENT_SOURCE_DIR}")
+  ament_add_pytest_test(
+    task_migration test/test_task_migration.py
     APPEND_ENV PYTHONPATH="${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 

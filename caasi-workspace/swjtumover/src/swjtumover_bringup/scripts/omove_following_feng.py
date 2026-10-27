@@ -1,258 +1,192 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""ROS 2 port of swjtumover_bringup/scripts/omove_following_feng.py (the line follower).
 
-import rospy
-import cv2
-import numpy as np
+The vision pipeline is unchanged: the same crop, the same BGR thresholds, the same moments
+centroid, the same `yaw = (x - width/2)/320`, the same Hough-lines end-of-line detection with
+the same confirmation counter, and the same 0.12 m/s command with `-yaw * 0.6` steering.
 
-from cv_bridge import CvBridge, CvBridgeError
+Topics are unchanged too: /cmd_vel (remapped to /cmd_vel/line when the mission node is
+supervising), /lane_image, /line_follow/enable and /line_follow/end.
+
+Deliberate differences:
+  * **the OpenCV windows are optional** (`gui`, default false). ROS 1 always created a window
+    and called imshow/waitKey, which cannot work on a headless robot; with `gui:=true` the
+    original behaviour including the mouse BGR probe is preserved;
+  * ROS 1 signalled "line finished" through the global ROS param `/reached_goal`. ROS 2 has no
+    global parameter store, so this node publishes the same information on `/reached_goal`
+    (transient-local Bool), which the mission node consumes;
+  * the depth image is used for the blocked flag exactly as before, but missing depth simply
+    leaves it unchanged instead of silently doing nothing;
+  * a zero command is published on shutdown.
+"""
+
+from __future__ import annotations
+
+import math
+
+import rclpy
+from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Image
 from std_msgs.msg import Bool
 
+import cv2
+import numpy as np
 
-class OmoveFollowing():
+NODE_NAME = 'omove_following'
 
-    def __init__(self):
-        rospy.init_node('omove_following')
 
-        self.cv_bridge = CvBridge()
+class OmoveFollowing(Node):
+    def __init__(self) -> None:
+        super().__init__(NODE_NAME)
+        self.bridge = CvBridge()
 
-        self.cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
-        self.lane_img_pub = rospy.Publisher('/lane_image', Image, queue_size=5)
+        self.image_topic = self.declare_parameter(
+            'color_topic', '/d415/color/image_raw').value
+        self.depth_topic = self.declare_parameter(
+            'depth_topic', '/d415/depth/image_rect_raw').value
+        self.enabled = bool(self.declare_parameter('enabled', True).value)
+        self.end_confirm_frames = max(
+            1, int(self.declare_parameter('end_confirm_frames', 1).value))
+        self.image_timeout = float(self.declare_parameter('image_timeout', 0.5).value)
+        self.gui = bool(self.declare_parameter('gui', False).value)
+
+        self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.lane_img_pub = self.create_publisher(Image, '/lane_image', 5)
+        latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                             durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.end_pub = self.create_publisher(Bool, '/line_follow/end', latched)
+        self.reached_pub = self.create_publisher(Bool, '/reached_goal', latched)
+        self.end_pub.publish(Bool(data=False))
+        self.reached_pub.publish(Bool(data=False))
 
         self.yaw = 0.0
         self.flag = 0
         self.blocked = False
         self.reached_goal = False
         self.line_detected = True
-
-        # 独立运行仍默认启用；组合任务通过使能话题控制寻线阶段。
-        self.enabled = rospy.get_param('~enabled', True)
-        self.end_confirm_frames = max(1, rospy.get_param('~end_confirm_frames', 1))
         self.end_frames = 0
         self.last_image_time = None
-        self.image_timeout = rospy.get_param('~image_timeout', 0.5)
-        self.end_pub = rospy.Publisher('/line_follow/end', Bool, queue_size=1, latch=True)
-        self.end_pub.publish(Bool(data=False))
 
         self.image_window_img = None
-        self.test_window_img = None
+        self.mouse = {'x': 0, 'y': 0, 'b': 0, 'g': 0, 'r': 0, 'window': ''}
 
-        self.mouse_x = 0
-        self.mouse_y = 0
-        self.mouse_b = 0
-        self.mouse_g = 0
-        self.mouse_r = 0
-        self.mouse_window_name = ""
+        if self.gui:
+            cv2.namedWindow('Image window', cv2.WINDOW_NORMAL)
+            cv2.setMouseCallback('Image window', self.mouse_callback)
+            cv2.startWindowThread()
 
-        cv2.namedWindow("Image window", cv2.WINDOW_NORMAL)
-        # cv2.namedWindow("test", cv2.WINDOW_NORMAL)
+        image_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
+        self.create_subscription(Bool, '/line_follow/enable', self.enable_cb, 1)
+        self.create_subscription(Image, self.image_topic, self.color_img_cb, image_qos)
+        self.create_subscription(Image, self.depth_topic, self.depth_img_cb, image_qos)
+        self.create_timer(0.05, self.control_step)   # 20 Hz, as in ROS 1
 
-        
-        cv2.setMouseCallback("Image window", self.mouse_callback_image_window)
-        # cv2.setMouseCallback("test", self.mouse_callback_test_window)
-
-        cv2.startWindowThread()
-
-        rospy.Subscriber('/line_follow/enable', Bool, self.enable_cb, queue_size=1)
-        rospy.Subscriber('/d415/color/image_raw', Image, self.color_img_cb, queue_size=1)
-        rospy.Subscriber('/d415/depth/image_rect_raw', Image, self.depth_img_cb, queue_size=1)
-
-        rospy.on_shutdown(self.shutdown)
-
-
-        rate = rospy.Rate(20)
-
-        while not rospy.is_shutdown():
-            vel_cmd = Twist()
-
-            if self.enabled and self.flag:
-                if not self.reached_goal:
-                    rospy.set_param("/reached_goal", True)
-                    self.reached_goal = True
-                    self.end_pub.publish(Bool(data=True))
-
-            image_fresh = (self.last_image_time is not None and
-                           (rospy.Time.now() - self.last_image_time).to_sec() < self.image_timeout)
-
-            if not self.enabled or not image_fresh or self.reached_goal:
-                vel_cmd.linear.x = 0.0
-                vel_cmd.linear.y = 0.0
-                vel_cmd.angular.z = 0.0
-
-            elif self.blocked:
-
-                vel_cmd.linear.x = 0.0
-                vel_cmd.linear.y = 0.0
-                vel_cmd.angular.z = 0.0
-
-            else:
-                if not self.line_detected:
-
-                    vel_cmd.linear.x = 0.0
-                    vel_cmd.linear.y = 0.0
-                    vel_cmd.angular.z = 0.0
-
-                else:
-                    vel_cmd.linear.x = 0.12
-                    vel_cmd.linear.y = 0.0
-                    vel_cmd.angular.z = -self.yaw * 0.6
-
-            self.cmd_pub.publish(vel_cmd)
-            rate.sleep()
-
-    def enable_cb(self, msg):
+    # -- enable / reached-goal signalling ------------------------------
+    def enable_cb(self, msg: Bool) -> None:
         if msg.data and not self.enabled:
             self.reached_goal = False
             self.flag = 0
             self.end_frames = 0
             self.line_detected = False
             self.last_image_time = None
-            rospy.set_param('/reached_goal', False)
+            self.reached_pub.publish(Bool(data=False))
             self.end_pub.publish(Bool(data=False))
         self.enabled = msg.data
 
-    def mouse_callback_image_window(self, event, x, y, flags, param):
-        self.handle_mouse_event(event, x, y, "Image window", self.image_window_img)
+    # -- control loop --------------------------------------------------
+    def control_step(self) -> None:
+        cmd = Twist()
+        if self.enabled and self.flag and not self.reached_goal:
+            self.reached_goal = True
+            self.reached_pub.publish(Bool(data=True))
+            self.end_pub.publish(Bool(data=True))
 
-    def mouse_callback_test_window(self, event, x, y, flags, param):
-        self.handle_mouse_event(event, x, y, "test", self.test_window_img)
+        image_fresh = (self.last_image_time is not None and
+                       (self.get_clock().now() - self.last_image_time).nanoseconds / 1e9
+                       < self.image_timeout)
 
-    def handle_mouse_event(self, event, x, y, window_name, img):
-        if img is None:
+        if not self.enabled or not image_fresh or self.reached_goal or self.blocked \
+                or not self.line_detected:
+            cmd.linear.x = 0.0
+            cmd.angular.z = 0.0
+        else:
+            cmd.linear.x = 0.12
+            cmd.angular.z = -self.yaw * 0.6
+        self.cmd_pub.publish(cmd)
+
+    # -- vision --------------------------------------------------------
+    def mouse_callback(self, event, x, y, flags, param) -> None:
+        if self.image_window_img is None:
             return
-
-        h, w = img.shape[:2]
-
-        if x < 0 or x >= w or y < 0 or y >= h:
+        height, width = self.image_window_img.shape[:2]
+        if x < 0 or x >= width or y < 0 or y >= height:
             return
-
-        b, g, r = img[y, x]
-
-        self.mouse_x = x
-        self.mouse_y = y
-        self.mouse_b = int(b)
-        self.mouse_g = int(g)
-        self.mouse_r = int(r)
-        self.mouse_window_name = window_name
-
+        b, g, r = self.image_window_img[y, x]
+        self.mouse = {'x': x, 'y': y, 'b': int(b), 'g': int(g), 'r': int(r),
+                      'window': 'Image window'}
         if event == cv2.EVENT_LBUTTONDOWN:
-            rospy.loginfo(
-                "[%s] 鼠标点击: x=%d, y=%d, BGR=(%d, %d, %d)",
-                window_name,
-                x,
-                y,
-                self.mouse_b,
-                self.mouse_g,
-                self.mouse_r
-            )
+            self.get_logger().info(
+                '[Image window] 鼠标点击: x=%d, y=%d, BGR=(%d, %d, %d)'
+                % (x, y, self.mouse['b'], self.mouse['g'], self.mouse['r']))
 
-    def draw_bgr_text(self, img, window_name):
-        display_img = img.copy()
+    def _draw_bgr_text(self, img):
+        out = img.copy()
+        if self.mouse['window'] != 'Image window':
+            return out
+        cv2.rectangle(out, (10, 10), (430, 115), (0, 0, 0), -1)
+        for index, text in enumerate([
+                'Window: Image window',
+                'x=%d, y=%d' % (self.mouse['x'], self.mouse['y']),
+                'BGR=(%d, %d, %d)' % (self.mouse['b'], self.mouse['g'], self.mouse['r'])]):
+            cv2.putText(out, text, (20, 40 + 35 * index), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.8, (0, 255, 0), 2)
+        return out
 
-        if self.mouse_window_name == window_name:
-            text1 = "Window: {}".format(window_name)
-            text2 = "x={}, y={}".format(self.mouse_x, self.mouse_y)
-            text3 = "BGR=({}, {}, {})".format(
-                self.mouse_b,
-                self.mouse_g,
-                self.mouse_r
-            )
-
-            cv2.rectangle(display_img, (10, 10), (430, 115), (0, 0, 0), -1)
-
-            cv2.putText(
-                display_img,
-                text1,
-                (20, 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 255, 0),
-                2
-            )
-
-            cv2.putText(
-                display_img,
-                text2,
-                (20, 75),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 255, 0),
-                2
-            )
-
-            cv2.putText(
-                display_img,
-                text3,
-                (20, 110),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 255, 0),
-                2
-            )
-
-        return display_img
-
-    def color_img_cb(self, data):
+    def color_img_cb(self, data: Image) -> None:
         try:
-            cv_img = self.cv_bridge.imgmsg_to_cv2(data, 'bgr8')
-        except CvBridgeError as e:
-            rospy.logerr("彩色图像转换失败: %s", str(e))
+            cv_img = self.bridge.imgmsg_to_cv2(data, 'bgr8')
+        except Exception as exc:  # noqa: BLE001 - conversion failure is reported, not fatal
+            self.get_logger().error('彩色图像转换失败: %s' % exc)
             return
 
-        self.last_image_time = rospy.Time.now()
-
-        height, width, channels = cv_img.shape
-
+        self.last_image_time = self.get_clock().now()
+        height, width, _ = cv_img.shape
         crop_img = cv_img[height // 2 + 100:height, 1:width]
+        if crop_img.size == 0:
+            return
 
-        lower = np.array([10, 20, 10], dtype="uint8")
-        upper = np.array([40, 50, 40], dtype="uint8")
-
+        lower = np.array([10, 20, 10], dtype='uint8')
+        upper = np.array([40, 50, 40], dtype='uint8')
         mask = cv2.inRange(crop_img, lower, upper)
         extraction = cv2.bitwise_and(crop_img, crop_img, mask=mask)
 
-        m = cv2.moments(mask, False)
-
-        if m['m00'] > 0:
+        moments = cv2.moments(mask, False)
+        if moments['m00'] > 0:
             self.line_detected = True
-
-            x = m['m10'] / m['m00']
-            y = m['m01'] / m['m00']
-
+            x = moments['m10'] / moments['m00']
+            y = moments['m01'] / moments['m00']
             self.yaw = (x - width / 2) / 320.0
-
         else:
             self.line_detected = False
-
             x = width / 2
             y = crop_img.shape[0] / 2
-
             self.yaw = 0.0
 
         cv2.circle(extraction, (int(x), int(y)), 2, (0, 255, 0), 3)
-
         gray = cv2.cvtColor(extraction, cv2.COLOR_BGR2GRAY)
         edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-
-        lines = cv2.HoughLinesP(
-            edges,
-            1,
-            np.pi / 180,
-            threshold=100,
-            minLineLength=100,
-            maxLineGap=10
-        )
+        lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100,
+                                minLineLength=100, maxLineGap=10)
 
         terminal_seen = False
-
         if lines is not None:
             for line in lines:
                 x1, y1, x2, y2 = line[0]
-
                 slope = abs((y2 - y1) / (x2 - x1 + 1e-6))
-
                 if abs(slope) < 0.2:
                     terminal_seen = True
                     cv2.line(extraction, (x1, y1), (x2, y2), (0, 0, 255), 2)
@@ -263,57 +197,49 @@ class OmoveFollowing():
             self.end_frames = 0
         self.flag = int(self.end_frames >= self.end_confirm_frames)
 
-
         show_img = np.hstack([crop_img, extraction])
-
-
         self.image_window_img = show_img.copy()
-
-        #self.test_window_img = cv_img.copy()
-
         try:
-            self.lane_img_pub.publish(
-                self.cv_bridge.cv2_to_imgmsg(show_img, "bgr8")
-            )
-        except CvBridgeError as e:
-            rospy.logerr("调试图像发布失败: %s", str(e))
+            self.lane_img_pub.publish(self.bridge.cv2_to_imgmsg(show_img, 'bgr8'))
+        except Exception as exc:  # noqa: BLE001
+            self.get_logger().error('调试图像发布失败: %s' % exc)
 
-        image_window_display = self.draw_bgr_text(show_img, "Image window")
-        #test_window_display = self.draw_bgr_text(cv_img, "test")
+        if self.gui:
+            cv2.imshow('Image window', self._draw_bgr_text(show_img))
+            cv2.waitKey(1)
 
-        cv2.imshow("Image window", image_window_display)
-        #cv2.imshow("test", test_window_display)
-        cv2.waitKey(1)
-
-    def depth_img_cb(self, data):
+    def depth_img_cb(self, data: Image) -> None:
         try:
-            depth_img = self.cv_bridge.imgmsg_to_cv2(data, '16UC1')
-        except CvBridgeError as e:
-            rospy.logerr("深度图像转换失败: %s", str(e))
+            depth_img = self.bridge.imgmsg_to_cv2(data, '16UC1')
+        except Exception as exc:  # noqa: BLE001
+            self.get_logger().error('深度图像转换失败: %s' % exc)
             return
-
         height, width = depth_img.shape
-
         if height > 400:
-            for dis in depth_img[400:401, 0:width][0]:
-                if 300 < dis < 350:
+            for distance in depth_img[400:401, 0:width][0]:
+                if 300 < distance < 350:
                     self.blocked = False
                     break
 
-    def stop_robot(self):
-        vel_cmd = Twist()
-        vel_cmd.linear.x = 0.0
-        vel_cmd.linear.y = 0.0
-        vel_cmd.angular.z = 0.0
-        self.cmd_pub.publish(vel_cmd)
+    def shutdown(self) -> None:
+        self.cmd_pub.publish(Twist())   # a stopped process must not leave a command in effect
+        if self.gui:
+            cv2.destroyAllWindows()
 
-    def shutdown(self):
-        self.stop_robot()
-        cv2.destroyAllWindows()
+
+def main() -> int:
+    rclpy.init()
+    node = OmoveFollowing()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.shutdown()
+        node.destroy_node()
+        rclpy.try_shutdown()
+    return 0
 
 
 if __name__ == '__main__':
-    try:
-        OmoveFollowing()
-    except rospy.ROSInterruptException:
-        pass
+    raise SystemExit(main())
