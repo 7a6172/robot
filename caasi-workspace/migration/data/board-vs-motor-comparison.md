@@ -76,3 +76,46 @@ Two further observations worth keeping:
    0.34 m versus ±0.006–0.013 rad on the other robot, with the *same* controller and software.
    That is a chassis/mechanical difference (wheel alignment or caster drag), not a code
    difference, and it matters for navigation tuning later.
+
+---
+
+# The two robots do NOT run the same code (correction)
+
+An earlier statement in this document said the robots run the same source. That was based on
+`motor.yaml`, `lidar.yaml` and the URDF being byte-identical, which they are. Comparing the
+node sources afterwards shows the motor node is **different**:
+
+| | `swjtumover05` (A) | `swjtumover01` (B) |
+| --- | --- | --- |
+| `motor_node.cpp` size | 21,597 bytes | 27,866 bytes |
+| `motor_node.cpp` md5 | `0219c906…` | `479f5b9c…` |
+| `cmd_vel_timeout` | **absent** | 0.5 s |
+| `motor_feedback_timeout` | **absent** | 0.5 s |
+| `motor_safety::Guard` | **absent** | present |
+| `include/utils/motor_safety.h` | **absent** | present |
+
+So B carries a hardened motor node with a command watchdog and a feedback timeout; A carries
+an older one with neither. That is the missing half of the incident explanation: the latched
+command that drove one wheel could only persist on the version without a watchdog, and it is
+why B never showed the behaviour.
+
+Implication for the campaign: "the ROS 1 reference" is not one thing. A's ROS 1 is the older,
+unsafe variant; B's ROS 1 is closer to the ROS 2 design. Any ROS 1/ROS 2 safety comparison must
+say which variant it used, and fixing A's code is the operator's call — the ROS 1 tree is
+read-only for this campaign.
+
+# Verification repetition, and a side effect of probing
+
+The verification was repeated after the swap. Results reproduced: A (good board
+`…00:01:df`) answered the protocol probe and B (suspect board `…00:29:79`) answered nothing.
+
+However, on the second pass A's board stopped replying to `motor_node` even though it still
+answered hand-made frames, and its reply rate had fallen from ~100% of frames to ~32%. Notably
+one of the probe variants sends `byte7 = 0xff`, which the driver source documents as the
+**electromagnetic brake** flag (commented out in ROS 1). Probing with that variant was my
+mistake: frames that are zero-speed but brake-flagged are not a safe "no-op", since they can
+change controller state.
+
+Lesson recorded: control-protocol probing must only ever use the exact frame the production
+driver sends (same `acc`, `byte7 = 0x00`), never exploratory variants. A board power cycle is
+the recovery step.
