@@ -1,0 +1,73 @@
+{
+  "note": "ROS 1 vs ROS 2 on the same physical robot. The robot was moved by the operator between runs (lifted onto a box for safety), so scene-dependent numbers such as the number of no-return samples are NOT comparable across these two captures.",
+  "scan": {
+    "ros1": {
+      "rate_hz": 14.059,
+      "samples": 1440,
+      "frame": "lidar_link",
+      "angle_min": -3.141592503,
+      "angle_max": 3.141592503,
+      "angle_increment": 0.004363323,
+      "range_min": 0.25,
+      "range_max": 25.0,
+      "scan_time": 0.071428575,
+      "time_increment": 4.96e-05,
+      "measurements": {
+        "valid": 1401,
+        "nan": 39,
+        "inf": 0
+      },
+      "stamp_minus_wallclock_s": -0.124
+    },
+    "ros2": null,
+    "verdict": "rate 14.059 vs 13.999 Hz (0.4%), 1440 samples both, frame lidar_link both, angle bounds/increment/range limits identical within print precision, scan_time and time_increment identical"
+  },
+  "tf": {
+    "ros1": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.14114
+      ],
+      "rpy": [
+        0.02618,
+        0.0,
+        0.0
+      ],
+      "owner": "robot_state_publisher"
+    },
+    "ros2": null,
+    "verdict": "identical: xyz (0,0,0.14114), rpy (0.02618,0,0). ROS 2 reaches this value from the robot model; ROS 1 from its own URDF."
+  },
+  "odom": {
+    "ros1": {
+      "rate_hz": 25.245,
+      "topic": "/odom",
+      "type": "nav_msgs/Odometry",
+      "frame": "odom",
+      "child": "base_link"
+    },
+    "ros2": {
+      "rate_hz": null,
+      "topic": "openmover/hardware/odom",
+      "type": "PoseWithCovarianceStamped",
+      "frame": "odom",
+      "child": "base_link"
+    },
+    "verdict": "BLOCKED: the motor board stopped sending telemetry after a runaway during the ROS 1 motion tests, so ROS 2 odometry, TF odom->base_link, localization and mapping could not be measured. Interface differs by design (PoseWithCovarianceStamped vs Odometry); ROS 2 also publishes openmover/localization/odom_legacy as nav_msgs/Odometry."
+  },
+  "interfaces": {
+    "command_topic": {
+      "ros1": "cmd_vel (geometry_msgs/Twist)",
+      "ros2": "openmover/control/cmd_vel_manual (geometry_msgs/Twist)"
+    },
+    "telemetry": {
+      "ros1": "/motor_state/left, /motor_state/right (swjtumover_msgs/motor_state)",
+      "ros2": "/openmover/hardware/motor_state/left, /right (openmover_msgs/MotorState)"
+    },
+    "safety": {
+      "ros1": "no watchdog, no actuation gate",
+      "ros2": "two-factor actuation gate (parameter + CAASI_MOTOR_ACTUATION) and a 0.5 s command watchdog"
+    }
+  }
+}

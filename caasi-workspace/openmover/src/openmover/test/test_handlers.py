@@ -85,8 +85,25 @@ def test_teleop_explains_missing_backend(monkeypatch):
     teleop = _load('scripts/teleop/teleop_handler.py', 'teleop_mod')
     monkeypatch.setattr(teleop, 'keyboard', None)
     monkeypatch.setattr(teleop, '_KEYBOARD_IMPORT_ERROR', 'ModuleNotFoundError: pynput')
+    import importlib.util
+    monkeypatch.setattr(importlib.util, 'find_spec', lambda name: None)
     reason = teleop.check_keyboard_backend()
-    assert reason is not None and 'pynput' in reason
+    assert reason is not None and 'not installed' in reason
+    assert 'apt install' in reason
+
+
+def test_teleop_distinguishes_installed_but_headless(monkeypatch):
+    """pynput raises at import without an X server; that is not a missing package."""
+    teleop = _load('scripts/teleop/teleop_handler.py', 'teleop_mod')
+    monkeypatch.setattr(teleop, 'keyboard', None)
+    monkeypatch.setattr(teleop, '_KEYBOARD_IMPORT_ERROR',
+                        'DisplayNameError: no DISPLAY')
+    import importlib.util
+    monkeypatch.setattr(importlib.util, 'find_spec', lambda name: object())
+    reason = teleop.check_keyboard_backend()
+    assert reason is not None
+    assert 'installed but cannot attach' in reason
+    assert 'not installed' not in reason
 
 
 def test_teleop_explains_missing_display(monkeypatch):

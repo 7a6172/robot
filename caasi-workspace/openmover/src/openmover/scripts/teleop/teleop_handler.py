@@ -11,9 +11,9 @@ import threading
 import rclpy
 from geometry_msgs.msg import Twist
 # The keyboard backend is optional at import time so the node can explain *why* it cannot
-# run instead of dying with a bare ImportError. On this robot there is no display and
-# pynput is not installed, so the honest outcome is a clear message and a distinct exit
-# code, not a silent respawn loop.
+# run instead of dying with a bare import error. Note that pynput raises at import when no
+# X server is reachable even though the package is installed, so "import failed" must not be
+# reported as "not installed" -- the two need different fixes.
 _KEYBOARD_IMPORT_ERROR: str | None = None
 try:
     from pynput import keyboard
@@ -159,12 +159,27 @@ class TeleopHandler(Node):
 
 
 def check_keyboard_backend() -> str | None:
-    """Return a reason when keyboard input cannot work here, or None when it can."""
+    """Return a reason when keyboard input cannot work here, or None when it can.
+
+    Three distinct situations, three distinct messages, because the fixes differ:
+    the package is missing (install it), the package is installed but cannot reach a window
+    server (run it from an operator session), or the environment simply has no DISPLAY.
+    """
     if keyboard is None:
+        import importlib.util
+        installed = importlib.util.find_spec("pynput") is not None
+        if not installed:
+            return (
+                "the 'pynput' Python module is not installed "
+                f"({_KEYBOARD_IMPORT_ERROR}). Install it on the target "
+                "(sudo apt install -y python3-pynput), or run without teleoperation "
+                "(teleop:=false)."
+            )
         return (
-            "the 'pynput' Python module is not available "
-            f"({_KEYBOARD_IMPORT_ERROR}). Install it on the target, or do not start "
-            "teleoperation on this robot (teleop:=false)."
+            "'pynput' is installed but cannot attach to a window server "
+            f"({_KEYBOARD_IMPORT_ERROR}). Teleoperation needs an operator session with "
+            "DISPLAY or WAYLAND_DISPLAY set; it is not usable from a headless bringup "
+            "(teleop:=false)."
         )
     if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
         return (
