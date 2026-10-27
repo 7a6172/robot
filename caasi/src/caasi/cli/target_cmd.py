@@ -650,3 +650,266 @@ def _render_deps(report) -> None:
         f"{counts.get(deps_core.STATE_OPTIONAL_ABSENT, 0)} optional-absent, "
         f"{counts.get(deps_core.STATE_UNKNOWN, 0)} unknown[/dim]"
     )
+
+
+# --------------------------------------------------------------- stable identity
+
+@app.command("enroll", help="Record a target's trusted identity (SSH host keys + hardware).")
+def target_enroll(
+    name: str = typer.Argument(..., help="Target name (also its stable identity)"),
+    host: str = typer.Option(None, "--host", "-H", help="Current endpoint to enrol from"),
+    user: str = typer.Option(None, "--user", "-u", help="SSH user"),
+    port: int = typer.Option(22, "--port", "-p", help="SSH port"),
+    expect_fingerprint: str = typer.Option(
+        None, "--expect-fingerprint",
+        help="Require this exact host-key fingerprint (out-of-band confirmation)"),
+    accept_identity_change: bool = typer.Option(
+        False, "--accept-identity-change",
+        help="Replace an existing trust record whose keys differ"),
+    json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
+) -> None:
+    """Enrolment is the only operation allowed to learn a host key."""
+    from ..core import identity as identity_core
+
+    target = targets_core.find_target(state.cfg(), name)
+    address = host or (target.host if target else None)
+    if not address:
+        output.fail(f"No endpoint for '{name}': pass --host")
+        raise typer.Exit(1)
+    if port == 22 and target and target.port:
+        port = int(target.port)
+
+    result = identity_core.enroll(
+        name, address, state.cfg(), port=port, user=user or (target.user if target else None),
+        expect_fingerprint=expect_fingerprint,
+        accept_identity_change=accept_identity_change,
+    )
+    if not result.ok:
+        if output.wants_json(json_output):
+            output.echo_json({"ok": False, "error": result.error, "changed": result.changed})
+        else:
+            output.fail(result.error)
+        raise typer.Exit(1)
+
+    record = result.record
+    if output.wants_json(json_output):
+        output.echo_json({"ok": True, "record": record.to_dict()})
+        return
+
+    table = Table(title=f"Enrolled identity: {name}")
+    table.add_column("Field", style="bold cyan")
+    table.add_column("Value")
+    table.add_column("Source", style="dim")
+    table.add_column("Confidence", style="magenta")
+    for algo, data in sorted(record.ssh_keys.items()):
+        table.add_row(f"ssh.{algo}", data.get("fingerprint", ""), "keyscan", "authoritative")
+    for observation in record.observations:
+        table.add_row(observation.field, observation.value, observation.source,
+                      observation.confidence)
+    output.console().print(table)
+    output.console().print(
+        f"[dim]Recorded in {identity_core.record_path(name, state.cfg())}[/dim]")
+
+
+@app.command("identity", help="Show a target's enrolled identity and verify its endpoint.")
+def target_identity(
+    name: str = typer.Argument(..., help="Target name"),
+    verify: bool = typer.Option(True, "--verify/--no-verify",
+                                help="Check the live endpoint against the enrolled keys"),
+    json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
+) -> None:
+    from ..core import identity as identity_core
+
+    record = identity_core.load_record(name, state.cfg())
+    if record is None:
+        if output.wants_json(json_output):
+            output.echo_json({"enrolled": False, "name": name})
+        else:
+            output.fail(f"'{name}' has no identity record; run 'caasi target enroll {name}'")
+        raise typer.Exit(1)
+
+    target = targets_core.find_target(state.cfg(), name)
+    live: dict = {}
+    if verify and target and target.host:
+        relation, observed = identity_core.verify_address(
+            record, target.host, int(target.port or 22))
+        live = {
+            "endpoint": target.host,
+            "relation": relation,
+            "observed_fingerprints": {a: d.get("fingerprint", "")
+                                      for a, d in observed.items()},
+        }
+
+    if output.wants_json(json_output):
+        output.echo_json({"enrolled": True, "record": record.to_dict(), "live": live})
+        return
+
+    table = Table(title=f"Identity: {name}")
+    table.add_column("Field", style="bold cyan")
+    table.add_column("Value")
+    table.add_column("Source", style="dim")
+    table.add_column("Confidence", style="magenta")
+    for algo, data in sorted(record.ssh_keys.items()):
+        table.add_row(f"ssh.{algo}", data.get("fingerprint", ""), "keyscan", "authoritative")
+    for observation in record.observations:
+        table.add_row(observation.field, observation.value, observation.source,
+                      observation.confidence)
+    for endpoint in record.endpoints:
+        mark = "verified" if endpoint.verified else "unverified"
+        table.add_row(f"endpoint.{endpoint.role}",
+                      f"{endpoint.address}:{endpoint.port}", endpoint.note or mark, mark)
+    output.console().print(table)
+
+    if live:
+        relation = live["relation"]
+        style = {"match": "green", "rotated": "red", "partial": "red",
+                 "mismatch": "red", "unreachable": "yellow"}.get(relation, "yellow")
+        output.console().print(
+            f"[{style}]live endpoint {live['endpoint']}: {relation}[/{style}]")
+        if relation not in ("match", "unreachable"):
+            output.console().print(
+                "[dim]Host keys differ from the record. If this is a reinstall or a "
+                "replacement, re-enrol deliberately: caasi target reenroll[/dim]")
+            raise typer.Exit(2)
+
+
+@app.command("discover", help="Find an enrolled target on its configured management subnets.")
+def target_discover(
+    name: str = typer.Argument(..., help="Target name"),
+    subnet: list[str] = typer.Option(None, "--subnet", help="Subnet to scan (repeatable)"),
+    port: int = typer.Option(22, "--port", "-p", help="SSH port"),
+    json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
+) -> None:
+    from ..core import identity as identity_core
+
+    record = identity_core.load_record(name, state.cfg())
+    if record is None:
+        output.fail(f"'{name}' is not enrolled; run 'caasi target enroll {name}'")
+        raise typer.Exit(1)
+
+    result = identity_core.discover(record, state.cfg(), subnets=subnet, port=port)
+    if output.wants_json(json_output):
+        output.echo_json(result.to_dict())
+    else:
+        style = {"verified": "green", "ambiguous": "yellow",
+                 "conflict": "red"}.get(result.status, "yellow")
+        output.console().print(
+            f"[{style}]discovery: {result.status}[/{style}]  "
+            f"({result.scanned} addresses, {result.live} live, {result.duration_s:.1f}s)")
+        for candidate in result.candidates:
+            output.console().print(
+                f"  {candidate.address}: {candidate.relation}")
+        if result.error:
+            output.console().print(f"[dim]{result.error}[/dim]")
+
+    # Exit codes distinguish "nothing found" from "discovery could not run": treating an
+    # unconfigured scan as an offline robot is the mistake this milestone exists to avoid.
+    if result.status == identity_core.VERIFIED:
+        raise typer.Exit(0)
+    if result.status == identity_core.NOT_CONFIGURED:
+        raise typer.Exit(3)
+    if result.status == identity_core.SCAN_FAILED:
+        raise typer.Exit(4)
+    if result.status in (identity_core.AMBIGUOUS, identity_core.CONFLICT):
+        raise typer.Exit(2)
+    raise typer.Exit(1)
+
+
+@app.command("refresh", help="Verify the endpoint, and resolve or persist a new one.")
+def target_refresh(
+    name: str = typer.Argument(..., help="Target name"),
+    apply: bool = typer.Option(False, "--apply",
+                               help="Persist the discovered endpoint into the target config"),
+    host: str = typer.Option(None, "--host", "-H", help="Verify this endpoint instead"),
+    subnet: list[str] = typer.Option(None, "--subnet", help="Subnet to scan (repeatable)"),
+    port: int = typer.Option(22, "--port", "-p", help="SSH port"),
+    json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
+) -> None:
+    from ..core import identity as identity_core
+
+    result = identity_core.refresh(name, state.cfg(), apply=apply, address=host,
+                                   subnets=subnet, port=port)
+    if output.wants_json(json_output):
+        payload = {
+            "status": result.status,
+            "current": result.current,
+            "proposed": result.proposed,
+            "applied": result.applied,
+            "error": result.error,
+            "discovery": result.discovery.to_dict() if result.discovery else None,
+        }
+        output.echo_json(payload)
+    else:
+        if result.status == "current-verified":
+            output.console().print(
+                f"[green]{name}: current endpoint {result.current} verified[/green]")
+        elif result.proposed:
+            state_text = "applied" if result.applied else "not applied (pass --apply)"
+            output.console().print(
+                f"[green]{name}: found at {result.proposed}[/green] ({state_text})")
+        else:
+            output.console().print(f"[yellow]{name}: {result.status}[/yellow]")
+            if result.error:
+                output.console().print(f"[dim]{result.error}[/dim]")
+
+    if result.status == "current-verified":
+        raise typer.Exit(0)
+    if result.proposed:
+        raise typer.Exit(0)
+    if result.status in ("conflict", "ambiguous"):
+        raise typer.Exit(2)
+    raise typer.Exit(1)
+
+
+@app.command("reenroll", help="Deliberately replace a target's trusted identity.")
+def target_reenroll(
+    name: str = typer.Argument(..., help="Target name"),
+    host: str = typer.Option(None, "--host", "-H", help="Endpoint to re-enrol from"),
+    accept_identity_change: bool = typer.Option(
+        False, "--accept-identity-change",
+        help="Required: authorises replacing the enrolled host keys"),
+    json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
+) -> None:
+    """The only path that replaces trusted fingerprints, and it must be asked for."""
+    from ..core import identity as identity_core
+
+    record = identity_core.load_record(name, state.cfg())
+    if record is None:
+        output.fail(f"'{name}' is not enrolled; use 'caasi target enroll {name}'")
+        raise typer.Exit(1)
+    target = targets_core.find_target(state.cfg(), name)
+    address = host or (target.host if target else None)
+    if not address:
+        output.fail(f"No endpoint for '{name}': pass --host")
+        raise typer.Exit(1)
+    if not accept_identity_change:
+        observed = identity_core._ssh_keyscan(address, int(target.port if target and target.port else 22))
+        if output.wants_json(json_output):
+            output.echo_json({
+                "ok": False,
+                "error": "re-enrolment requires --accept-identity-change",
+                "enrolled": record.fingerprints(),
+                "observed": {a: d.get("fingerprint", "") for a, d in observed.items()},
+            })
+        else:
+            output.fail(
+                "re-enrolment replaces trusted host keys and requires "
+                "--accept-identity-change")
+            for algo, data in sorted(record.ssh_keys.items()):
+                output.console().print(f"  enrolled {algo}: {data.get('fingerprint', '')}")
+            for algo, data in sorted(observed.items()):
+                output.console().print(f"  observed {algo}: {data.get('fingerprint', '')}")
+        raise typer.Exit(1)
+
+    result = identity_core.enroll(name, address, state.cfg(), port=int(target.port or 22) if target else 22,
+                                  accept_identity_change=True)
+    if not result.ok:
+        if output.wants_json(json_output):
+            output.echo_json({"ok": False, "error": result.error})
+        else:
+            output.fail(result.error)
+        raise typer.Exit(1)
+    if output.wants_json(json_output):
+        output.echo_json({"ok": True, "record": result.record.to_dict()})
+    else:
+        output.console().print(f"[green]{name}: identity re-enrolled from {address}[/green]")

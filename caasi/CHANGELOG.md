@@ -9,6 +9,43 @@ environment-oriented tool; 0.4.0 makes targets — remote machines and robots �
 concept end to end. Everything below is implemented and validated, and the release is
 defined by that set rather than by a date.
 
+### Added — stable target identity and verified endpoint rediscovery
+
+A target's name is its identity; its address is only a current endpoint. `caasi` can now
+record what a target *is*, rediscover it after a DHCP change, and refuse anything that is not
+cryptographically the same machine.
+
+* **`caasi target enroll <name>`** records SSH host-key fingerprints (authoritative),
+  machine-id, interface MACs, CPU and best-effort DMI. Each observation keeps its source and
+  a confidence, so a weak or generic field degrades gracefully instead of invalidating an
+  opaque hash. Values that identify nothing — generic SMBIOS strings, unreadable serials —
+  are dropped. `--expect-fingerprint` allows out-of-band confirmation.
+* **`caasi target identity <name>`** shows the record and, by default, verifies the live
+  endpoint against it; a mismatch exits 2 rather than being ignored.
+* **`caasi target discover <name>`** performs bounded discovery over `discovery.subnets`
+  only, with a host cap, a concurrency cap and a per-address timeout. Candidate addresses are
+  verified against the enrolled keys; an address that merely answers is never accepted.
+  Outcomes are distinct — verified, no-candidates, no-match, ambiguous, conflict,
+  not-configured, scan-failed — because an unavailable discovery mechanism must not be
+  reported as an offline robot.
+* **`caasi target refresh <name>`** verifies the current endpoint, resolves a new one when it
+  is gone, and persists it only with `--apply`. Persisting rewrites `host` (and `port` when
+  non-default) and nothing else.
+* **`caasi target reenroll <name> --accept-identity-change`** is the only path that replaces
+  trusted fingerprints, and it prints what changed first.
+
+Security: `target_ssh_prefix()` — the single SSH path used by exec, build, deploy, artifacts,
+lifecycle and ROS — now verifies enrolled targets with `StrictHostKeyChecking=yes` against a
+caasi-managed known_hosts written from the *enrolled* keys. A DHCP change therefore works
+without ever trusting an unverified key. `StrictHostKeyChecking=no` is never emitted, and
+`accept-new` remains only for targets with no record, so existing configurations are
+unchanged.
+
+Verified on `swjtumover05`: enrolment captured three host keys and the interface roles
+correctly (Wi-Fi as management, the LiDAR and motor/IO links as internal); a `/24` scan took
+2.2 s and verified the robot while correctly rejecting the workstation; a deliberately wrong
+key produced `Host key verification failed`.
+
 ### Fixed — a failed ROS probe is no longer reported as "this target has no ROS"
 
 `caasi exec --ros` derives the setup path from what the target reports. Any failure while

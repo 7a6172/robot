@@ -243,19 +243,47 @@ class TargetInspection:
 
 
 def target_ssh_prefix(target: Target) -> list[str]:
-    """Build ssh invocation argument list for an SSH target."""
+    """Build ssh invocation argument list for an SSH target.
+
+    This is the single place every SSH path in caasi goes through (exec, build, deploy,
+    artifacts, lifecycle, ROS, target probes), so it is also the single place host-key
+    verification is decided.
+
+    When the target has an enrolled identity record the connection is verified strictly
+    against caasi's own known_hosts file, which is written from the *enrolled* keys for the
+    current address. That is what makes a DHCP address change survivable without ever
+    trusting an unverified key: a new address presenting a different key fails instead of
+    being accepted. Targets without a record keep the previous behaviour, so existing
+    configurations are unaffected.
+    """
     # ConnectTimeout is the TCP/SSH handshake budget. It must accommodate the
     # target's real link latency; a relayed or VPN path can need several seconds.
     connect_timeout = max(1, int(round(target.ssh_timeout)))
-    args = [
-        "ssh",
-        "-o",
-        "BatchMode=yes",
-        "-o",
-        f"ConnectTimeout={connect_timeout}",
-        "-o",
-        "StrictHostKeyChecking=accept-new",
-    ]
+    known_hosts = _managed_known_hosts_for(target)
+    if known_hosts is not None:
+        args = [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            f"ConnectTimeout={connect_timeout}",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            f"UserKnownHostsFile={known_hosts}",
+            "-o",
+            "GlobalKnownHostsFile=/dev/null",
+        ]
+    else:
+        args = [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            f"ConnectTimeout={connect_timeout}",
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+        ]
     if target.port:
         args += ["-p", str(target.port)]
     if target.identity:
@@ -263,6 +291,19 @@ def target_ssh_prefix(target: Target) -> list[str]:
     endpoint = f"{target.user}@{target.host}" if target.user else (target.host or "")
     args.append(endpoint)
     return args
+
+
+def _managed_known_hosts_for(target: Target) -> str | None:
+    """caasi's known_hosts for an enrolled target, or None when it has no record."""
+    try:
+        from . import identity
+    except Exception:  # pragma: no cover - identity is part of core
+        return None
+    record = identity.load_record(target.name)
+    if record is None or not record.ssh_keys:
+        return None
+    path = identity.write_managed_known_hosts(record)
+    return str(path)
 
 
 def remote_path_expr(path: str) -> str:

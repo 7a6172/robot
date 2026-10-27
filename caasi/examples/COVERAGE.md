@@ -3,7 +3,7 @@
 **Auditable mapping from each CLI command to the example that demonstrates it.**
 
 Generated from the **live command tree**, not maintained by hand: the current CLI has
-**58 root commands and 256 command paths**, and **every one is listed below**. A
+**58 root commands and 266 command paths**, and **every one is listed below**. A
 command that has no runnable example is still listed, with the reason — nothing is
 silently omitted.
 
@@ -148,6 +148,11 @@ of them invents a `--dry-run` that the CLI does not provide.
 | `caasi node` | 02 | runnable | CI | works with local alone |
 | `caasi node check` | 02 | runnable | CI | works with local alone |
 | `caasi node deps` | 02 | runnable | CI | read-only; works with local alone |
+| `caasi node discover` | 02 | runnable | CI/opt-in | bounded scan of configured subnets |
+| `caasi node enroll` | 02 | runnable | manual | learns trust; explicit action |
+| `caasi node identity` | 02 | runnable | CI | local record; `--no-verify` avoids network |
+| `caasi node reenroll` | 02 | runnable | manual | replaces trusted keys; needs the flag |
+| `caasi node refresh` | 02 | runnable | CI/opt-in | verify + optional discovery |
 | `caasi node inspect` | 02 | runnable | CI | works with local alone |
 | `caasi node list` | 02 | runnable | CI | works with local alone |
 | `caasi node occupancy` | 02 | runnable | CI | works with local alone |
@@ -266,6 +271,11 @@ of them invents a `--dry-run` that the CLI does not provide.
 | `caasi target` | 02 | runnable | CI | works with local alone |
 | `caasi target check` | 02 | runnable | CI | works with local alone |
 | `caasi target deps` | 02 | runnable | CI | read-only; works with local alone |
+| `caasi target discover` | 02 | runnable | CI/opt-in | bounded scan of configured subnets |
+| `caasi target enroll` | 02 | runnable | manual | learns trust; explicit action |
+| `caasi target identity` | 02 | runnable | CI | local record; `--no-verify` avoids network |
+| `caasi target reenroll` | 02 | runnable | manual | replaces trusted keys; needs the flag |
+| `caasi target refresh` | 02 | runnable | CI/opt-in | verify + optional discovery |
 | `caasi target inspect` | 02 | runnable | CI | works with local alone |
 | `caasi target list` | 02 | runnable | CI | works with local alone |
 | `caasi target occupancy` | 02 | runnable | CI | works with local alone |
