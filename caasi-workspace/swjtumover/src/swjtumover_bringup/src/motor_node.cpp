@@ -275,18 +275,64 @@ public:
   }
 
 private:
+  //! Declare a numeric parameter from the ROS 1 style configuration, accepting int or double.
+  /*!
+   * ROS 1's `NodeHandle::param<float>` converted an integer YAML value for us, so
+   * `control_freq: 50` was fine. ROS 2 rejects an integer override for a double parameter
+   * ("parameter is of type double, setting it to integer is not allowed"), which would make
+   * every ROS 1 configuration file fail to load after the migration. The override's own type
+   * therefore decides how the parameter is declared.
+   */
+  double declare_numeric(const std::string & name, double fallback)
+  {
+    const auto overrides = get_node_parameters_interface()->get_parameter_overrides();
+    auto it = overrides.find(name);
+    if (it != overrides.end()) {
+      const auto type = it->second.get_type();
+      if (type == rclcpp::ParameterType::PARAMETER_INTEGER) {
+        return static_cast<double>(
+          declare_parameter<int64_t>(name, static_cast<int64_t>(std::llround(fallback))));
+      }
+      if (type == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        return declare_parameter<double>(name, fallback);
+      }
+      throw std::runtime_error(name + ": expected an integer or a double");
+    }
+    return declare_parameter<double>(name, fallback);
+  }
+
+  //! Same idea for parameters that are integers in the ROS 1 files.
+  int64_t declare_integer(const std::string & name, int64_t fallback)
+  {
+    const auto overrides = get_node_parameters_interface()->get_parameter_overrides();
+    auto it = overrides.find(name);
+    if (it != overrides.end()) {
+      const auto type = it->second.get_type();
+      if (type == rclcpp::ParameterType::PARAMETER_DOUBLE) {
+        return static_cast<int64_t>(std::llround(declare_parameter<double>(
+          name, static_cast<double>(fallback))));
+      }
+      if (type == rclcpp::ParameterType::PARAMETER_INTEGER) {
+        return declare_parameter<int64_t>(name, fallback);
+      }
+      throw std::runtime_error(name + ": expected an integer or a double");
+    }
+    return declare_parameter<int64_t>(name, fallback);
+  }
+
   void declare_parameters()
   {
-    control_freq_ = declare_parameter<double>("motor.control_freq", 50.0);
+    control_freq_ = declare_numeric("motor.control_freq", 50.0);
     ip_address_ = declare_parameter<std::string>("motor.ip_address", "192.168.100.100");
-    port_ = declare_parameter<int>("motor.port", 23);
-    wheel_max_speed_rpm_ = declare_parameter<int>("motor.wheel_max_speed_rpm", 300);
-    wheel_acc_ = declare_parameter<int>("motor.wheel_acc", 10000);
-    cmd_vel_timeout_ = declare_parameter<double>("motor.cmd_vel_timeout", 0.5);
-    motor_feedback_timeout_ = declare_parameter<double>("motor.motor_feedback_timeout", 0.5);
-    chassis_radius_ = declare_parameter<double>("motor.chassis_radius", 0.103);
-    wheel_radius_ = declare_parameter<double>("motor.wheel_radius", 0.0535);
-    odom_compensation_ratio_ = declare_parameter<double>("motor.odom_compensation_ratio", 1.0);
+    port_ = static_cast<int>(declare_integer("motor.port", 23));
+    wheel_max_speed_rpm_ = static_cast<int>(
+      declare_integer("motor.wheel_max_speed_rpm", 300));
+    wheel_acc_ = static_cast<int>(declare_integer("motor.wheel_acc", 10000));
+    cmd_vel_timeout_ = declare_numeric("motor.cmd_vel_timeout", 0.5);
+    motor_feedback_timeout_ = declare_numeric("motor.motor_feedback_timeout", 0.5);
+    chassis_radius_ = declare_numeric("motor.chassis_radius", 0.103);
+    wheel_radius_ = declare_numeric("motor.wheel_radius", 0.0535);
+    odom_compensation_ratio_ = declare_numeric("motor.odom_compensation_ratio", 1.0);
     publish_tf_ = declare_parameter<bool>("motor.publish_tf", true);
   }
 

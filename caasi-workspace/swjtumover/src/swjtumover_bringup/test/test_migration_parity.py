@@ -135,3 +135,22 @@ def test_robot_model_is_the_ros1_one():
     assert match, 'lidar_joint missing'
     joint = match.group(0)
     assert '0.14114' in joint and '0.02618' in joint
+
+
+def test_numeric_parameters_accept_ros1_integer_yaml():
+    """ROS 1 converted an integer YAML value for a float parameter; ROS 2 does not.
+
+    `control_freq: 50` in the ROS 1 motor.yaml failed on the robot with
+    "parameter {motor.control_freq} is of type {double}, setting it to {integer} is not
+    allowed". The node therefore declares from the override's own type, so a ROS 1
+    configuration file loads unchanged. Found on hardware, not in a unit test; asserted here
+    so it cannot regress.
+    """
+    source = _read(PKG / 'src' / 'motor_node.cpp')
+    assert 'declare_numeric' in source and 'declare_integer' in source
+    assert 'get_parameter_overrides' in source
+    assert 'PARAMETER_INTEGER' in source and 'PARAMETER_DOUBLE' in source
+    # and the ROS 1 files really do use integers for these
+    ros1 = yaml.safe_load(_read(CONFIG / 'motor_ros1.yaml'))['motor']
+    assert isinstance(ros1['control_freq'], int)
+    assert isinstance(ros1['wheel_acc'], int)
