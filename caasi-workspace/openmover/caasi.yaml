@@ -14,6 +14,15 @@ requires:
   isaac_lab:
     version: ">=2.0"
   nav2: {}
+  # Interaction tier (bringup.launch.py interaction:=true). Not needed for a diagnostic or
+  # stationary bringup, which is why they are declared here rather than assumed: the physical
+  # robot has neither, and teleoperation additionally needs a DISPLAY.
+  python3-pynput:
+    optional_for: [bringup, build]
+    note: "only for the interaction tier (teleoperation); also needs a DISPLAY"
+  python3-pygame:
+    optional_for: [bringup, build]
+    note: "only for the interaction tier (speaker); also needs an audio device and assets"
 project_layout:
   src: src
   assets: assets

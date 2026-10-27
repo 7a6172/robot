@@ -212,10 +212,17 @@ def gather_facts(target, deps: list[str], executables: list[str],
     return facts
 
 
+_DEBIAN_PREFIXES = ("python3-", "lib", "ros-", "qt", "gstreamer", "build-essential",
+                    "cmake", "git", "curl", "wget", "pkg-config")
+
+
 def _apt_name(name: str, distro: str | None) -> str | None:
     """Best-effort Debian package name for a dependency, or None when not derivable."""
     if name == "colcon":
         return "python3-colcon-common-extensions"
+    # A name that already looks like a Debian package is one: no guessing needed.
+    if name.startswith(_DEBIAN_PREFIXES) and " " not in name:
+        return name
     if name.startswith("ros_gz_") or name.startswith("joint_") or name.endswith("_publisher"):
         if not distro:
             return None
@@ -280,16 +287,27 @@ def inspect_target_deps(
 
     for name, entry in requires.items():
         spec = None
+        optional_for: list[str] = []
+        note = ""
         if isinstance(entry, dict):
             spec = entry.get("version")
+            optional_for = [str(s) for s in (entry.get("optional_for") or [])]
+            note = str(entry.get("note") or "")
         elif isinstance(entry, str):
             spec = entry
-        required = not (scope == "bringup" and name in SIMULATION_ONLY)
-        why = (
-            "declared by the project manifest"
-            if required
-            else "declared by the project, but only needed for simulation"
-        )
+        # A requirement may declare itself optional for specific operations, which is how an
+        # interaction-tier dependency (a display, an audio device) stops being reported as a
+        # missing prerequisite for a diagnostic or stationary bringup.
+        optional_here = scope in optional_for
+        required = not optional_here and not (scope == "bringup" and name in SIMULATION_ONLY)
+        if required:
+            why = "declared by the project manifest"
+        elif optional_here:
+            why = note or f"declared by the project, but only needed for: {', '.join(optional_for)}"
+        else:
+            why = "declared by the project, but only needed for simulation"
+        if optional_here and note:
+            why = note
         deps.append(Dependency(name, required, why, spec=spec, declared=True))
 
     for name, why in SCOPE_EXTRAS[scope]:

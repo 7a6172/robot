@@ -185,3 +185,32 @@ def test_cli_exit_one_when_inspection_failed(inject):
     inject(_facts(error="unreachable"))
     result = runner.invoke(app, ["target", "deps", "local", "--for", "project"])
     assert result.exit_code == 1
+
+
+def test_manifest_entry_can_be_optional_for_a_scope(inject):
+    """An interaction-tier dependency must not fail a diagnostic bringup."""
+    inject(_facts(executables={"colcon": "/usr/bin/colcon"},
+                  packages={"joint_state_publisher": "/x", "robot_state_publisher": "/y",
+                            "ros2": "/opt/ros/jazzy/bin/ros2"}))
+    requires = {"python3-pynput": {"optional_for": ["bringup"],
+                                   "note": "only for the interaction tier"}}
+    report = deps.inspect_target_deps(T, scope="bringup", requires=requires)
+    entry = next(r for r in report.results if r.dependency.name == "python3-pynput")
+    assert entry.dependency.required is False
+    assert entry.state == deps.STATE_OPTIONAL_ABSENT
+    assert report.ok
+    # ... but it is still reported as a real, missing prerequisite for the interaction tier
+    scoped = deps.inspect_target_deps(T, scope="project", requires=requires)
+    still = next(r for r in scoped.results if r.dependency.name == "python3-pynput")
+    assert still.dependency.required is True
+
+
+def test_debian_style_names_get_a_verified_install_command(inject):
+    """Nothing to guess: the dependency name already is the package name."""
+    inject(_facts(executables={}, packages={}),)
+    report = deps.inspect_target_deps(T, scope="project",
+                                      requires={"python3-pygame": {}})
+    entry = next(r for r in report.results if r.dependency.name == "python3-pygame")
+    assert entry.state == deps.STATE_MISSING
+    assert entry.install_command == "sudo apt install -y python3-pygame"
+    assert entry.install_verified is True

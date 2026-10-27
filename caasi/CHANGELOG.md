@@ -9,6 +9,21 @@ environment-oriented tool; 0.4.0 makes targets — remote machines and robots �
 concept end to end. Everything below is implemented and validated, and the release is
 defined by that set rather than by a date.
 
+### Added — manifest requirements can scope themselves as optional
+
+`requires:` entries accept `optional_for: [bringup, build]` (plus a `note` explaining why).
+An interaction-tier dependency — a display stack, an audio device — is then reported as
+`optional-absent` for a diagnostic or stationary bringup instead of a missing prerequisite,
+while still being required for the full project declaration. Previously only a hardcoded list
+of simulation packages could be optional, which meant a new optional dependency either had to
+be added to that list or produced a false blocker.
+
+### Fixed — Debian-style dependency names get a real install command
+
+A dependency already named like a Debian package (`python3-pygame`, `libfoo-dev`) now yields
+`sudo apt install -y <name>` marked verified, instead of "no package name derivable; review
+manually". ROS package names still resolve through the distro.
+
 ### Fixed — `caasi exec -- <args>` now expands a target-side `~/` path
 
 Passing a target path as an argument silently produced a literal `~` directory, or — worse —
