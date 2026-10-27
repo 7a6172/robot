@@ -119,3 +119,26 @@ change controller state.
 Lesson recorded: control-protocol probing must only ever use the exact frame the production
 driver sends (same `acc`, `byte7 = 0x00`), never exploratory variants. A board power cycle is
 the recovery step.
+
+---
+
+# Leading hypothesis: supply voltage, not damaged hardware
+
+The operator suggested low battery. That fits the whole sequence better than hardware damage:
+
+* the reply rate did not stop abruptly — it **decayed** (≈100% of frames → ~32% → 0) while the
+  board's Ethernet side kept answering ping throughout;
+* the motors stopped at the same time, with no error and no telemetry;
+* the behaviour differed between two robots at different times with the same code, and
+  recovered for a while after a power cycle;
+* a network/PHY module typically keeps running on less current than the control MCU, so
+  "ping works, control does not" is what a brownout looks like from the outside.
+
+If that is right, nothing is damaged and the previous "the board is faulty" conclusion should
+be read as "the board stopped working under the conditions tested", not as a verdict on the
+hardware.
+
+**Action before any further motor or odometry work:** charge both robots fully, then repeat the
+trio (protocol reply rate → telemetry rate → slow motion with odometry) and record the battery
+voltage alongside the result. Motion results measured on a partially discharged pack should not
+be used as a behavioural reference.
