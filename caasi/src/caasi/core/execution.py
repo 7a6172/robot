@@ -225,6 +225,15 @@ def run_on_target(target: "targets_core.Target", request: ExecRequest) -> ExecRe
     return _classify(raw, request, target.name)
 
 
+class RosDiscoveryError(RuntimeError):
+    """The target could not be queried, which is not the same as having no ROS.
+
+    Conflating the two told users "this target does not report a ROS distribution" when
+    the real cause was a probe that failed on a busy or slow link, and the suggested fix
+    (pass --ros-setup) hid the actual problem.
+    """
+
+
 def ros_setup_for(
     target: "targets_core.Target",
     distro: str | None = None,
@@ -243,9 +252,10 @@ def ros_setup_for(
         # Reuse the existing discovery machinery instead of inventing a second probe.
         try:
             inspection = targets_core.discover_target(target, config)
-            name = inspection.environment.ros_distro if inspection.environment else None
-        except Exception:
-            name = None
+        except Exception as err:
+            # A failed probe is not a target without ROS; say which one it was.
+            raise RosDiscoveryError(str(err)) from err
+        name = inspection.environment.ros_distro if inspection.environment else None
     if not name:
         return None
     return f"/opt/ros/{name}/setup.bash"

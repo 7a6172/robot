@@ -926,6 +926,7 @@ MESSAGES: dict[str, str] = {
     "exec.flag.timeout": "Seconds before the command is considered timed out",
     "exec.error.unknown_target": "Unknown target '{name}'.",
     "exec.error.bad_env": "Invalid --env '{entry}'; expected KEY=VALUE.",
+    "exec.error.ros_probe_failed": "Could not query the ROS environment of '{name}': {reason}. Retry, or pass --ros-setup explicitly.",
     "exec.error.unknown_ros": "Target '{name}' does not report a ROS distribution; pass --ros-setup explicitly.",
     "exec.outcome.ok": "ok",
     "exec.outcome.nonzero": "command failed",

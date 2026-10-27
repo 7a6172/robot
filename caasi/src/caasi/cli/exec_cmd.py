@@ -69,7 +69,11 @@ def exec_command(
     # an unknown distro is reported, never guessed.
     setup_path = ros_setup
     if setup_path is None and (ros or overlay):
-        setup_path = execution.ros_setup_for(target, config=cfg)
+        try:
+            setup_path = execution.ros_setup_for(target, config=cfg)
+        except execution.RosDiscoveryError as err:
+            output.fail(_("exec.error.ros_probe_failed").format(name=target.name, reason=err))
+            raise typer.Exit(1)
         if setup_path is None:
             output.fail(_("exec.error.unknown_ros", name=target.name))
 

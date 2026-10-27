@@ -196,3 +196,38 @@ def test_cli_help_documented():
     assert result.exit_code == 0
     for flag in ("--target", "--cwd", "--env", "--ros", "--overlay", "--timeout"):
         assert flag in result.stdout
+
+
+def test_ros_discovery_failure_is_not_reported_as_missing_ros(monkeypatch):
+    """A probe that fails must not be described as a target without ROS.
+
+    The conflation sent users to --ros-setup when the real cause was a failed query on a
+    busy robot, which is exactly when the message matters.
+    """
+    import pytest
+
+    from caasi.core import execution
+    from caasi.core.targets import Target
+
+    target = Target(name="r1", transport="ssh", host="h", user="u")
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("probe timed out after 30.0s")
+
+    monkeypatch.setattr(execution.targets_core, "discover_target", boom)
+    with pytest.raises(execution.RosDiscoveryError, match="probe timed out"):
+        execution.ros_setup_for(target)
+
+
+def test_target_without_ros_still_returns_none(monkeypatch):
+    """Discovering a target successfully and finding no ROS is a different answer."""
+    from caasi.core import execution
+    from caasi.core.targets import Target
+
+    class Inspection:
+        environment = None
+
+    monkeypatch.setattr(
+        execution.targets_core, "discover_target", lambda *a, **k: Inspection())
+    target = Target(name="r1", transport="ssh", host="h", user="u")
+    assert execution.ros_setup_for(target) is None

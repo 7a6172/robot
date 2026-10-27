@@ -9,6 +9,17 @@ environment-oriented tool; 0.4.0 makes targets — remote machines and robots �
 concept end to end. Everything below is implemented and validated, and the release is
 defined by that set rather than by a date.
 
+### Fixed — a failed ROS probe is no longer reported as "this target has no ROS"
+
+`caasi exec --ros` derives the setup path from what the target reports. Any failure while
+querying the target was swallowed and turned into "does not report a ROS distribution; pass
+--ros-setup explicitly", which sent the user to a workaround when the real cause was a
+probe that did not complete — seen on a robot that had just finished a long build.
+
+The two answers are now distinct: discovering a target and finding no ROS still returns
+nothing (and keeps that message), while a probe that *fails* raises `RosDiscoveryError` and
+is reported as a query failure with its reason.
+
 ### Fixed — a run is only "stopped" when nothing it started is still running
 
 The wrapper exits as soon as the program it launches returns or detaches, so a pid-only
