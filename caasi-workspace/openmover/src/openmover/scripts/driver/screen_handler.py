@@ -32,6 +32,20 @@ from std_msgs.msg import String
 COMM_TAIL = b"\x00"
 
 
+def build_qr_payload(text: str) -> bytes:
+    """The display's QR text frame, exactly as the ROS 1 sender wrote it."""
+    return f'qrcode.txt="{text}"'.encode()
+
+
+def framed_datagrams(text: str) -> list[bytes]:
+    """Every datagram one QR update consists of: the payload, then three tails.
+
+    Kept as a pure function so the wire format can be asserted in tests without opening a
+    socket: this is the only part of the node that a display or a protocol sniff would see.
+    """
+    return [build_qr_payload(text)] + [COMM_TAIL] * 3
+
+
 class ScreenHandler(Node):
     """Sends `qrcode.txt` display updates over UDP."""
 
@@ -82,8 +96,8 @@ class ScreenHandler(Node):
         if msg.data == self._last_text:
             return  # ROS 1 suppresses duplicates; repeated identical text is a no-op
         self._last_text = msg.data
-        payload = f'qrcode.txt="{msg.data}"'.encode()
-        self._send(payload)
+        for payload in framed_datagrams(msg.data):
+            self._send(payload)
 
     def _send(self, payload: bytes) -> None:
         if self._sock is None:
@@ -91,10 +105,7 @@ class ScreenHandler(Node):
             if self._sock is None:
                 return
         try:
-            # Four datagrams, exactly as the ROS 1 framer does it.
             self._sock.sendto(payload, (self._ip, self._port))
-            for _ in range(3):
-                self._sock.sendto(COMM_TAIL, (self._ip, self._port))
         except OSError as exc:
             self.get_logger().error(f"screen send failed: {exc}")
             try:

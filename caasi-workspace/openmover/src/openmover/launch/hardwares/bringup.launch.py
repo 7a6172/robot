@@ -17,7 +17,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (DeclareLaunchArgument, IncludeLaunchDescription,
                             OpaqueFunction, SetEnvironmentVariable,
-                            SetLaunchConfiguration)
+                            SetLaunchConfiguration, TimerAction)
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
@@ -120,9 +120,12 @@ def bluesea2_node(name, topic, frame_id, local_port, lidar_ip, use_sim_time,
 
 
 def teleop_node(use_sim_time, condition=None):
+    # No respawn: teleoperation needs an operator and a keyboard backend. Respawning hid that
+    # requirement behind a restart loop, so an unusable environment looked like a running
+    # component. The handler now exits with a precise message instead.
     return Node(
         package='openmover', executable='teleop_handler.py', name='teleop_handler',
-        output='screen', respawn=True, condition=condition,
+        output='screen', respawn=False, condition=condition,
         parameters=[hardwares_yaml, modules_yaml, {'use_sim_time': use_sim_time}])
 
 
@@ -135,6 +138,7 @@ def generate_launch_description():
     hardware = LaunchConfiguration('hardware')
     lidar_driver = LaunchConfiguration('lidar_driver')
     io_driver = LaunchConfiguration('io_driver')
+    interaction = LaunchConfiguration('interaction')
 
     # The environment factor for M1 hardening: exactly '1' only when the launch
     # argument is exactly 'true'. A params file cannot set an environment variable,
@@ -227,7 +231,19 @@ def generate_launch_description():
     vanjee_cond = real_with(lidar_driver, 'vanjee')
     bluesea_cond = real_with(lidar_driver, 'bluesea2')
     io_board_cond = real_with(io_driver, 'io_board')
-    screen_cond = real_with(io_driver, 'screen')
+    # The screen handler writes to the display board over the network, so it belongs to the
+    # interaction tier as well as to the io_driver selection.
+    screen_cond = IfCondition(PythonExpression(
+        ["'", system_mode, "' == '1' and '", io_driver, "' == 'screen' and '",
+         interaction, "' == 'true'"]))
+
+    # Components that interact with the outside world (a display, a speaker, an operator's
+    # keyboard) are separated from the sensing and control stack. A diagnostic or stationary
+    # bringup runs with interaction:=false and touches nothing physical.
+    sim_interaction_cond = IfCondition(PythonExpression(
+        ["'", system_mode, "' == '0' and '", interaction, "' == 'true'"]))
+    real_interaction_cond = IfCondition(PythonExpression(
+        ["'", system_mode, "' == '1' and '", interaction, "' == 'true'"]))
 
     # The two-lidar fusion only makes sense for the two-bluesea fit. A single 360 degree
     # Vanjee publishes /scan directly, so merging two non-existent topics would replace a
@@ -320,7 +336,19 @@ def generate_launch_description():
         output='screen', respawn=True, condition=sim_cond,
         parameters=[{'use_sim_time': use_sim_time}])
 
-    return LaunchDescription([
+    # The Vanjee driver must bind UDP 7000 *before any other ROS 2 process on this
+    # machine*: in this environment every ROS 2 node also binds UDP 7000 (measured across
+    # domains 0/1/2/7), and that socket is held without SO_REUSEADDR, so the LiDAR can never
+    # bind afterwards. The DDS side tolerates losing the port, so starting the driver first
+    # is sufficient. It is therefore launched immediately and everything else is deferred,
+    # which makes the ordering deterministic instead of a race.
+    lidar_first = Node(
+        package='openmover_vanjee', executable='vanjee_scan_node',
+        name='vanjee_lidar_node', output='screen', respawn=True,
+        condition=vanjee_cond,
+        parameters=[hardwares_yaml, {'use_sim_time': use_sim_time}])
+
+    deferred = LaunchDescription([
         DeclareLaunchArgument('system_mode', default_value='1'),
         DeclareLaunchArgument('sim_area', default_value='0'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
@@ -348,6 +376,17 @@ def generate_launch_description():
                         'YAML parameter file, so a copied or inherited configuration '
                         'cannot grant motor output on another robot.'),
         DeclareLaunchArgument(
+            'lidar_bind_lead', default_value='3.0',
+            description='Seconds between starting the LiDAR driver and the rest of the '
+                        'stack. The driver must own UDP 7000 first, because every ROS 2 '
+                        'process also binds it in this environment.'),
+        DeclareLaunchArgument(
+            'interaction', default_value='true',
+            description='Start the components that interact with the outside world: the '
+                        'screen display, the speaker and teleoperation. Set false for a '
+                        'diagnostic or stationary bringup, which otherwise runs the sensing, '
+                        'localization and control stack only.'),
+        DeclareLaunchArgument(
             'launch_gazebo', default_value='1',
             description='仿真模式下是否启动 Gazebo 本体；0 = 外部仿真器'
                         '（Isaac）对接，其余仿真节点照常启动'),
@@ -365,7 +404,7 @@ def generate_launch_description():
 
         # 启动扬声器驱动
         Node(package='openmover', executable='speaker_handler.py',
-             name='speaker_handler', respawn=True,
+             name='speaker_handler', respawn=True, condition=real_interaction_cond,
              parameters=[{'sound_filepath': os.path.join(
                  os.environ.get('HOME', ''), 'openmover_robot', 'sounds') + os.sep,
                  'use_sim_time': use_sim_time}]),
@@ -404,7 +443,7 @@ def generate_launch_description():
                        condition=IfCondition(PythonExpression(
                            [system_mode, ' == 0 and ', sim_area, ' == 2']))),
         simulation_handler,
-        teleop_node(use_sim_time, condition=sim_cond),
+        teleop_node(use_sim_time, condition=sim_interaction_cond),
 
         # 以下为真机环境使用
         bluesea2_node('bluesea2_node_forward', 'openmover/hardware/lidar_forward/scan',
@@ -413,13 +452,6 @@ def generate_launch_description():
         bluesea2_node('bluesea2_node_rear', 'openmover/hardware/lidar_rear/scan',
                       'lidar_rear_link', 6668, '192.168.100.102', use_sim_time,
                       condition=bluesea_cond),
-        # Vanjee 718H: one 360 degree scanner publishing /scan in lidar_link. Its
-        # parameters (including the per-robot addresses) live in the profile YAML, so a
-        # second robot with different addresses changes config, not launch code.
-        Node(package='openmover_vanjee', executable='vanjee_scan_node',
-             name='vanjee_lidar_node', output='screen', respawn=True,
-             condition=vanjee_cond,
-             parameters=[hardwares_yaml, {'use_sim_time': use_sim_time}]),
         OpaqueFunction(function=real_localization, condition=real_cond),
         Node(package='openmover', executable='motor_handler', name='motor_handler',
              output='screen', respawn=True, condition=real_cond,
@@ -442,7 +474,7 @@ def generate_launch_description():
              output='screen', respawn=True, condition=screen_cond,
              parameters=[hardwares_yaml, modules_yaml,
                          {'use_sim_time': use_sim_time}]),
-        teleop_node(use_sim_time, condition=real_cond),
+        teleop_node(use_sim_time, condition=real_interaction_cond),
 
         # 启动障碍检测
         Node(package='openmover', executable='obstacle_handler', name='obstacle_handler',
@@ -450,4 +482,24 @@ def generate_launch_description():
              parameters=[hardwares_yaml, modules_yaml,
                          {'use_sim_time': use_sim_time}],
              remappings=[('openmover/hardware/lidar/scan/obstacle', lidar_scan_topic)]),
+    ])
+
+    # Only the argument declarations and the two validators run immediately: they create no
+    # DDS participant. Everything that *produces nodes* is deferred -- including the
+    # OpaqueFunctions that build the robot_description publisher and the localization
+    # include, which is exactly the mistake that once let localization_handler take the port
+    # ahead of the LiDAR driver.
+    validator_names = {'_resolve_hardware', '_validate_motor_actuation'}
+    declaration_actions = []
+    node_actions = []
+    for action in deferred.entities:
+        func_name = getattr(getattr(action, '_OpaqueFunction__function', None), '__name__', '')
+        if isinstance(action, DeclareLaunchArgument) or func_name in validator_names:
+            declaration_actions.append(action)
+        else:
+            node_actions.append(action)
+
+    return LaunchDescription(declaration_actions + [
+        lidar_first,
+        TimerAction(period=LaunchConfiguration('lidar_bind_lead'), actions=node_actions),
     ])

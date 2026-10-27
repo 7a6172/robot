@@ -132,6 +132,18 @@ def selected(module, **launch_args) -> Selection:
         if type(entity).__name__ == 'SetLaunchConfiguration':
             entity.execute(context)
             return
+        # Containers (TimerAction, GroupAction, nested LaunchDescription) are transparent:
+        # what matters is the set of nodes that would run, not their scheduling wrapper.
+        nested = getattr(entity, 'actions', None)
+        if isinstance(nested, (list, tuple)):
+            for child in nested:
+                visit(child)
+            return
+        inner = getattr(entity, 'entities', None)
+        if isinstance(inner, (list, tuple)) and hasattr(entity, 'visit'):
+            for child in inner:
+                visit(child)
+            return
         if type(entity).__name__ == 'IncludeLaunchDescription':
             nodes.append({'name': '<include>', 'executable': '<include>',
                           'package': '<include>', 'parameters': {}, 'env': {}})
@@ -166,7 +178,8 @@ def selected(module, **launch_args) -> Selection:
             for key, value in items:
                 env[_perform(key, context)] = _perform(value, context)
             nodes.append({'name': name or exe, 'executable': exe or name,
-                          'package': package, 'parameters': params, 'env': env})
+                          'package': package, 'parameters': params, 'env': env,
+                          'respawn': bool(getattr(entity, '_Node__respawn', False))})
             return
         # Anything else (groups, log filters) is transparent for this purpose.
 
@@ -376,6 +389,11 @@ def _include_args(module, **launch_args):
         if type(entity).__name__ == 'SetLaunchConfiguration':
             entity.execute(context)
             return
+        nested = getattr(entity, 'actions', None)
+        if isinstance(nested, (list, tuple)):
+            for child in nested:
+                visit(child)
+            return
         if type(entity).__name__ == 'IncludeLaunchDescription':
             args = getattr(entity, 'launch_arguments', None) or []
             resolved = {}
@@ -417,3 +435,148 @@ def test_simulation_still_gets_a_scan_topic(launch):
     assert includes, "simulation localization include not found"
     for args in includes:
         assert args.get('scan_topic'), args
+
+
+# ------------------------------------------- diagnostics versus the real profile
+
+def test_stack_check_expectations_match_the_vanjee_profile(launch):
+    """The diagnostic's notion of "correct" must come from the profile, not from hope."""
+    import importlib.util
+    import yaml
+
+    script = SRC / 'scripts' / 'diagnostic' / 'stack_check.py'
+    spec = importlib.util.spec_from_file_location('stack_check_mod', script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    profile = yaml.safe_load(
+        (SRC / 'config_defaults' / 'hardware' / 'swjtumover.yaml').read_text())
+    vanjee = profile['vanjee_lidar_node']['ros__parameters']
+
+    assert module.EXPECTED['frame'] == vanjee['frame_id']
+    assert module.EXPECTED['range_min'] == vanjee['min_distance']
+    assert module.EXPECTED['range_max'] == vanjee['max_distance']
+    assert module.EXPECTED['samples'] == 1440
+
+
+def test_stack_check_publishes_nothing(launch):
+    """A diagnostic that could command the robot would not be a diagnostic."""
+    script = SRC / 'scripts' / 'diagnostic' / 'stack_check.py'
+    text = script.read_text()
+    # Constructs, not words: the file legitimately *mentions* actuation in its comments.
+    for forbidden in ('create_publisher(', '.publish(', 'call_async(', 'cmd_vel'):
+        assert forbidden not in text, f"diagnostic must not contain {forbidden!r}"
+
+
+# ------------------------------------------------ interaction / side-effecting tier
+
+def test_stationary_tier_excludes_side_effecting_components(launch):
+    """interaction:=false is the diagnostic/stationary tier: nothing physical is touched."""
+    sel = selected(launch, hardware='swjtumover', interaction='false')
+    assert sel.find('screen_handler.py') is None
+    assert sel.find('speaker_handler.py') is None
+    assert sel.find('teleop_handler.py') is None
+    # the sensing, localization and control stack is still there
+    assert sel.find('vanjee_scan_node') is not None
+    assert sel.find('motor_handler') is not None
+
+
+def test_full_tier_includes_them_by_default(launch):
+    sel = selected(launch, hardware='swjtumover')
+    assert sel.find('screen_handler.py') is not None
+    assert sel.find('speaker_handler.py') is not None
+    assert sel.find('teleop_handler.py') is not None
+
+
+def test_teleop_does_not_respawn(launch):
+    """An operator component must fail visibly, not restart forever and look healthy."""
+    node = selected(launch, hardware='swjtumover').find('teleop_handler.py')
+    assert node is not None
+    assert node['respawn'] is False
+
+
+def test_interaction_does_not_gate_the_sensor(launch):
+    for value in ('true', 'false'):
+        sel = selected(launch, hardware='swjtumover', interaction=value)
+        assert sel.find('vanjee_scan_node') is not None, value
+
+
+# ------------------------------------------------------- TF frame ownership
+
+def test_urdf_does_not_claim_the_scanner_or_odom_frames(launch):
+    """One owner per transform: the URDF must not compete with the profile's frames."""
+    import re
+    text = (SRC / 'urdf' / 'robot_description.urdf').read_text()
+    links = set(re.findall(r'<link\s+name="([^"]+)"', text))
+    assert 'base_link' in links
+    # The Venjee profile supplies lidar_link through a static publisher, and odom comes
+    # from localization_handler. If the URDF also defined them there would be two owners.
+    assert 'lidar_link' not in links
+    assert 'odom' not in links
+
+
+def test_bringup_provides_exactly_one_lidar_link_transform(launch):
+    sel = selected(launch, hardware='swjtumover')
+    providers = [n for n in sel.nodes
+                 if n['executable'] == 'static_transform_publisher']
+    assert len(providers) == 1, [n['name'] for n in providers]
+
+
+def test_urdf_is_the_lab_fit_and_is_documented_as_such(launch):
+    """The shipped URDF describes the two-bluesea lab robot, not the Vanjee fit.
+
+    Not fixed here: a per-profile URDF is a modelling change. Recorded as a test so the
+    mismatch cannot be forgotten -- the physical fit relies on the static transform for
+    lidar_link, and the lab's lidar_forward/rear frames are simply unused.
+    """
+    import re
+    text = (SRC / 'urdf' / 'robot_description.urdf').read_text()
+    links = set(re.findall(r'<link\s+name="([^"]+)"', text))
+    assert {'lidar_forward_link', 'lidar_rear_link'} <= links
+
+
+# ------------------------------------------- LiDAR-before-DDS startup ordering
+
+def test_lidar_driver_is_started_before_the_rest_of_the_stack(launch):
+    """Every ROS 2 process binds UDP 7000 here, so the LiDAR must bind it first.
+
+    Measured on the robot across domains 0/1/2/7: a bare rclpy node takes 0.0.0.0:7000, and
+    that holder has no SO_REUSEADDR, so the driver can never bind afterwards. Ordering the
+    launch is what makes the sensor usable inside the full stack.
+    """
+    from launch.actions import DeclareLaunchArgument, OpaqueFunction
+
+    from launch import LaunchContext
+
+    description = launch.generate_launch_description()
+    context = LaunchContext()
+    configs = {}
+    for entity in description.entities:
+        if isinstance(entity, DeclareLaunchArgument) and entity.default_value:
+            configs[entity.name] = _perform(entity.default_value, context)
+    configs['hardware'] = 'swjtumover'
+    context._LaunchContext__launch_configurations = configs
+
+    order = []
+    for entity in description.entities:
+        if isinstance(entity, (DeclareLaunchArgument, OpaqueFunction)):
+            continue  # declarations and validators create no DDS participant
+        order.append(type(entity).__name__)
+
+    # First scheduled action is the driver node itself, everything else follows behind it.
+    first = description.entities[
+        [i for i, e in enumerate(description.entities)
+         if not isinstance(e, (DeclareLaunchArgument, OpaqueFunction))][0]]
+    assert type(first).__name__ == 'Node'
+    assert _perform(first.node_executable, context) == 'vanjee_scan_node'
+    assert 'TimerAction' in order, order
+
+
+def test_deferred_stack_still_contains_the_control_components(launch):
+    sel = selected(launch, hardware='swjtumover')
+    # The deferral must not lose anything.
+    for expected in ('motor_handler', 'obstacle_handler', 'localization_handler'):
+        if expected == 'localization_handler':
+            continue  # started by the localization include, not directly
+        assert sel.find(expected) is not None, expected
+    assert sel.find('<include>') is not None, "localization include missing"

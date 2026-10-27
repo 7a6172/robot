@@ -166,3 +166,104 @@ this is processed sensor data, not merely a subscription.
 * `caasi target deps swjtumover05 --for bringup` → 4 installed, 0 missing, 2 optional-absent
   (the simulation-only pair). `--for sim` still reports `ros_gz_sim`/`ros_gz_bridge` as
   required-but-missing, so they stay optional for physical bringup.
+
+---
+
+# Follow-up: integrated stationary bringup, ordering defect, handler hardening
+
+## The blocking defect: every ROS 2 process takes UDP 7000
+
+The Vanjee 718H sends its scan stream to `192.168.110.10:7000`. Measured on the robot: **a
+bare `rclpy` node with no OpenMover code binds `0.0.0.0:7000`**, in every ROS domain tested
+(0/1/2/7 → the DDS ports move to 7650/7900/9150, the 7000 socket does not). That socket is
+held **without `SO_REUSEADDR`**, so nothing else can bind the port afterwards — verified
+directly: a specific-address bind with `SO_REUSEADDR` against the running stack fails with
+`EADDRINUSE`.
+
+Consequences, measured in the full launch:
+
+* before the fix, `localization_handler` won the port first and `vanjee_scan_node` exited
+  immediately: `FATAL cannot bind 192.168.110.10:7000`, no `/scan` at all
+* the DDS side *tolerates* losing the port, so starting the driver first leaves the rest of
+  the stack fully functional (graph, `/scan`, TF and odometry all verified afterwards)
+
+Fix: the launch starts `vanjee_scan_node` immediately and everything else behind a
+`TimerAction(period=lidar_bind_lead)` (default 3 s). This is deterministic ordering, not a
+retry loop. `lidar_bind_lead` is a launch argument so a slower machine can widen it.
+
+Not a fix, and deliberately avoided: `SO_REUSEPORT` tricks, disabling DDS, or setting
+`StrictHostKeyChecking` style shortcuts. Switching RMW would also solve it but
+`rmw_cyclonedds_cpp` is not installed on the robot (checked), so that is an installation
+decision, not a code change.
+
+## Diagnostic path
+
+`ros2 run openmover stack_check.py` (installed, read-only, exits 1 on any required failure)
+checks in one run: LiDAR socket ownership, scan rate/samples/frame/angles/ranges/stamps/
+invalid-sample distribution, publisher and subscriber counts with a graph settle period, the
+`odom -> base_link` and `base_link -> lidar_link` transforms (finiteness, quaternion norm,
+stationary drift, monotonic stamps), TF publisher inventory and odometry freshness. A test
+asserts it contains no publisher, no `.publish(`, no service call and no `cmd_vel`.
+
+## Measured results (stationary tier, actuation disabled)
+
+| item | result |
+| --- | --- |
+| UDP 7000 owner | `vanjee_scan_node` at `192.168.110.10:7000` |
+| `/scan` | 14.035–14.045 Hz, 1440 samples, `lidar_link` |
+| angles / ranges | ±3.141592741, increment 0.004363323, 0.25–25.0 m |
+| samples | 1354 valid / 86 no-return / 0 infinite |
+| stamps | monotonic, +0.004 s from wall clock |
+| publishers / subscribers | 1 / 1 (`obstacle_handler`) |
+| `odom -> base_link` | 45 samples, drift 40 µm, quaternion norm 1.000000000 |
+| `base_link -> lidar_link` | static, drift 0 |
+| odometry | 42 Hz, age 0.00 s |
+| `/tf` publishers | `localization_handler`, `robot_state_publisher` |
+| `openmover/navigation/obstacle` | 20.0 Hz |
+
+`stack_check` reported **all required checks passed**.
+
+## Bringup tiers
+
+| tier | arguments | starts |
+| --- | --- | --- |
+| diagnostic / stationary | `interaction:=false` | driver, robot_state_publisher, joint_state_publisher, static TF, localization, motor_handler, obstacle_handler |
+| full | `interaction:=true` (default) | the above plus screen display, speaker, teleoperation |
+
+`interaction` also gates the screen handler, which writes to the display board over the
+network.
+
+## Component defects fixed
+
+* **teleoperation could not fail visibly.** `pynput` is not installed on the robot and there
+  is no `DISPLAY`; the node died on import while the launch declared `respawn=True`, i.e. an
+  endless restart loop that looks like a running component. It now checks the backend before
+  starting, prints one actionable line, exits 3 (module missing) or 4 (no display), and the
+  launch no longer respawns it. Observed in the full tier: `cannot start: the 'pynput'
+  Python module is not available ... (teleop:=false)`, `process has died [exit code 3]`.
+* **speaker reported success for a missing file.** It logged "starting playback" and swallowed
+  the exception. It now distinguishes no-backend, empty name, missing file and playback
+  failure, naming the path. Observed: `音频后端不可用，播放功能禁用（ModuleNotFoundError: No
+  module named 'pygame'）` — the node keeps running and service requests fail visibly.
+* **screen wire format was untestable.** The framing (`qrcode.txt="..."` + three NUL tails)
+  is now a pure function with tests, and sending is one datagram per frame. No payload was
+  sent to the robot: `/qrcode_text` has zero publishers, and the only "send" line in the log
+  is `motor_handler`'s zero-velocity warning.
+
+## Environmental prerequisites for the full tier
+
+* `python3-pynput` (teleoperation) and `python3-pygame` + an audio device (speaker) — neither
+  is installed; both need authorisation.
+* An operator session with `DISPLAY`/`WAYLAND_DISPLAY` for teleoperation.
+* Sound assets: `$HOME/openmover_robot/sounds` does not exist and the package ships no
+  `sounds` directory.
+
+## Still not validated
+
+* **Real-map localization.** The only map shipped is `maps_defaults/simulation/` (a 0.02 m
+  grid with origin −11.40, −7.47). No physical-environment map exists, and producing one
+  needs a SLAM run with the robot moving. Cartographer was previously shown to ingest live
+  scans against that simulation pbstream; that is not real-map localization.
+* The URDF shipped is the **lab** two-bluesea fit (`lidar_forward_link`, `lidar_rear_link`);
+  it has no `lidar_link`, which is why the static publisher owns that frame for this profile.
+  A per-profile URDF is a modelling change, not made here.

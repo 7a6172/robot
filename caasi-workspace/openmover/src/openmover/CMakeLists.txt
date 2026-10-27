@@ -141,6 +141,7 @@ install(PROGRAMS
   scripts/server/reset_server_handler.py
   scripts/server/cartographer_server_handler.py
   scripts/server/cartographer_initialpose_adapter.py
+  scripts/diagnostic/stack_check.py
   DESTINATION lib/${PROJECT_NAME})
 install(FILES
   scripts/launch_manager.py
@@ -163,6 +164,9 @@ if(BUILD_TESTING)
   # driver set a profile starts. These tests evaluate the real launch description.
   ament_add_pytest_test(
     hardware_launch_selection test/test_hardware_launch_selection.py
+    APPEND_ENV PYTHONPATH="${CMAKE_CURRENT_SOURCE_DIR}")
+  ament_add_pytest_test(
+    handlers test/test_handlers.py
     APPEND_ENV PYTHONPATH="${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 

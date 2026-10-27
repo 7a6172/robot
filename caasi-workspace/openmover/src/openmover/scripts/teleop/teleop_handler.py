@@ -10,7 +10,16 @@ import threading
 
 import rclpy
 from geometry_msgs.msg import Twist
-from pynput import keyboard
+# The keyboard backend is optional at import time so the node can explain *why* it cannot
+# run instead of dying with a bare ImportError. On this robot there is no display and
+# pynput is not installed, so the honest outcome is a clear message and a distinct exit
+# code, not a silent respawn loop.
+_KEYBOARD_IMPORT_ERROR: str | None = None
+try:
+    from pynput import keyboard
+except Exception as _exc:  # noqa: BLE001 - any import failure has the same meaning
+    keyboard = None
+    _KEYBOARD_IMPORT_ERROR = f"{type(_exc).__name__}: {_exc}"
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 
@@ -149,7 +158,30 @@ class TeleopHandler(Node):
         self.cmd_vel_pub.publish(self.twist_data)
 
 
+def check_keyboard_backend() -> str | None:
+    """Return a reason when keyboard input cannot work here, or None when it can."""
+    if keyboard is None:
+        return (
+            "the 'pynput' Python module is not available "
+            f"({_KEYBOARD_IMPORT_ERROR}). Install it on the target, or do not start "
+            "teleoperation on this robot (teleop:=false)."
+        )
+    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        return (
+            "no DISPLAY or WAYLAND_DISPLAY is set, so keyboard capture cannot attach to a "
+            "window server. Teleoperation needs an operator session; do not start it from a "
+            "headless bringup (teleop:=false)."
+        )
+    return None
+
+
 def manual_control():
+    reason = check_keyboard_backend()
+    if reason is not None:
+        print(f"[teleop_handler] cannot start: {reason}", file=sys.stderr, flush=True)
+        # 3 = a dependency is missing, 4 = the environment cannot provide input.
+        return 3 if keyboard is None else 4
+
     rclpy.init()
 
     node = TeleopHandler()
@@ -174,7 +206,8 @@ def manual_control():
         executor.shutdown()
         node.destroy_node()
         rclpy.shutdown()
+    return 0
 
 
 if __name__ == "__main__":
-    manual_control()
+    sys.exit(manual_control())

@@ -8,7 +8,12 @@ import sys
 import time
 import threading
 
-import pygame
+_PYGAME_IMPORT_ERROR: str | None = None
+try:
+    import pygame
+except Exception as _exc:  # noqa: BLE001 - any import failure means playback is impossible
+    pygame = None
+    _PYGAME_IMPORT_ERROR = f"{type(_exc).__name__}: {_exc}"
 import rclpy
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
@@ -50,7 +55,20 @@ class SpeakerHandler(Node):
             PlaysoundRequest, 'openmover/control/playsound/request',
             self.service_callback)
 
-        pygame.mixer.init()
+        # Playback is optional at runtime: report precisely why it is unavailable instead of
+        # crashing the node (and, with respawn enabled, looping on the same crash). Service
+        # requests then fail visibly rather than being logged as successful.
+        if pygame is None:
+            self.get_logger().error(
+                '%s：音频后端不可用，播放功能禁用（%s）。' % (TAG, _PYGAME_IMPORT_ERROR))
+            return
+        try:
+            pygame.mixer.init()
+        except Exception as err:
+            self.get_logger().error(
+                '%s：无法初始化音频设备，播放功能禁用（%s）。' % (TAG, err))
+            return
+        self.get_logger().info('%s：音频后端已就绪。' % TAG)
 
     def service_callback(self, req, res):
         global request_updated
@@ -97,7 +115,10 @@ def speaker():
                 # playback" and then swallowed the failure, so a missing sound file looked
                 # like a successful request -- and on the robot the sounds directory does
                 # not exist at all.
-                if sound_filename == '':
+                if pygame is None:
+                    node.get_logger().warn(
+                        '%s：音频后端不可用，忽略播放请求：%s' % (TAG, sound_filename))
+                elif sound_filename == '':
                     node.get_logger().warn('%s：未指定音频文件，忽略播放请求。' % TAG)
                 elif not os.path.isfile(sound_filename):
                     node.get_logger().warn(
