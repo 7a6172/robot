@@ -47,3 +47,34 @@ deployment root or the layout's `~/caasi/robots/<robot>/projects/<project>` slot
 
 Everything above was executed through `caasi exec` / `caasi run` on the enrolled target, with the
 strict host-key record in place.
+
+## Wheel test, staged for an operator watching (wheels free)
+
+Four stages of 2 s each with 2 s stops between, so the movement is unambiguous to the eye, plus
+rpm evidence sampled at the end of every stage:
+
+| stage | command | rpm left / right | expected |
+| --- | --- | --- | --- |
+| FORWARD | +0.08 m/s | **9 / 16** | both forward — correct |
+| BACKWARD | −0.08 m/s | **−22 / −14** | both backward — correct |
+| TURN LEFT | +0.50 rad/s | **−4 / 7** | left back, right forward — correct |
+| TURN RIGHT | −0.50 rad/s | **3 / −10** | left forward, right back — correct |
+| after every stop | zero | ~0 / 0 | watchdog returns the wheels to rest |
+
+Operator confirmed visually that all four stages looked right, with clean stops, and that the
+free-spinning speed difference between the wheels looks normal (they are uncoupled, with caster
+drag, and are only coupled once on the floor).
+
+## Yaw sign convention, from encoder odometry
+
+Turning in place with the wheels free does not rotate the robot, but the encoder integration
+still produces the yaw the rest of the stack depends on, so the sign convention can be verified
+without the floor:
+
+| command | odometry yaw change | verdict |
+| --- | --- | --- |
+| +0.5 rad/s for 2.5 s | **+1.1002 rad** | positive as expected |
+| −0.5 rad/s for 2.5 s | **−1.0921 rad** | negative as expected |
+
+Symmetric to 0.7%, so the left/right wheel mapping and the differential sign are both consistent
+with ROS 1. This is the check that would have caught a swapped motor ID before a floor test.
