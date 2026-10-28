@@ -222,36 +222,35 @@ Plus one safety addition (body-aware obstacle stop) and one caasi defect.
 | mapping | gmapping, 2.6 cm alignment | **slam_toolbox, 2.5 cm** | equivalent quality |
 | navigation | move_base + TEB | **nav2, 4 goals succeeded** | `error_code 0`, clearance > 0.6 m |
 | obstacle guard | 0.2 m/s, stop 0.85 m | **same, measured** | `Stop!` at 0.847 m |
-| line follower | vision + 0.12 m/s | **same, measured** | 6147 px, 0.58 m with 0.18 m drift |
-| mission supervisor | services + state machine | **interface measured** | `/line_then_home/{start,stop,record_waypoints,state}` |
+| line follower | vision + 0.12 m/s | **same, measured** | in the mission: 0.5 m travelled, steering w=-0.23..-0.11, body-aware stop at 0.27 m |
+| mission supervisor | services + state machine | **round trip verified with motion** | FOLLOW 0.12 m/s steering along the tape, STOP on timeout, NAV reversing home, DONE |
 | mission launch (single command) | `line_then_home.launch` | **21 nodes, mission IDLE, services answering, cropped map loaded** | run 7 |
 | teleop | keyboard | **backend check measured** | exits 3 without a display |
 | map saving | `map_saver` | **`save_map` service** | `result=0` |
 
 ## 10. Outstanding
 
-1. **The mission round trip** (FOLLOW -> STOP -> NAV -> DONE) has not been completed end to end. The
-   interface, the state machine, the launch and every component are verified individually, and the
-   one defect that would have blocked it (15, below) is fixed and unit-tested, but the sequence
-   itself needs a charged robot on the line with permission to move. The attempts so far stopped
-   for battery.
-2. **Teleop key handling** needs a display; only the refusal path (exit 3, "pynput is installed but
-   cannot attach to a window server") is verified.
-3. **ROS 1 `teleop_node.py` line-by-line diff** is pending access to the ROS 1 machine. Its
-   parameters are compared in §4; the script itself was never copied as a reference.
-4. **TEB-specific behaviour** (its obstacle-distance weighting) is not reproduced by DWB; a task that
+1. **Teleop key handling** cannot be verified here: `pynput` on Linux needs an X display, and the
+   robot has none. The refusal path is verified precisely (exit 3, "pynput is installed but cannot
+   attach to a window server"), which is the path a headless operator actually hits. Verifying the
+   keys themselves needs a display or Xvfb on the robot.
+2. **ROS 1 `teleop_node.py` line-by-line diff** is pending access to the ROS 1 machine; its
+   parameters are compared in §4, but the script was never copied as a reference.
+3. **TEB-specific behaviour** (its obstacle-distance weighting) is not reproduced by DWB. A task that
    depended on the exact ROS 1 trajectories needs re-tuning.
+4. **Line vision is calibrated per floor.** The crop, colour range, end-of-line frame count and
+   follow timeout are launch arguments defaulting to the ROS 1 values.
+   `experiments/mission_demo.yaml` carries the calibration measured for this maze; a different floor
+   and tape need their own.
 
 ### Operational findings that are not defects in this package
 
-* **nav2's lifecycle manager is unreliable on this robot under load.** It stalls with
-  `failed to send response to /map_server/change_state (timeout)` -- an RMW response timeout, not a
-  resource shortage (`/dev/shm` was 12 MB of 3.8 GB, no SHM errors in that run). Manual
-  `ros2 lifecycle set` was equally unreliable (`shutdown [6]` returned while the state still read
-  `inactive`). A clean restart brings all seven nodes to `active`, as run 5 showed.
-* **Order matters.** With the camera at 30 Hz during bringup, each configure transition took tens of
-  seconds and the manager stalled. Bringup/nav2 first, then a pose, then the camera, then the
-  mission.
+* **nav2's lifecycle manager is unreliable on this robot under load** (`failed to send response to
+  /map_server/change_state (timeout)` -- an RMW response timeout, not a resource shortage). A clean
+  restart brings all seven nodes to `active`.
+* **Order matters**: bringup/nav2 first, then a pose, then the camera, then the mission. With the
+  camera at 30 Hz during bringup the configure transitions crawl and the manager stalls.
 * **The mission node owns `/cmd_vel`** and holds it at zero while IDLE, so publishing `/cmd_vel`
-  yourself does nothing. That is the arbitration preserved from ROS 1; it is also what turned defect
-  15 from an inconvenience into a deadlock.
+  yourself does nothing. That arbitration is preserved from ROS 1.
+* **A silent motor board cascades**: no telemetry means the driver latches, so there is no
+  `odom -> base_link`, so amcl cannot publish `map -> odom`, so nav2 waits. Every stage fails safe.
