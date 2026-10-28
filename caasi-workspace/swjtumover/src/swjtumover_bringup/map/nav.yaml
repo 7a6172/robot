@@ -1,4 +1,7 @@
-image: /home/swjtumover/swjtumover/swjtumover_ws/src/swjtumover_bringup/map/nav.pgm
+# Relative, so the map loads from wherever this package is installed. The ROS 1 file used an
+# absolute path from that machine, which breaks on any other install (it broke map_server
+# configure on the robot during the nav2 verification).
+image: nav.pgm
 resolution: 0.050000
 origin: [-50.000000, -50.000000, 0.000000]
 negate: 0

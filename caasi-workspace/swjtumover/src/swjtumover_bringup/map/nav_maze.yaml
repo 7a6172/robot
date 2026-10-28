@@ -1,0 +1,10 @@
+# The maze region of nav.pgm, cropped so the global costmap does not have to cover the
+# whole building: nav.pgm is 1984x1984 (99 m), which saturates this CPU (the planner ran
+# at 12.7 Hz and the lifecycle manager began timing out during bringup). World coordinates
+# are preserved exactly, so goals and poses are interchangeable with the full map.
+image: nav_maze.pgm
+resolution: 0.05
+origin: [-1.500000, -5.000000, 0.0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196

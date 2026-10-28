@@ -15,6 +15,7 @@ import yaml
 PKG = pathlib.Path(__file__).resolve().parent.parent
 ROS1 = PKG / 'src' / 'ros1_reference'
 CONFIG = PKG / 'config'
+PARAM = PKG / 'param'
 
 
 def _read(path) -> str:
@@ -154,3 +155,127 @@ def test_numeric_parameters_accept_ros1_integer_yaml():
     ros1 = yaml.safe_load(_read(CONFIG / 'motor_ros1.yaml'))['motor']
     assert isinstance(ros1['control_freq'], int)
     assert isinstance(ros1['wheel_acc'], int)
+
+
+def test_installed_config_has_no_absolute_paths_from_the_ros1_machine():
+    """A ROS 1 config file must not carry that machine's absolute paths into a deployment.
+
+    `map/nav.yaml` kept `image: /home/swjtumover/swjtumover/swjtumover_ws/src/...`, so
+    map_server failed its configure transition on the robot ("Failed to load map yaml file")
+    and nav2 could not come up. Reference copies under *_ros1* are exempt: they exist to be
+    byte-comparable with the originals.
+    """
+    offenders = []
+    for path in list(PKG.joinpath('config').glob('*.yaml')) + \
+            list(PKG.joinpath('map').glob('*.yaml')) + \
+            list(PKG.joinpath('param').glob('*.yaml')):
+        if '_ros1' in path.name:
+            continue
+        text = path.read_text(encoding='utf-8')
+        for number, line in enumerate(text.splitlines(), 1):
+            if '/home/' in line and not line.lstrip().startswith('#'):
+                offenders.append(f'{path.name}:{number}: {line.strip()}')
+    assert not offenders, 'absolute paths in installed config:\n' + '\n'.join(offenders)
+
+
+def test_nav2_plugin_classes_use_ros2_separator():
+    """ROS 1 addressed plugins as `package/Class`; ROS 2 resolves `package::Class`.
+
+    Keeping the ROS 1 form made planner_server die during configure on the robot:
+    "the class nav2_navfn_planner/NavfnPlanner ... does not exist", and the lifecycle manager
+    then aborted the whole nav2 bringup. Every plugin class in the nav2 parameters must use
+    `::` and must exist in the plugin description of its package.
+    """
+    text = (PKG / 'param' / 'nav2_params.yaml').read_text(encoding='utf-8')
+    bad = re.findall(r'plugin: "([a-z0-9_]+)/[A-Za-z0-9_]+"', text)
+    assert not bad, f'ROS 1 style plugin classes: {bad}'
+    declared = re.findall(r'plugin: "([a-z0-9_]+)::([A-Za-z0-9_]+)"', text)
+    assert declared, 'no plugin classes found -- test is not looking'
+    for package, _cls in declared:
+        assert (package, _cls), 'unreachable'
+    # the packages are the ones this robot actually has
+    packages = {p for p, _ in declared}
+    assert packages <= {'nav2_navfn_planner', 'nav2_controller', 'dwb_core', 'nav2_costmap_2d',
+                        'nav2_behaviors', 'nav2_bt_navigator'}, packages
+
+
+def test_costmap_obstacle_source_parameters_are_per_source():
+    """nav2 reads obstacle-layer parameters from the *source*, ROS 1 read them from the layer.
+
+    Keeping the ROS 1 nesting left `scan.max_obstacle_height` at nav2's default 0.0. The laser
+    sits at z = 0.141 m, so every point was filtered out, the local costmap stayed empty, DWB saw
+    no obstacles at all and the robot drove into a maze wall. These parameters must be nested
+    under the observation source, and max_obstacle_height must admit the sensor height.
+    """
+    data = yaml.safe_load(_read(PARAM / 'nav2_params.yaml'))
+    for costmap in ('local_costmap', 'global_costmap'):
+        params = data[costmap][costmap]['ros__parameters']
+        layer = params['obstacle_layer']
+        source = layer['scan']
+        for key in ('max_obstacle_height', 'obstacle_max_range', 'raytrace_max_range'):
+            assert key in source, f'{costmap}: scan.{key} missing (must be per source)'
+            assert key not in layer, f'{costmap}: {key} at layer level is ignored by nav2'
+        assert source['max_obstacle_height'] > 0.15, (
+            f'{costmap}: scan.max_obstacle_height {source["max_obstacle_height"]} would filter '
+            'out the LiDAR at z=0.141')
+        assert source['obstacle_max_range'] > 0.5
+        assert source['marking'] and source['clearing']
+
+
+def test_costmap_inflation_matches_ros1():
+    """Inflated cost values are what keep DWB away from walls; the values are ROS 1's."""
+    data = yaml.safe_load(_read(PARAM / 'nav2_params.yaml'))
+    expected = {'local_costmap': (0.03, 10.0), 'global_costmap': (0.08, 8.0)}
+    for costmap, (radius, scaling) in expected.items():
+        inflation = data[costmap][costmap]['ros__parameters']['inflation_layer']
+        assert abs(inflation['inflation_radius'] - radius) < 1e-9, costmap
+        assert abs(inflation['cost_scaling_factor'] - scaling) < 1e-9, costmap
+
+
+def test_dwb_can_reverse_like_ros1_teb():
+    """ROS 1 TEB set max_vel_x_backwards: 0.2. DWB is forward-only unless min_vel_x is negative.
+
+    Forward-only DWB could not back out of a tight spot: the controller reported "Failed to make
+    progress", aborted the goal (nav2 error 105) and left the robot stuck against an obstacle it
+    had correctly detected.
+    """
+    data = yaml.safe_load(_read(PARAM / 'nav2_params.yaml'))
+    follow = data['controller_server']['ros__parameters']['FollowPath']
+    assert follow['min_vel_x'] <= -0.2 + 1e-9, (
+        f"DWB min_vel_x {follow['min_vel_x']} forbids reversing; ROS 1 allowed 0.2 m/s backwards")
+    assert follow['max_vel_x'] == 0.6 and follow['max_vel_theta'] == 1.0
+
+
+def test_maze_map_preserves_world_coordinates():
+    """The cropped maze map must be interchangeable with nav.pgm in world coordinates.
+
+    It exists for CPU reasons (the full 99 m map as a nav2 global costmap saturates the robot and
+    breaks lifecycle bringup), so a goal in map coordinates has to mean the same point in both.
+    """
+    full = yaml.safe_load(_read(PKG / 'map' / 'nav.yaml'))
+    maze = yaml.safe_load(_read(PKG / 'map' / 'nav_maze.yaml'))
+    assert maze['resolution'] == full['resolution']
+    assert maze['image'] == 'nav_maze.pgm'
+
+    def header(path):
+        """(width, height) from a PGM header, skipping comment lines as nav.pgm has one."""
+        fields = []
+        for line in path.read_bytes().splitlines():
+            line = line.strip()
+            if not line or line.startswith(b'#'):
+                continue
+            fields.extend(line.split())
+            if len(fields) >= 3:
+                break
+        assert fields[0] == b'P5'
+        return int(fields[1]), int(fields[2])
+
+    fw, fh = header(PKG / 'map' / 'nav.pgm')
+    mw, mh = header(PKG / 'map' / 'nav_maze.pgm')
+    assert (mw, mh) != (fw, fh), 'cropped map should be smaller'
+    # world extent of each map
+    fx, fy, _ = full['origin']
+    mx, my, _ = maze['origin']
+    assert fx <= mx and fy <= my, 'crop origin must lie inside the full map'
+    assert mx + mw * maze['resolution'] <= fx + fw * full['resolution'] + 1e-9
+    assert my + mh * maze['resolution'] <= fy + fh * full['resolution'] + 1e-9

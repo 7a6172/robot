@@ -22,13 +22,23 @@ from launch_ros.actions import LifecycleNode, Node
 
 share_dir = get_package_share_directory('swjtumover_bringup')
 nav2_params = os.path.join(share_dir, 'param', 'nav2_params.yaml')
-default_map = os.path.join(share_dir, 'map', 'nav.yaml')
+# ROS 1 served nav.yaml: the whole building, 99 x 99 m at 0.05 m. As a nav2 global costmap that is
+# 3.9M cells and saturates this CPU -- the planner ran at 12.7 Hz and the lifecycle manager's
+# configure calls started timing out, aborting bringup. nav_maze.yaml is the same map cropped to
+# the maze (world coordinates preserved), 153x less work. Pass map:=.../nav.yaml for the full
+# building.
+default_map = os.path.join(share_dir, 'map', 'nav_maze.yaml')
 
 
 def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     map_yaml = LaunchConfiguration('map')
     cmd_vel_topic = LaunchConfiguration('cmd_vel_topic')
+
+    set_initial_pose = LaunchConfiguration('set_initial_pose')
+    initial_pose_x = LaunchConfiguration('initial_pose_x')
+    initial_pose_y = LaunchConfiguration('initial_pose_y')
+    initial_pose_yaw = LaunchConfiguration('initial_pose_yaw')
 
     map_server = LifecycleNode(
         package='nav2_map_server', executable='map_server', name='map_server',
@@ -38,7 +48,13 @@ def generate_launch_description():
 
     amcl = LifecycleNode(
         package='nav2_amcl', executable='amcl', name='amcl', namespace='', output='screen',
-        parameters=[nav2_params, {'use_sim_time': use_sim_time}])
+        parameters=[nav2_params,
+                    {'use_sim_time': use_sim_time,
+                     'set_initial_pose': set_initial_pose,
+                     'initial_pose.x': initial_pose_x,
+                     'initial_pose.y': initial_pose_y,
+                     'initial_pose.z': 0.0,
+                     'initial_pose.yaw': initial_pose_yaw}])
 
     planner = LifecycleNode(
         package='nav2_planner', executable='planner_server', name='planner_server',
@@ -49,7 +65,13 @@ def generate_launch_description():
         package='nav2_controller', executable='controller_server', name='controller_server',
         namespace='', output='screen',
         parameters=[nav2_params, {'use_sim_time': use_sim_time}],
-        remappings=[('cmd_vel', cmd_vel_topic)])
+        # The controller feeds the velocity smoother, not the final topic: the smoother
+        # subscribes `cmd_vel_nav_raw` and publishes `cmd_vel_smoothed`, which becomes
+        # `cmd_vel_topic`. Sending the controller straight to the final topic (as this launch
+        # originally did) bypassed the smoother entirely, so nothing reached the wheels: nav2
+        # logged "Passing new path to controller" then "Failed to make progress" while odometry
+        # stayed at zero.
+        remappings=[('cmd_vel', 'cmd_vel_nav_raw')])
 
     behaviors = LifecycleNode(
         package='nav2_behaviors', executable='behavior_server', name='behavior_server',
@@ -79,6 +101,14 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='false'),
+        DeclareLaunchArgument(
+            'set_initial_pose', default_value='false',
+            description='Seed amcl with initial_pose_* instead of waiting for a /initialpose '
+                        'message (the rviz "2D Pose Estimate" equivalent). Off by default: a '
+                        'fabricated pose would let nav2 plan from where the robot is not.'),
+        DeclareLaunchArgument('initial_pose_x', default_value='0.0'),
+        DeclareLaunchArgument('initial_pose_y', default_value='0.0'),
+        DeclareLaunchArgument('initial_pose_yaw', default_value='0.0'),
         DeclareLaunchArgument(
             'map', default_value=default_map,
             description='Map YAML to serve, as in map_server.launch.'),

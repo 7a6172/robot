@@ -235,3 +235,24 @@ def test_lifecycle_nodes_are_managed():
         # the manager must be started, not merely constructed
         assert 'lifecycle_manager' in text.split('return LaunchDescription')[-1], (
             f'{name}: the lifecycle manager is constructed but never added to the description')
+
+
+def test_cmd_vel_chain_reaches_the_final_topic():
+    """controller_server -> velocity_smoother -> cmd_vel_topic must be a connected chain.
+
+    The controller originally published straight to the final topic, so the smoother (which
+    subscribes `cmd_vel_nav_raw`) never received anything and no command reached the wheels.
+    nav2 logged normal path handoffs while odometry stayed at zero -- a silent standstill.
+    """
+    text = PKG.joinpath('launch', 'navigation.launch.py').read_text(encoding='utf-8')
+    # controller output topic
+    assert "remappings=[('cmd_vel', 'cmd_vel_nav_raw')]" in text, \
+        'controller_server must publish to cmd_vel_nav_raw'
+    # smoother input and output
+    assert "('cmd_vel', 'cmd_vel_nav_raw')" in text, 'velocity_smoother must consume cmd_vel_nav_raw'
+    assert "('cmd_vel_smoothed', cmd_vel_topic)" in text, \
+        'velocity_smoother must publish to the configured cmd_vel_topic'
+    # and the arbitration contract with the task scripts
+    mission = PKG.joinpath('scripts', 'line_then_home.py').read_text(encoding='utf-8')
+    assert "'/cmd_vel/nav'" in mission, 'the mission node must forward /cmd_vel/nav'
+    assert "default_value='/cmd_vel/nav'" in text, 'default cmd_vel_topic must stay /cmd_vel/nav'
