@@ -256,3 +256,36 @@ def test_cmd_vel_chain_reaches_the_final_topic():
     mission = PKG.joinpath('scripts', 'line_then_home.py').read_text(encoding='utf-8')
     assert "'/cmd_vel/nav'" in mission, 'the mission node must forward /cmd_vel/nav'
     assert "default_value='/cmd_vel/nav'" in text, 'default cmd_vel_topic must stay /cmd_vel/nav'
+
+
+def test_mission_launch_forwards_its_own_arguments():
+    """A launch argument that is declared but not used is worse than none: it looks configurable.
+
+    Three defects in line_then_home.launch.py, all found by reading it before running it:
+      * `lidar_bind_lead` set the TimerAction but was never forwarded to the bringup include, so
+        the two disagreed the moment anyone changed it;
+      * `autostart_mission` was declared and never used -- the mission only starts through the
+        /line_then_home/start service, as in ROS 1;
+      * the line follower kept its ROS 1 camera defaults (/d415/...), which on Jazzy never receive
+        an image, so the follower would never move and never complain.
+    """
+    text = PKG.joinpath('launch', 'line_then_home.launch.py').read_text(encoding='utf-8')
+    # lidar lead time reaches the bringup
+    assert "'lidar_bind_lead': lidar_bind_lead" in text
+    # no dead arguments
+    assert 'autostart_mission' not in text, 'dead launch argument reintroduced'
+    # camera topics are arguments with the Jazzy defaults
+    assert "'color_topic': color_topic" in text and "'depth_topic': depth_topic" in text
+    assert "/camera/camera/color/image_raw" in text
+    assert "/camera/camera/depth/image_rect_raw" in text
+    assert "/d415/color/image_raw" in text and 'ROS 1 used' in text, 'the difference must be documented'
+    # and the cropped map is the default, like navigation.launch.py
+    assert "map', default_value=os.path.join(share_dir, 'map', 'nav_maze.yaml')" in text
+
+
+def test_mission_launch_starts_the_follower_disabled():
+    """The follower must not drive until the mission enables it, as in ROS 1."""
+    text = PKG.joinpath('launch', 'line_then_home.launch.py').read_text(encoding='utf-8')
+    assert "'enabled': False" in text
+    assert "remappings=[('/cmd_vel', '/cmd_vel/line')]" in text, (
+        'the follower must publish to /cmd_vel/line so the mission stays the only arbiter')

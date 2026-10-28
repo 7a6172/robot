@@ -34,14 +34,19 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     start_hardware = LaunchConfiguration('start_hardware')
     map_yaml = LaunchConfiguration('map')
-    autostart = LaunchConfiguration('autostart_mission')
     lidar_bind_lead = LaunchConfiguration('lidar_bind_lead')
+    color_topic = LaunchConfiguration('color_topic')
+    depth_topic = LaunchConfiguration('depth_topic')
 
     hardware = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(bringup_launch),
         condition=IfCondition(start_hardware),
         launch_arguments={'enable_teleop': 'false',
                           'enable_visualization': 'false',
+                          # Forwarded, not just used for the timer below: without this the bringup
+                          # kept its own 3 s default while the timer honoured the argument, so the
+                          # two disagreed as soon as anyone changed it.
+                          'lidar_bind_lead': lidar_bind_lead,
                           'use_sim_time': use_sim_time}.items())
 
     navigation = IncludeLaunchDescription(
@@ -54,6 +59,11 @@ def generate_launch_description():
         package='swjtumover_bringup', executable='omove_following_feng.py',
         name='omove_following', output='screen',
         parameters=[{'enabled': False, 'end_confirm_frames': 5, 'image_timeout': 0.5,
+                     # ROS 1 published colour/depth on /d415/...; realsense2_camera on Jazzy uses
+                     # /camera/camera/.... Left at the ROS 1 defaults the follower would never see
+                     # an image and would simply never move, with no error to explain it.
+                     'color_topic': color_topic,
+                     'depth_topic': depth_topic,
                      'use_sim_time': use_sim_time}],
         remappings=[('/cmd_vel', '/cmd_vel/line')])
 
@@ -67,10 +77,16 @@ def generate_launch_description():
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('start_hardware', default_value='true',
                               description='Start bringup too; false if hardware is already up.'),
-        DeclareLaunchArgument('map', default_value=os.path.join(share_dir, 'map', 'nav.yaml')),
-        DeclareLaunchArgument('autostart_mission', default_value='false',
-                              description='Start the mission immediately instead of waiting '
-                                          'for the /line_then_home/start service.'),
+        DeclareLaunchArgument(
+            'map', default_value=os.path.join(share_dir, 'map', 'nav_maze.yaml'),
+            description='Cropped maze map by default (world coordinates preserved); pass '
+                        'nav.yaml for the whole building.'),
+        DeclareLaunchArgument(
+            'color_topic', default_value='/camera/camera/color/image_raw',
+            description='Colour image for the line follower. ROS 1 used /d415/color/image_raw.'),
+        DeclareLaunchArgument(
+            'depth_topic', default_value='/camera/camera/depth/image_rect_raw',
+            description='Depth image for the line follower.'),
         DeclareLaunchArgument('lidar_bind_lead', default_value='3.0'),
         hardware,
         TimerAction(period=lidar_bind_lead, actions=[navigation, line_follower, mission]),
