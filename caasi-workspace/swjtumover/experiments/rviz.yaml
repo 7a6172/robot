@@ -1,4 +1,4 @@
-# Run with: caasi run start experiments/rviz.yaml -t swjtumover05
+# Run with: see the description -- rviz needs DISPLAY and XAUTHORITY
 name: swjtumover-rviz
 backend: python
 script: ../scripts/caasi_launch.py
@@ -6,7 +6,9 @@ args:
 - cmd
 - rviz2
 - -d
-- /home/swjtumover/caasi/robots/swjtumover05/install/swjtumover_bringup/share/swjtumover_bringup/rviz/bringup.rviz
-description: rviz against an already running bringup, using the migrated bringup.rviz.
-  Needs DISPLAY or X forwarding. The path is the deployed one; adjust if the project
-  is deployed elsewhere.
+- /home/swjtumover/caasi/robots/swjtumover05/install/swjtumover_bringup/share/swjtumover_bringup/config/bringup.rviz
+description: 'rviz against an already running bringup. Needs DISPLAY and the session
+  X cookie; the config is config/bringup.rviz (rviz 2 plugin names, fixed frame odom,
+  camera on the Jazzy topic). Start it with: caasi exec --target swjtumover05 --detach
+  -- bash -c "export DISPLAY=:0; export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.*;
+  ..."'

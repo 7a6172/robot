@@ -375,3 +375,52 @@ def test_mission_launch_exposes_the_vision_calibration():
     # and they reach the follower node
     for key in ('roi_top_offset', 'roi_bottom_offset', 'line_lower', 'line_upper'):
         assert f"'{key}': {key}" in text, f'{key} not forwarded to the follower'
+
+
+def test_rviz_configs_exist_and_use_rviz2_plugin_names():
+    """An rviz config copied verbatim from ROS 1 loads no displays at all.
+
+    ROS 1 names its displays `rviz/Grid`, `rviz/RobotModel`, `rviz/LaserScan`; rviz 2 resolves
+    `rviz_default_plugins/...` (and `rviz_common/...` for panels). Loading the ROS 1 file therefore
+    fails every display with "the class rviz/Grid ... does not exist" and rviz shows an empty
+    window -- which is exactly what happened on the robot. The ROS 1 original is kept as
+    bringup_ros1.rviz for comparison.
+    """
+    import re as _re
+    rviz_dir = PKG / 'rviz'
+    config_dir = PKG / 'config'
+    ros2_configs = [config_dir / 'bringup.rviz']
+    for path in ros2_configs:
+        assert path.is_file(), f'{path.name} missing'
+        text = path.read_text(encoding='utf-8')
+        ros1_classes = _re.findall(r'Class: rviz/[A-Za-z]+', text)
+        assert not ros1_classes, f'{path.name} still uses ROS 1 plugin names: {set(ros1_classes)}'
+        assert 'rviz_default_plugins/' in text
+        # robots and sensors must actually be configured
+        for cls in ('rviz_default_plugins/RobotModel', 'rviz_default_plugins/LaserScan',
+                    'rviz_default_plugins/Image'):
+            assert cls in text, f'{path.name} has no {cls}'
+        # and the topics/frames must exist on this robot
+        assert 'Value: /scan' in text
+        assert '/d415' not in text, 'ROS 1 camera topic survives; Jazzy publishes /camera/camera/...'
+        assert 'Value: /camera/camera/color/image_raw' in text
+        assert 'Fixed Frame: map' not in text, (
+            'the fixed frame must exist with only the bringup running; map appears only with amcl '
+            'or slam_toolbox')
+    # the ROS 1 original is preserved for comparison
+    assert (config_dir / 'bringup_ros1.rviz').is_file()
+
+
+def test_every_referenced_rviz_config_exists():
+    """A path in a launch or an experiment that points nowhere fails only at run time."""
+    project = PKG.parent.parent
+    texts = [p.read_text(encoding='utf-8') for p in PKG.joinpath('launch').glob('*.py')]
+    texts += [p.read_text(encoding='utf-8')
+              for p in (project / 'experiments').glob('*.yaml')]
+    names = set()
+    for text in texts:
+        names |= set(__import__('re').findall(r'([A-Za-z0-9_]+\.rviz)', text))
+    assert names, 'no rviz config referenced anywhere -- test is not looking'
+    for name in sorted(names):
+        found = list(PKG.joinpath('config').glob(name)) + list((PKG / 'rviz').glob(name))
+        assert found, f'{name} is referenced but does not exist in config/ or rviz/'
