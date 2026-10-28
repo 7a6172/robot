@@ -1,0 +1,11 @@
+# Build output (colcon)
+build/
+install/
+log/
+
+# Python bytecode from running the project-level entry points
+__pycache__/
+*.pyc
+
+# Run artefacts
+*.bag
