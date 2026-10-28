@@ -70,3 +70,6 @@ ros2 topic echo /motor_state/left --once    # all five fault flags false, rpm ~0
 | nav2 nodes stay `inactive` | no `map → base_link` | publish `/initialpose` |
 | `map_server` fails to configure | map yaml path wrong | the `image:` entry must be relative |
 | robot will not move although `/cmd_vel` has values | driver latched, or the smoother is publishing to `/cmd_vel/nav` instead of `/cmd_vel` | restart the driver; check `cmd_vel_topic` |
+| nav2 nodes stay `unconfigured` and the log shows `failed to send response to /map_server/change_state (timeout)` | RMW response latency under load, not a resource shortage | restart the stack cleanly; bring nav2 up **before** the camera |
+| `/line_then_home/start` refuses with "no /amcl_pose ... set an initial pose first" | neither `/amcl_pose` nor `map -> base_link` exists | publish `/initialpose`; amcl publishes `/amcl_pose` only once the robot moves |
+| publishing `/cmd_vel` does nothing while the mission runs | the mission node owns `/cmd_vel` and holds it at zero in IDLE — that is the arbitration, not a fault | enable it through the mission, or stop the mission node first |

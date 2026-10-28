@@ -168,7 +168,11 @@ Costmap values taken from the ROS 1 files: `max_obstacle_height 0.60`, local `ob
     produced an empty costmap.
 12. **Map saving** uses `slam_toolbox/save_map` rather than `map_saver`; `map_saver_cli` fails
     against slam_toolbox here even with a longer subscribe timeout.
-13. **The mission launch's camera topics are arguments** (`/camera/camera/...`), because ROS 1's
+13. **The mission's home pose can come from TF.** ROS 1's amcl published `/amcl_pose`
+    continuously; nav2's publishes only when the filter updates, which cannot happen before the
+    mission enables the follower. `/amcl_pose` remains the primary source, with `map -> base_link`
+    as the equivalent fallback.
+14. **The mission launch's camera topics are arguments** (`/camera/camera/...`), because ROS 1's
     `/d415/...` does not exist under `realsense2_camera` on Jazzy. Its `autostart_mission`
     argument was removed: ROS 1 started the mission only through the service, and an unattended
     auto-start that drives the robot is not something to add unasked.
@@ -200,6 +204,7 @@ All thirteen were found by running the system, not by reading it. Each has a reg
 | 12 | `BaseObstacle` checks only the centre point | robot drove its corner into a box |
 | 13 | ROS 1 `~` private names | mission node died at start-up; then `/start` instead of `/line_then_home/start` |
 | 14 | mission launch: unforwarded argument, dead argument, ROS 1 camera topics, wrong default map | follower would never receive an image; `lidar_bind_lead` disagreed with the bringup |
+| 15 | the mission was unstartable on ROS 2: nav2 amcl publishes `/amcl_pose` only on filter updates, so the pose precondition deadlocked against the mission being the thing that moves the robot | `/line_then_home/start` refused with "no /amcl_pose received yet" while `map -> base_link` was available |
 
 Plus one safety addition (body-aware obstacle stop) and one caasi defect.
 

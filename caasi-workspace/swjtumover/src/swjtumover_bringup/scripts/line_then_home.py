@@ -31,6 +31,8 @@ import copy
 import math
 
 import rclpy
+import rclpy.duration
+import rclpy.time
 from geometry_msgs.msg import PointStamped, PoseStamped, PoseWithCovarianceStamped, Twist
 from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
@@ -144,6 +146,24 @@ class LineThenHome(Node):
     def pose_cb(self, msg: PoseWithCovarianceStamped) -> None:
         self.last_pose = msg
 
+    def pose_from_tf(self):
+        """The robot's pose in the map frame, from TF, or None when the chain is not there yet."""
+        try:
+            tf = self.tf_buffer.lookup_transform(
+                self.map_frame, self.base_frame, rclpy.time.Time(),
+                timeout=rclpy.duration.Duration(seconds=self.tf_timeout))
+        except Exception as exc:  # noqa: BLE001 - any lookup failure means "not yet"
+            self.get_logger().warn(
+                'cannot read %s -> %s from TF: %s' % (self.map_frame, self.base_frame, exc))
+            return None
+        pose = PoseWithCovarianceStamped()
+        pose.header.frame_id = self.map_frame
+        pose.pose.pose.position.x = tf.transform.translation.x
+        pose.pose.pose.position.y = tf.transform.translation.y
+        pose.pose.pose.position.z = tf.transform.translation.z
+        pose.pose.pose.orientation = tf.transform.rotation
+        return pose
+
     def cmd_cb(self, msg: Twist, source: str) -> None:
         self.cmd_sources[source] = (self.get_clock().now(), msg)
 
@@ -189,9 +209,20 @@ class LineThenHome(Node):
             return response
         pose = getattr(self, 'last_pose', None)
         if pose is None:
-            response.success = False
-            response.message = 'no /amcl_pose received yet, cannot start'
-            return response
+            # ROS 1's amcl published /amcl_pose continuously, so the operator setting the pose in
+            # rviz was enough. nav2's amcl publishes it only when its filter updates, i.e. once the
+            # robot has already moved -- and the mission is what moves it, so the precondition
+            # could never be satisfied on a stationary robot. The transform is the same
+            # information, so fall back to it rather than making the task unstartable.
+            pose = self.pose_from_tf()
+            if pose is None:
+                response.success = False
+                response.message = ('no /amcl_pose and no %s -> %s transform yet: set an initial '
+                                    'pose first' % (self.map_frame, self.base_frame))
+                return response
+            self.get_logger().info(
+                'started from the %s -> %s transform; /amcl_pose has not been published yet'
+                % (self.map_frame, self.base_frame))
         self.home_pose = copy.deepcopy(pose.pose.pose)
         self.nav_targets = self.build_nav_targets(self.home_pose, self.return_waypoints)
         self.target_index = 0

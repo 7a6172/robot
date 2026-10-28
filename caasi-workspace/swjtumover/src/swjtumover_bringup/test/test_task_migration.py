@@ -225,3 +225,74 @@ def test_line_follower_has_an_obstacle_stop_from_the_body_edge():
     assert 'OBSTACLE_MARGIN' in text and '0.1' in text.split('OBSTACLE_MARGIN')[1][:20]
     assert 'self.obstacle_stop' in text
     assert "'/scan'" in text, 'the follower needs the scan to detect obstacles'
+
+
+def test_mission_can_start_from_tf_when_amcl_pose_is_absent():
+    """ROS 1's amcl published /amcl_pose continuously; nav2's publishes only on filter updates.
+
+    The mission requires a home pose before it will enable the line follower, and the follower is
+    what moves the robot -- so on a stationary robot the `/amcl_pose` precondition could never be
+    satisfied, and the task was unstartable. Setting an initial pose produced `map -> base_link`
+    but no `/amcl_pose`. The transform carries the same information, so it is used as a fallback;
+    the ROS 1 precondition stays as the primary path.
+    """
+    import pathlib
+    text = (pathlib.Path(__file__).resolve().parent.parent / 'scripts'
+            / 'line_then_home.py').read_text(encoding='utf-8')
+    assert 'def pose_from_tf' in text
+    assert 'pose = self.pose_from_tf()' in text
+    # the lookup must be in the map frame with a timeout, not a bare call
+    assert 'self.map_frame, self.base_frame' in text
+    assert 'timeout=rclpy.duration.Duration(seconds=self.tf_timeout)' in text
+    # the primary /amcl_pose path is still there
+    assert "'/amcl_pose'" in text
+    # and the failure message still tells the operator what to do
+    assert 'set an initial' in text
+def test_pose_from_tf_builds_a_pose_and_survives_a_missing_chain():
+    """The TF fallback is the only reason the mission can start on ROS 2.
+
+    It could not be exercised on the robot before the battery ran out, so its logic is checked
+    here directly: a successful lookup becomes a PoseWithCovarianceStamped in the map frame, and
+    any lookup failure yields None instead of raising -- so `start` still answers with a helpful
+    message rather than dying.
+    """
+    import importlib.util
+    import pathlib
+    import types
+
+    root = pathlib.Path(__file__).resolve().parent.parent
+    spec = importlib.util.spec_from_file_location('lth', root / 'scripts' / 'line_then_home.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class Logger:
+        def warn(self, *_a, **_k): pass
+        def info(self, *_a, **_k): pass
+
+    translation = types.SimpleNamespace(x=1.5, y=-2.5, z=0.0)
+    rotation = types.SimpleNamespace(x=0.0, y=0.0, z=0.0, w=1.0)
+
+    class GoodBuffer:
+        def lookup_transform(self, target, source, _time, timeout=None):
+            assert target == 'map' and source == 'base_link'
+            assert timeout is not None, 'the lookup must bound its wait'
+            return types.SimpleNamespace(transform=types.SimpleNamespace(
+                translation=translation, rotation=rotation))
+
+    class BadBuffer:
+        def lookup_transform(self, *_a, **_k):
+            raise RuntimeError('chain not there yet')
+
+    # a fake self is enough: the method only touches these attributes
+    fake = types.SimpleNamespace(tf_buffer=GoodBuffer(), map_frame='map',
+                                 base_frame='base_link', tf_timeout=1.0,
+                                 get_logger=lambda: Logger())
+    pose = module.LineThenHome.pose_from_tf(fake)
+    assert pose is not None
+    assert pose.header.frame_id == 'map'
+    assert abs(pose.pose.pose.position.x - 1.5) < 1e-9
+    assert abs(pose.pose.pose.position.y + 2.5) < 1e-9
+    assert abs(pose.pose.pose.orientation.w - 1.0) < 1e-9
+
+    fake.tf_buffer = BadBuffer()
+    assert module.LineThenHome.pose_from_tf(fake) is None, 'a missing chain must not raise'

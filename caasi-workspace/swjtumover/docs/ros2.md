@@ -106,8 +106,13 @@ the mission. Arguments worth knowing:
 | `lidar_bind_lead` | `3.0` | forwarded to the bringup, which is why the LiDAR wins UDP 7000 |
 
 The follower starts **disabled** and is only enabled by `/line_then_home/start`, so the mission
-remains the single publisher of `/cmd_vel`. The mission refuses to start until it has seen
-`/amcl_pose`, because it needs the home pose.
+remains the single publisher of `/cmd_vel` — which also means publishing `/cmd_vel` yourself while
+the mission runs has no effect.
+
+The mission needs a home pose. It takes `/amcl_pose` when that exists, and otherwise the
+`map -> base_link` transform: nav2's amcl only publishes `/amcl_pose` once the robot has moved, and
+the mission is what moves it, so the transform is the only source available before a start. When
+neither exists, `start` says so — publish `/initialpose` first.
 
 Starting the mission requires odometry: `/amcl_pose` cannot exist without `odom → base_link`, which
 comes from the motor driver. With a silent motor board the mission simply never becomes startable,
