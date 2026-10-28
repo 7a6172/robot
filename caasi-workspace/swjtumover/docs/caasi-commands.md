@@ -46,28 +46,16 @@ caasi ros service call /line_then_home/record_waypoints
 caasi ros service call /line_then_home/stop
 ```
 
-## Known problem: `caasi run start` on a remote robot
+## Note: a caasi bug that used to block this (fixed)
 
-`caasi run start` currently fails for remote targets while `caasi exec --detach` works. The remote
-run directory is built as a single-quoted `~/caasi/robots/<robot>/.caasi/runs/<run>`, and inside
-single quotes the shell does not expand `~`. The directory is therefore created at a literal path:
+`caasi run start` originally failed on remote robot targets and reported every run as `lost`. The
+remote run directory was built and used as a single-quoted `~/caasi/robots/<robot>/.caasi/runs/<run>`;
+a quoted tilde does not expand, so the directory was created at a literal
+`/home/<user>~/caasi/...` path, the generated `run.sh` `cd`-ed into something that did not exist
+and exited. A second layer of the same bug then hit the script path, which is an argv element:
+`python3 ~/caasi/.../caasi_launch.py` reached Python with the literal `~`.
 
-    /home/swjtumover/~/caasi/robots/swjtumover05/.caasi/runs/<run>
-
-The generated `run.sh` then `cd`s into a path that does not exist, exits immediately, and caasi
-reports the run as `lost`. Passing `--dest /home/swjtumover/caasi/robots/swjtumover05` does not
-help, because the run path is derived from the target's deployment root rather than from the
-deployment record.
-
-Working path in the meantime, used for all the verification in this project:
-
-```bash
-caasi exec --target swjtumover05 --detach --name bringup -- \
-  bash -c 'cd /home/swjtumover/caasi/robots/swjtumover05 && exec python3 scripts/caasi_launch.py launch bringup.launch.py'
-caasi run status <name>
-```
-
-Verified through that path: the deployed project starts all five bringup nodes, `/scan` at 14 Hz,
-`/odom` at 50 Hz. The fix belongs in caasi's run machinery (expand `~` to `$HOME` in the remote
-command, or quote only the variable part); the caasi source is outside this project, so it is
-recorded here rather than patched silently.
+Both are fixed in caasi (`src/caasi/core/runs.py`, with tests in `tests/test_remote_path_tilde.py`).
+If an older caasi is in use, the symptom is a run reported `lost` immediately after starting, and
+a stray directory literally named `~` in the target's home. `caasi exec --detach` was the working
+path in the meantime and still works.
