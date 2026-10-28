@@ -61,3 +61,46 @@ def test_run_status_probe_expands_tilde():
     expr = remote_path_expr("~/caasi/data/runs/x/exit_code")
     assert "'~" not in expr
     assert '"$HOME"' in expr
+
+
+def test_experiment_run_wrapper_expands_tilde_in_every_path():
+    """`caasi run start` was the one call site still quoting '~' whole.
+
+    The exec path was fixed, but the experiment/run-start wrapper kept ``cd "~/caasi/..."`` and
+    ``mkdir -p '~/caasi/...'``, so the directory was created at a literal ``/home/<user>~/...``
+    path, the wrapper cd'd into something that did not exist, exited, and every run reported
+    ``lost``. Verified on the robot before and after.
+    """
+    src = Path(runs.__file__).read_text(encoding="utf-8")
+    start = src.split("def start_target_run", 1)[1].split("\ndef ", 1)[0]
+    # no path is quoted whole in the run-start path
+    for pattern in (
+        "cd \"{target_work_dir}\"",
+        "mkdir -p '{target_run_dir}'",
+        "> '{target_run_dir}/stdout.log'",
+        "echo $PID > '{target_run_dir}/pid'",
+    ):
+        assert pattern not in start, f"quoted tilde path reintroduced: {pattern}"
+    # and the helper is used for each of them
+    for call in (
+        "remote_path_expr(target_work_dir)",
+        "remote_path_expr(target_run_dir)",
+        "remote_path_expr(target_run_dir + \"/stdout.log\")",
+        "remote_path_expr(target_run_dir + \"/pid\")",
+    ):
+        assert call in start, f"missing {call}"
+
+
+def test_run_wrapper_expands_tilde_inside_arguments():
+    """A script path is an argv element, and argv is never re-parsed by the shell.
+
+    `python3 ~/caasi/robots/r1/scripts/x.py` reached Python with the literal ``~`` and failed with
+    "can't open file '/home/<user>/~/caasi/...'". The wrapper therefore rewrites a leading ``~/``
+    in every argument, using a *quoted* pattern -- in bash 5.2 ``${a#~/}`` does not strip the
+    prefix (measured on the target), while ``${a#"~/"}`` does.
+    """
+    src = Path(runs.__file__).read_text(encoding="utf-8")
+    assert 'case "$a" in' in src
+    assert '"~/"*)' in src
+    assert '$HOME/${{a#"~/"}}' in src, "the pattern must be quoted or the prefix is not stripped"
+    assert "${a#~/}" not in src.replace('${a#"~"}', ''), "unquoted pattern does not strip in bash 5"

@@ -980,25 +980,44 @@ def start_target_run(
         env_exports.append(f"export {k}={shlex.quote(str(v))}")
     env_exports_str = "\n".join(env_exports)
 
+    # A leading '~' does not expand inside quotes, and a deployment destination is written as
+    # '~/caasi/robots/<robot>'. Quoting these paths whole therefore made the wrapper cd into a
+    # directory that does not exist, exit immediately, and the run was reported as "lost".
+    # remote_path_expr expands '~' through $HOME on the target, which is the only place the real
+    # home is known; the rest of the path stays quoted.
     wrapper_content = f"""#!/usr/bin/env bash
 RUN_DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
 trap 'echo $? > "$RUN_DIR/exit_code"' EXIT
-cd "{target_work_dir}" || exit 1
-[ -f "{ros_setup}" ] && . "{ros_setup}"
-[ -f "{overlay_setup}" ] && . "{overlay_setup}"
-export CAASI_PROJECT_ROOT="{dest}"
-export CAASI_EXPERIMENT="{target_config_path}"
+cd {targets_core.remote_path_expr(target_work_dir)} || exit 126
+[ -f {targets_core.remote_path_expr(ros_setup)} ] && . {targets_core.remote_path_expr(ros_setup)}
+[ -f {targets_core.remote_path_expr(overlay_setup)} ] && . {targets_core.remote_path_expr(overlay_setup)}
+export CAASI_PROJECT_ROOT={targets_core.remote_path_expr(dest)}
+export CAASI_EXPERIMENT={targets_core.remote_path_expr(target_config_path)}
 {env_exports_str}
-"$@"
+# Arguments are not re-parsed, so a '~/...' inside "$@" is never expanded by the shell. A script
+# path on the target is built from the deployment destination and therefore starts with '~', so
+# expand a leading '~/' in every argument before running. No eval: each argument is handled as
+# data, quoted, and only the prefix is rewritten.
+args=()
+for a in "$@"; do
+  case "$a" in
+    "~/"*) args+=("$HOME/${{a#"~/"}}") ;;
+    *) args+=("$a") ;;
+  esac
+done
+"${{args[@]}}"
+
 """
 
     # 8. Launch on target
     if target.transport == "ssh":
         ssh_prefix = targets_core.target_ssh_prefix(target)
+        run_dir_expr = targets_core.remote_path_expr(target_run_dir)
+        run_sh_expr = targets_core.remote_path_expr(target_run_dir + "/run.sh")
         upload_cmd = (
-            f"mkdir -p '{target_run_dir}' && "
-            f"cat > '{target_run_dir}/run.sh' && "
-            f"chmod 755 '{target_run_dir}/run.sh'"
+            f"mkdir -p {run_dir_expr} && "
+            f"cat > {run_sh_expr} && "
+            f"chmod 755 {run_sh_expr}"
         )
         res = subprocess.run(
             ssh_prefix + [upload_cmd],
@@ -1012,13 +1031,17 @@ export CAASI_EXPERIMENT="{target_config_path}"
             raise RuntimeError(f"Failed to prepare run wrapper on target: {res.stderr.strip()}")
 
         quoted_cmd = shlex.join(target_cmd)
+        out_log = targets_core.remote_path_expr(target_run_dir + "/stdout.log")
+        err_log = targets_core.remote_path_expr(target_run_dir + "/stderr.log")
+        pid_f = targets_core.remote_path_expr(target_run_dir + "/pid")
+        pgid_f = targets_core.remote_path_expr(target_run_dir + "/pgid")
         launch_script = (
-            f"nohup setsid '{target_run_dir}/run.sh' {quoted_cmd} "
-            f"> '{target_run_dir}/stdout.log' 2> '{target_run_dir}/stderr.log' </dev/null &\n"
+            f"nohup setsid {run_sh_expr} {quoted_cmd} "
+            f"> {out_log} 2> {err_log} </dev/null &\n"
             f"PID=$!\n"
-            f"echo $PID > '{target_run_dir}/pid'\n"
-            f"ps -o pgid= -p $PID 2>/dev/null | tr -d ' ' > '{target_run_dir}/pgid'\n"
-            f"echo \"PID:$PID:$(cat '{target_run_dir}/pgid')\"\n"
+            f"echo $PID > {pid_f}\n"
+            f"ps -o pgid= -p $PID 2>/dev/null | tr -d ' ' > {pgid_f}\n"
+            f"echo \"PID:$PID:$(cat {pgid_f})\"\n"
         )
         res = subprocess.run(
             ssh_prefix + [launch_script],
@@ -1213,7 +1236,19 @@ trap 'echo $? > "$RUN_DIR/exit_code"' EXIT
 {source_ros}
 {source_overlay}
 {exports}
-"$@"
+# Arguments are not re-parsed, so a '~/...' inside "$@" is never expanded by the shell. A script
+# path on the target is built from the deployment destination and therefore starts with '~', so
+# expand a leading '~/' in every argument before running. No eval: each argument is handled as
+# data, quoted, and only the prefix is rewritten.
+args=()
+for a in "$@"; do
+  case "$a" in
+    "~/"*) args+=("$HOME/${{a#"~/"}}") ;;
+    *) args+=("$a") ;;
+  esac
+done
+"${{args[@]}}"
+
 """
 
     ssh_prefix = targets_core.target_ssh_prefix(target)
