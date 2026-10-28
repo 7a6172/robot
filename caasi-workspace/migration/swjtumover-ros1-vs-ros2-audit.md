@@ -231,9 +231,13 @@ Plus one safety addition (body-aware obstacle stop) and one caasi defect.
 
 ## 10. Outstanding
 
-1. **ROS 1 `teleop_node.py` line-by-line diff** is the one remaining audit gap: its parameters are
-   compared in §4 and the ROS 2 node is verified on hardware, but the script itself was never copied
-   as a reference, so a source diff needs the ROS 1 machine.
+1. ~~ROS 1 `teleop_node.py` line-by-line diff~~ — **closed.** The script was recovered from the ROS 1
+   machine and is now in `scripts/ros1_reference/teleop_node.py`. All eight parameter defaults are
+   identical: `velocity_x 0.4`, `velocity_yaw 0.8`, `max_x_acc 0.5`, `max_yaw_acc 1.57`,
+   `zero_flush_sec 0.15`, `release_debounce_sec 0.08`, `brake_on_flip True`, `brake_on_flip_yaw True`;
+   same arrow keys, same 50 Hz loop, same brake-on-flip and zero-flush behaviour. The ROS 2 node is
+   218 lines against 165, the difference being the three-way keyboard-backend classification and the
+   parameter declaration style.
 2. **TEB-specific behaviour** (its obstacle-distance weighting) is not reproduced by DWB. A task that
    depended on the exact ROS 1 trajectories needs re-tuning.
 3. **Line vision is calibrated per floor.** The crop, colour range, end-of-line frame count and
@@ -242,11 +246,11 @@ Plus one safety addition (body-aware obstacle stop) and one caasi defect.
 
 ### A note on teleop's defaults
 
-The script's own declared defaults are `velocity_x 0.4 / velocity_yaw 0.8 / max_x_acc 0.5`, while
-`config/teleop.yaml` (the ROS 1 values, loaded by `bringup.launch.py` exactly as ROS 1 did) has
-`0.2 / 0.4 / 0.2`. Launching normally therefore gives the ROS 1 speeds, verified at 0.200 m/s; running
-the node bare gives twice that. Recorded rather than changed, because the ROS 1 script is not
-available to say which value its own defaults held.
+The script's declared defaults are `velocity_x 0.4 / velocity_yaw 0.8 / max_x_acc 0.5`, and the
+recovered ROS 1 script uses the same defaults, so the port is faithful. `config/teleop.yaml` carries
+lower operating values (`0.2 / 0.4 / 0.2`) and is loaded by `bringup.launch.py`, exactly as ROS 1's
+launch loaded it — so a normal launch gives 0.2 m/s (verified at 0.200 m/s on hardware) while running
+the node bare gives the ROS 1 default of 0.4.
 
 ### Operational findings that are not defects in this package
 
