@@ -205,6 +205,7 @@ All thirteen were found by running the system, not by reading it. Each has a reg
 | 13 | ROS 1 `~` private names | mission node died at start-up; then `/start` instead of `/line_then_home/start` |
 | 14 | mission launch: unforwarded argument, dead argument, ROS 1 camera topics, wrong default map | follower would never receive an image; `lidar_bind_lead` disagreed with the bringup |
 | 15 | the mission was unstartable on ROS 2: nav2 amcl publishes `/amcl_pose` only on filter updates, so the pose precondition deadlocked against the mission being the thing that moves the robot | `/line_then_home/start` refused with "no /amcl_pose received yet" while `map -> base_link` was available |
+| 16 | `meshes/` was never installed although the URDF references it 8 times | rviz drew a robot with no body; nothing in the build or logs complained |
 
 Plus one safety addition (body-aware obstacle stop) and one caasi defect.
 
@@ -216,7 +217,7 @@ Plus one safety addition (body-aware obstacle stop) and one caasi defect.
 | odometry rate | 25.2 Hz (Noetic bringup) | **50 Hz** | `ros2 topic hz` |
 | odometry scale | 0.3462 m / 0.3479 m for 0.36 m | **0.3452 / 0.3462** | 0.29 % / 0.49 % apart |
 | in-place rotation | 0.5096 rad at ratio 1.0191 | **0.5091 rad at 1.0182** | 0.05 % apart |
-| `/scan` contract | 1440 samples, ±π, 14.03 Hz | **1440, ±π, 14 Hz** | identical |
+| `/scan` contract | 1440 samples, ±π, 14.03 Hz | **1440, ±π, 14.04 Hz, 0.25-25 m, increment 0.004363323** | re-measured on the deployed build, identical |
 | TF `base_link → lidar_link` | 0.14114 m, 1.5° | **0.14114 m, 1.500°** | identical |
 | mapping | gmapping, 2.6 cm alignment | **slam_toolbox, 2.5 cm** | equivalent quality |
 | navigation | move_base + TEB | **nav2, 4 goals succeeded** | `error_code 0`, clearance > 0.6 m |
