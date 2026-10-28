@@ -8,7 +8,7 @@ Two ways to run it. Both are supported; use whichever suits the moment.
 * **Directly with ROS 2** — familiar `ros2 launch` / `ros2 run` commands on the robot itself.
 * **Through caasi** — deploy, build, run and monitor from another machine as tracked runs.
 
-The full manual is in `docs/` and builds to HTML with `scripts/build_docs.sh`.
+The full manual ships as HTML in `docs/` — open `docs/index.html`.
 
 ## Requirements
 
@@ -24,8 +24,8 @@ src/swjtumover_bringup/    motor driver, screen driver, launch files, config, sc
 src/swjtumover_vanjee/     LiDAR adapter (Vanjee 718H) publishing /scan
 external/vanjee_driver/    vendored vendor SDK the adapter builds against
 experiments/               one caasi run definition per task
-scripts/                   caasi entry point, teleop launcher, docs build
-docs/                      this manual
+scripts/                   caasi entry point, teleop launcher
+docs/                      this manual, as HTML
 config/                    robot configuration (also installed into the package share)
 ```
 
@@ -68,14 +68,14 @@ caasi run status <run>           # logs, state, stop
 | camera | `ros2 launch realsense2_camera rs_launch.py` | `experiments/camera.yaml` |
 | visualization | `rviz2 -d …/config/bringup.rviz` | `experiments/rviz.yaml` |
 
-`docs/commands-ros1-vs-ros2.md` lists every command in full, for both ROS 1 and ROS 2.
+`docs/commands-ros1-vs-ros2.html` lists every command in full, for both ROS 1 and ROS 2.
 
 ## Documentation
 
-```bash
-scripts/build_docs.sh          # HTML site in ../swjtumover-docs
-scripts/build_docs.sh serve    # live preview on http://127.0.0.1:8000
-```
+The manual is in `docs/` as static HTML; open `docs/index.html` in a browser.
+
+Its Markdown sources and build tooling live beside this package in `../swjtumover-docs/`, so the
+package carries the documentation without carrying the toolchain.
 
 ## Configuration
 

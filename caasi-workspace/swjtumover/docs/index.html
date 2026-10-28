@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="swjtumover robot -- ROS 2 software, operation and commands" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>swjtumover</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Home";
+        var mkdocs_page_input_path = "index.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="index.html" class="icon icon-home"> swjtumover
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Home</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#what-is-in-the-package">What is in the package</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#the-robot">The robot</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#interfaces-at-a-glance">Interfaces at a glance</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#three-things-worth-knowing-up-front">Three things worth knowing up front</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="ros2.html">Running on the robot</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="caasi-commands.html">Running with caasi</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="commands-ros1-vs-ros2.html">Commands and workflows</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware and safety</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="fleet-and-display.html">Remote access</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">swjtumover</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html" class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Home</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="swjtumover">swjtumover<a class="headerlink" href="#swjtumover" title="Permanent link">&para;</a></h1>
+<p>ROS 2 software for the swjtumover robot. It provides the motor driver, the display driver, a LiDAR
+adapter, line following, navigation and the line-then-home mission.</p>
+<p>There are two ways to operate it, and both are first-class:</p>
+<ul>
+<li><strong><a href="ros2.html">Running on the robot</a></strong> — direct <code>ros2 launch</code> and <code>ros2 run</code> commands.</li>
+<li><strong><a href="caasi-commands.html">Running with caasi</a></strong> — deploy, build, run and monitor from another machine.</li>
+</ul>
+<p>For a side-by-side list of every command, see <strong><a href="commands-ros1-vs-ros2.html">Commands and workflows</a></strong>.
+Before driving the robot, read <strong><a href="hardware.html">Hardware and safety</a></strong>. For multi-robot naming and
+seeing the robot's screen remotely, see <strong><a href="fleet-and-display.html">Remote access</a></strong>.</p>
+<h2 id="what-is-in-the-package">What is in the package<a class="headerlink" href="#what-is-in-the-package" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>package</th>
+<th>contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>swjtumover_msgs</code></td>
+<td><code>MotorState</code>: header, phase current, rpm, position, five fault flags</td>
+</tr>
+<tr>
+<td><code>swjtumover_bringup</code></td>
+<td>motor driver, screen driver, launch files, configuration, task scripts</td>
+</tr>
+<tr>
+<td><code>swjtumover_vanjee</code></td>
+<td>LiDAR adapter publishing <code>/scan</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-robot">The robot<a class="headerlink" href="#the-robot" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>item</th>
+<th>value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>body</td>
+<td>0.32 × 0.30 m, 0.089 m tall</td>
+</tr>
+<tr>
+<td>LiDAR</td>
+<td>Vanjee 718H, single line, at (0, 0, 0.14114) m, centred, pitched 1.5°</td>
+</tr>
+<tr>
+<td>wheels</td>
+<td>radius 0.05035 m, track ±0.103 m</td>
+</tr>
+<tr>
+<td>motor board</td>
+<td><code>192.168.100.100:23</code>, UDP, 10-byte frames with CRC8-Maxim</td>
+</tr>
+<tr>
+<td>display</td>
+<td><code>192.168.100.100:26</code>, UDP</td>
+</tr>
+<tr>
+<td>networks</td>
+<td>LiDAR <code>192.168.110.0/24</code>, motor/IO <code>192.168.100.0/24</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="interfaces-at-a-glance">Interfaces at a glance<a class="headerlink" href="#interfaces-at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>topic</th>
+<th>direction</th>
+<th>rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/scan</code></td>
+<td>from the LiDAR adapter</td>
+<td>~14 Hz</td>
+</tr>
+<tr>
+<td><code>/odom</code>, <code>/motor_state/left</code>, <code>/motor_state/right</code></td>
+<td>from the motor driver</td>
+<td>50 Hz</td>
+</tr>
+<tr>
+<td><code>/cmd_vel</code></td>
+<td>to the motor driver — the only actuation path</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>/cmd_vel/line</code>, <code>/cmd_vel/nav</code></td>
+<td>arbitration inputs to the mission</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>/line_then_home/state</code></td>
+<td>mission state</td>
+<td>on change</td>
+</tr>
+<tr>
+<td><code>/qrcode_text</code></td>
+<td>to the screen driver</td>
+<td>on change</td>
+</tr>
+</tbody>
+</table>
+<p>Services on the mission node: <code>/line_then_home/start</code>, <code>…/stop</code>, <code>…/record_waypoints</code>.</p>
+<h2 id="three-things-worth-knowing-up-front">Three things worth knowing up front<a class="headerlink" href="#three-things-worth-knowing-up-front" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>The LiDAR sits at the centre of the body.</strong> A range reading is the distance to the centre; the
+   body reaches 0.16 m further ahead. Obstacle checks account for this.</li>
+<li><strong>Start the LiDAR first.</strong> Every ROS 2 process on this machine may compete for UDP 7000.
+   <code>bringup.launch.py</code> orders it correctly.</li>
+<li><strong>The motor driver has a watchdog.</strong> If commands stop, or motor feedback stops, the wheels are
+   zeroed within half a second and the driver stays off until restarted.</li>
+</ol>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="ros2.html" class="btn btn-neutral float-right" title="Running on the robot">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+    
+      <span><a href="ros2.html" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
+
+<!--
+MkDocs version : 1.6.1
+Build Date UTC : 2026-10-28 18:24:23.913539+00:00
+-->

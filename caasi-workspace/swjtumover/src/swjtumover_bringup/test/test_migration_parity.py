@@ -329,43 +329,188 @@ def test_active_ros2_code_is_english():
     assert not offenders, 'Chinese text in active ROS 2 code:\n' + '\n'.join(offenders[:10])
 
 
-def test_mkdocs_manual_is_consistent():
-    """The manual must build: every nav entry exists and no cross-document link dangles.
+def test_the_package_ships_the_manual_as_html():
+    """The package carries the built manual in docs/, not its Markdown sources or the toolchain.
 
-    mkdocs is not installed on the build machine, so this checks the structure that mkdocs would
-    fail on -- a missing page or a broken relative link -- rather than the rendered output.
+    The Markdown sources and mkdocs live beside the package in ../swjtumover-docs, so ten deployed
+    robots get the documentation and nothing else.
     """
-    project = PKG.parent.parent        # <project>/src/swjtumover_bringup -> <project>
-    config_path = project / 'mkdocs.yml'
-    assert config_path.is_file(), 'mkdocs.yml missing'
-    config = yaml.safe_load(config_path.read_text(encoding='utf-8'))
-    assert config.get('docs_dir') == 'docs'
-    docs = project / 'docs'
-    nav_paths = []
-    for entry in config['nav']:
-        _title, rel = next(iter(entry.items()))
-        path = docs / rel
-        assert path.is_file(), f'nav points at a missing page: {rel}'
-        nav_paths.append(rel)
-    assert len(nav_paths) >= 5, nav_paths
-    # every page the nav references must be reachable, and links must resolve
-    for md in sorted(docs.glob('*.md')):
-        text = md.read_text(encoding='utf-8')
-        for link in re.findall(r'\]\(([^)#]+\.md)\)', text):
-            assert (docs / link).is_file(), f'{md.name} links to missing {link}'
-    # the shipped manual covers operation, commands, hardware and remote access
-    for page in ('ros2.md', 'caasi-commands.md', 'commands-ros1-vs-ros2.md',
-                 'hardware.md', 'fleet-and-display.md'):
-        assert page in nav_paths, f'{page} is not in the nav'
-    # pages are plain .html files, so the site opens from a local checkout without a server
-    assert config.get('use_directory_urls') is False
-    # the build output lives outside the project
-    assert not (project / 'site').exists(), 'documentation output belongs outside the project'
-    # development history belongs in the migration records, not in the product
-    for page in sorted(docs.glob('*.md')):
-        text = page.read_text(encoding='utf-8')
-        for marker in ('defect', 'Defect', '§'):
-            assert marker not in text, f'{page.name} carries development notes: {marker!r}'
+    docs = PKG.parent.parent / 'docs'
+    assert docs.is_dir(), 'the package has no docs/'
+    pages = {p.name for p in docs.glob('*.html')}
+    for page in ('index.html', 'ros2.html', 'caasi-commands.html',
+                 'commands-ros1-vs-ros2.html', 'hardware.html', 'fleet-and-display.html'):
+        assert page in pages, f'{page} is missing from docs/'
+    assert not list(docs.glob('*.md')), 'Markdown sources do not ship; only the built HTML'
+    # pages link to each other by file name, so opening the manual from disk works
+    index = (docs / 'index.html').read_text(encoding='utf-8')
+    assert 'href="ros2.html"' in index
+    assert 'href="index/"' not in index
+
+
+def test_documentation_has_no_development_notes():
+    """The shipped manual describes the product; history lives in the migration records."""
+    docs = PKG.parent.parent / 'docs'
+    for page in sorted(docs.glob('*.html')):
+        html = page.read_text(encoding='utf-8')
+        for marker in ('defect', 'Defect', 'run 10', 'was broken', 'found by running'):
+            assert marker not in html, f'{page.name} carries development notes: {marker!r}'
+
+
+def test_documentation_sources_build_strictly_when_mkdocs_is_available():
+    """`mkdocs build --strict` must pass: broken links and missing pages become errors."""
+    import shutil
+    import subprocess
+    import tempfile
+    sources = PKG.parent.parent.parent / 'swjtumover-docs'
+    if not (sources / 'mkdocs.yml').is_file():
+        import pytest
+        pytest.skip('documentation sources are not present beside the package')
+    on_path = shutil.which('mkdocs')
+    venv_python = sources / '.venv' / 'bin' / 'python'
+    if on_path:
+        cmd = [on_path]
+    elif venv_python.is_file():
+        cmd = [str(venv_python), '-m', 'mkdocs']
+    else:
+        import pytest
+        pytest.skip('mkdocs not available; run swjtumover-docs/build.sh to enable this check')
+    with tempfile.TemporaryDirectory() as tmp:
+        result = subprocess.run([*cmd, 'build', '--strict', '--site-dir', tmp],
+                                cwd=sources, capture_output=True, text=True, timeout=120)
+        assert result.returncode == 0, f'mkdocs build --strict failed:\n{result.stderr[-800:]}'
+        built = sorted(pathlib.Path(tmp).glob('*.html'))
+        assert any(page.name == 'index.html' for page in built), [p.name for p in built]
+
+
+def test_costmap_obstacle_source_parameters_are_per_source():
+    """nav2 reads obstacle-layer parameters from the *source*, ROS 1 read them from the layer.
+
+    Keeping the ROS 1 nesting left `scan.max_obstacle_height` at nav2's default 0.0. The laser
+    sits at z = 0.141 m, so every point was filtered out, the local costmap stayed empty, DWB saw
+    no obstacles at all and the robot drove into a maze wall. These parameters must be nested
+    under the observation source, and max_obstacle_height must admit the sensor height.
+    """
+    data = yaml.safe_load(_read(PARAM / 'nav2_params.yaml'))
+    for costmap in ('local_costmap', 'global_costmap'):
+        params = data[costmap][costmap]['ros__parameters']
+        layer = params['obstacle_layer']
+        source = layer['scan']
+        for key in ('max_obstacle_height', 'obstacle_max_range', 'raytrace_max_range'):
+            assert key in source, f'{costmap}: scan.{key} missing (must be per source)'
+            assert key not in layer, f'{costmap}: {key} at layer level is ignored by nav2'
+        assert source['max_obstacle_height'] > 0.15, (
+            f'{costmap}: scan.max_obstacle_height {source["max_obstacle_height"]} would filter '
+            'out the LiDAR at z=0.141')
+        assert source['obstacle_max_range'] > 0.5
+        assert source['marking'] and source['clearing']
+
+
+def test_costmap_inflation_matches_ros1():
+    """Inflated cost values are what keep DWB away from walls; the values are ROS 1's."""
+    data = yaml.safe_load(_read(PARAM / 'nav2_params.yaml'))
+    expected = {'local_costmap': (0.03, 10.0), 'global_costmap': (0.08, 8.0)}
+    for costmap, (radius, scaling) in expected.items():
+        inflation = data[costmap][costmap]['ros__parameters']['inflation_layer']
+        assert abs(inflation['inflation_radius'] - radius) < 1e-9, costmap
+        assert abs(inflation['cost_scaling_factor'] - scaling) < 1e-9, costmap
+
+
+def test_dwb_can_reverse_like_ros1_teb():
+    """ROS 1 TEB set max_vel_x_backwards: 0.2. DWB is forward-only unless min_vel_x is negative.
+
+    Forward-only DWB could not back out of a tight spot: the controller reported "Failed to make
+    progress", aborted the goal (nav2 error 105) and left the robot stuck against an obstacle it
+    had correctly detected.
+    """
+    data = yaml.safe_load(_read(PARAM / 'nav2_params.yaml'))
+    follow = data['controller_server']['ros__parameters']['FollowPath']
+    assert follow['min_vel_x'] <= -0.2 + 1e-9, (
+        f"DWB min_vel_x {follow['min_vel_x']} forbids reversing; ROS 1 allowed 0.2 m/s backwards")
+    assert follow['max_vel_x'] == 0.6 and follow['max_vel_theta'] == 1.0
+
+
+def test_maze_map_preserves_world_coordinates():
+    """The cropped maze map must be interchangeable with nav.pgm in world coordinates.
+
+    It exists for CPU reasons (the full 99 m map as a nav2 global costmap saturates the robot and
+    breaks lifecycle bringup), so a goal in map coordinates has to mean the same point in both.
+    """
+    full = yaml.safe_load(_read(PKG / 'map' / 'nav.yaml'))
+    maze = yaml.safe_load(_read(PKG / 'map' / 'nav_maze.yaml'))
+    assert maze['resolution'] == full['resolution']
+    assert maze['image'] == 'nav_maze.pgm'
+
+    def header(path):
+        """(width, height) from a PGM header, skipping comment lines as nav.pgm has one."""
+        fields = []
+        for line in path.read_bytes().splitlines():
+            line = line.strip()
+            if not line or line.startswith(b'#'):
+                continue
+            fields.extend(line.split())
+            if len(fields) >= 3:
+                break
+        assert fields[0] == b'P5'
+        return int(fields[1]), int(fields[2])
+
+    fw, fh = header(PKG / 'map' / 'nav.pgm')
+    mw, mh = header(PKG / 'map' / 'nav_maze.pgm')
+    assert (mw, mh) != (fw, fh), 'cropped map should be smaller'
+    # world extent of each map
+    fx, fy, _ = full['origin']
+    mx, my, _ = maze['origin']
+    assert fx <= mx and fy <= my, 'crop origin must lie inside the full map'
+    assert mx + mw * maze['resolution'] <= fx + fw * full['resolution'] + 1e-9
+    assert my + mh * maze['resolution'] <= fy + fh * full['resolution'] + 1e-9
+
+
+def test_dwb_checks_the_whole_footprint_not_the_centre():
+    """`BaseObstacle` only tests the robot's centre point; the body is 0.32 x 0.30 m.
+
+    With BaseObstacle the robot drove its front edge into a tall box that the LiDAR had
+    correctly placed in the costmap, because its centre was still in free space when the
+    collision happened. ROS 1's TEB scored against the footprint model, so the migrated stack
+    must do the equivalent: ObstacleFootprint.
+    """
+    data = yaml.safe_load(_read(PARAM / 'nav2_params.yaml'))
+    follow = data['controller_server']['ros__parameters']['FollowPath']
+    critics = follow['critics']
+    assert 'ObstacleFootprint' in critics, f'no footprint collision critic: {critics}'
+    assert 'BaseObstacle' not in critics, 'BaseObstacle alone only checks the centre point'
+    assert 'ObstacleFootprint.scale' in follow
+    # and the footprint must be the ROS 1 one
+    footprint = follow.get('footprint') or data['local_costmap']['local_costmap'][
+        'ros__parameters']['footprint']
+    assert '0.16' in str(footprint) and '0.15' in str(footprint), footprint
+
+
+def test_active_ros2_code_is_english():
+    """ROS 1 is commented in Chinese; the ROS 2 code is English throughout.
+
+    The ROS 1 originals are kept under *_ros1 / ros1_reference for byte comparison and keep their
+    Chinese. Everything that actually runs on Jazzy is English, including log strings, because
+    those are what an operator reads at 2 a.m.
+    """
+    import re as _re
+    cjk = _re.compile(r'[\u4e00-\u9fff]')
+    project = PKG.parent
+    reference_markers = ('ros1_reference', '_ros1.yaml', 'ros1.yaml',
+                         'costmap_params', 'planner_params', 'dwa_local', 'teb_local',
+                         'exam_goals', 'lidar.yaml')
+    offenders = []
+    for path in list(project.rglob('*.py')) + list(project.rglob('*.cpp')) + \
+            list(project.rglob('*.h')) + list(project.rglob('*.yaml')):
+        text_path = str(path)
+        if any(marker in text_path for marker in reference_markers):
+            continue
+        if 'build/' in text_path or 'install/' in text_path or '__pycache__' in text_path:
+            continue
+        for number, line in enumerate(path.read_text(encoding='utf-8', errors='replace').splitlines(), 1):
+            if cjk.search(line):
+                offenders.append(f'{path.relative_to(project)}:{number}: {line.strip()[:70]}')
+                break
+    assert not offenders, 'Chinese text in active ROS 2 code:\n' + '\n'.join(offenders[:10])
 
 
 def test_every_package_uri_the_urdf_uses_is_installed():
@@ -398,37 +543,3 @@ def test_every_package_uri_the_urdf_uses_is_installed():
         '\n'.join(missing)
 
 
-def test_manual_builds_strictly_when_mkdocs_is_available():
-    """`mkdocs build --strict` must pass: it turns broken links and missing pages into errors.
-
-    mkdocs is not a build dependency of the package, so the check is skipped when the project's
-    docs venv has not been created (scripts/build_docs.sh makes it). The structural test above runs
-    either way; this one catches anything only the real renderer notices.
-    """
-    import shutil
-    import subprocess
-    project = PKG.parent.parent
-    # Build tooling lives outside the shipped project: either mkdocs on PATH or the shared venv one
-    # directory up. The project itself ships only docs/ and mkdocs.yml.
-    on_path = shutil.which('mkdocs')
-    shared = project.parent / '.docs-venv' / 'bin' / 'python'
-    if on_path:
-        mkdocs_cmd = [on_path]
-    elif shared.is_file():
-        mkdocs_cmd = [str(shared), '-m', 'mkdocs']
-    else:
-        import pytest
-        pytest.skip('mkdocs not available; run scripts/build_docs.sh to enable this check')
-    import pathlib as _pathlib
-    import tempfile
-    # everything is inspected inside the temporary directory: it is gone afterwards
-    with tempfile.TemporaryDirectory() as tmp:
-        result = subprocess.run([*mkdocs_cmd, 'build', '--strict', '--site-dir', tmp],
-                                cwd=project, capture_output=True, text=True, timeout=120)
-        assert result.returncode == 0, (
-            f'mkdocs build --strict failed:\n{result.stderr[-800:]}')
-        built = sorted(_pathlib.Path(tmp).glob('*.html'))
-        assert built, 'the build produced no pages'
-        assert any(page.name == 'index.html' for page in built), [p.name for p in built]
-        for page in built:
-            assert 'href="' in page.read_text(encoding='utf-8'), f'{page.name} has no links'
