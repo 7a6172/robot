@@ -16,4 +16,5 @@ nav:
 - Running with caasi: caasi-commands.md
 - Hardware and safety: hardware.md
 - Commands, ROS 1 vs ROS 2: commands-ros1-vs-ros2.md
+- Fleet identity and remote display: fleet-and-display.md
 - ROS 1 vs ROS 2 audit: ros1-vs-ros2-audit.md
