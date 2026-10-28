@@ -72,7 +72,13 @@ class LineThenHome(Node):
                              durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 1)
         self.enable_pub = self.create_publisher(Bool, '/line_follow/enable', latched)
-        self.state_pub = self.create_publisher(String, '~state', latched)
+        # ROS 1 private names (`~state`, `~start`) expand to `/<node_name>/...`. ROS 2 has neither
+        # the `~` syntax nor that substitution: a *relative* name resolves against the node's
+        # NAMESPACE, so plain 'state' becomes '/state' -- close enough to look right and wrong
+        # everywhere it matters, because the documented interface is /line_then_home/start.
+        # Building the name from the node name reproduces the ROS 1 expansion exactly.
+        self.prefix = '/' + self.get_name()
+        self.state_pub = self.create_publisher(String, self.prefix + '/state', latched)
 
         self.create_subscription(PoseWithCovarianceStamped, '/amcl_pose', self.pose_cb, 1)
         self.create_subscription(Twist, '/cmd_vel/line',
@@ -80,9 +86,9 @@ class LineThenHome(Node):
         self.create_subscription(Twist, '/cmd_vel/nav', lambda m: self.cmd_cb(m, 'nav'), 1)
         self.create_subscription(Bool, '/line_follow/end', self.end_cb, 1)
         self.create_subscription(PointStamped, '/clicked_point', self.waypoint_cb, 10)
-        self.create_service(Trigger, '~start', self.start_cb)
-        self.create_service(Trigger, '~stop', self.stop_cb)
-        self.create_service(Trigger, '~record_waypoints', self.record_waypoints_cb)
+        self.create_service(Trigger, self.prefix + '/start', self.start_cb)
+        self.create_service(Trigger, self.prefix + '/stop', self.stop_cb)
+        self.create_service(Trigger, self.prefix + '/record_waypoints', self.record_waypoints_cb)
 
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)

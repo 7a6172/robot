@@ -172,3 +172,56 @@ def test_line_then_home_arbitrates_the_command_topic():
     assert "('/cmd_vel', '/cmd_vel/line')" in text
     nav = _read(LAUNCH / 'navigation.launch.py')
     assert "'cmd_vel_topic', default_value='/cmd_vel/nav'" in nav
+
+
+def test_no_ros1_private_name_syntax():
+    """ROS 2 rejects `~name` (ROS 1's private namespace). Relative names give the same result.
+
+    `self.create_publisher(String, '~state', ...)` raised InvalidTopicNameException on the robot
+    and the mission node exited immediately, so the whole supervisor was dead on arrival.
+    """
+    import pathlib
+    here = pathlib.Path(__file__).resolve().parent.parent
+    offenders = []
+    for path in sorted((here / 'scripts').glob('*.py')):
+        if 'ros1_reference' in str(path):
+            continue
+        for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+            stripped = line.strip()
+            if stripped.startswith('#'):
+                continue
+            if re.search(r"[\"']~[A-Za-z_]", line):
+                offenders.append(f'{path.name}:{number}: {stripped}')
+    assert not offenders, 'ROS 1 private names in ROS 2 code:\n' + '\n'.join(offenders)
+
+
+def test_mission_interface_names_match_ros1_when_qualified():
+    """The relative names must resolve to the ROS 1 fully-qualified ones."""
+    import pathlib
+    here = pathlib.Path(__file__).resolve().parent.parent
+    text = (here / 'scripts' / 'line_then_home.py').read_text(encoding='utf-8')
+    code = '\n'.join(l for l in text.splitlines() if not l.strip().startswith('#'))
+    for name in ('state', 'start', 'stop', 'record_waypoints'):
+        assert f"self.prefix + '/{name}'" in code, (
+            f'{name} must be named from the node name so it expands to /line_then_home/{name} '
+            'as in ROS 1 (a plain relative name would become /' + name + ')')
+    assert "self.prefix = '/' + self.get_name()" in code
+    assert "'~" not in code, 'a private-name topic/service survived in code (comments may mention it)'
+
+
+def test_line_follower_has_an_obstacle_stop_from_the_body_edge():
+    """The follower must stop on obstacles, measured from the BODY, not from the sensor.
+
+    ROS 1's follower had no obstacle check at all -- only "line lost" and "end of line". The
+    LiDAR sits at the robot's centre (x=0, y=0), so a raw range is the distance to the centre
+    while the body still reaches 0.16 m ahead. A guard that stopped at a raw 0.22 m left 6 cm,
+    and the robot crept into a wall boundary during verification.
+    """
+    text = (pathlib.Path(__file__).resolve().parent.parent / 'scripts'
+            / 'omove_following_feng.py').read_text(encoding='utf-8')
+    assert 'BODY_HALF_LENGTH = 0.16' in text, 'body half-length must come from the URDF value'
+    assert 'OBSTACLE_STOP_DISTANCE = BODY_HALF_LENGTH + OBSTACLE_MARGIN' in text, (
+        'the stop distance must include the body offset, not just the sensor range')
+    assert 'OBSTACLE_MARGIN' in text and '0.1' in text.split('OBSTACLE_MARGIN')[1][:20]
+    assert 'self.obstacle_stop' in text
+    assert "'/scan'" in text, 'the follower needs the scan to detect obstacles'

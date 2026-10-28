@@ -30,7 +30,19 @@ from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, LaserScan
+# --- obstacle stop ---------------------------------------------------------------
+# ROS 1's follower had no obstacle check at all: its only stop conditions were "line lost" and
+# "end of line". The LiDAR sits at the robot's CENTRE (link origin x=0, y=0), so the range it
+# reports is the distance to the centre -- the body still extends 0.16 m ahead of that. A guard
+# that stops at a raw 0.22 m is therefore only 6 cm from contact, which is how the robot crept
+# into a wall boundary during verification. Stop when the CENTRE clearance is less than the body
+# half-length plus a margin.
+BODY_HALF_LENGTH = 0.16      # from the URDF: base_link spans x -0.16..+0.16
+OBSTACLE_MARGIN = 0.12       # deliberate clearance on top of the body
+OBSTACLE_STOP_DISTANCE = BODY_HALF_LENGTH + OBSTACLE_MARGIN
+OBSTACLE_SECTOR_DEG = 30     # half-width of the protected sector
+
 from std_msgs.msg import Bool
 
 import cv2
@@ -66,6 +78,8 @@ class OmoveFollowing(Node):
         self.yaw = 0.0
         self.flag = 0
         self.blocked = False
+        self.obstacle_stop = False
+        self.last_scan = None
         self.reached_goal = False
         self.line_detected = True
         self.end_frames = 0
@@ -80,9 +94,11 @@ class OmoveFollowing(Node):
             cv2.startWindowThread()
 
         image_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
+        scan_qos = QoSProfile(depth=5, reliability=ReliabilityPolicy.BEST_EFFORT)
         self.create_subscription(Bool, '/line_follow/enable', self.enable_cb, 1)
         self.create_subscription(Image, self.image_topic, self.color_img_cb, image_qos)
         self.create_subscription(Image, self.depth_topic, self.depth_img_cb, image_qos)
+        self.create_subscription(LaserScan, '/scan', self.scan_cb, scan_qos)
         self.create_timer(0.05, self.control_step)   # 20 Hz, as in ROS 1
 
     # -- enable / reached-goal signalling ------------------------------
@@ -109,14 +125,47 @@ class OmoveFollowing(Node):
                        (self.get_clock().now() - self.last_image_time).nanoseconds / 1e9
                        < self.image_timeout)
 
+        clearance = self.front_clearance()
+        if clearance < OBSTACLE_STOP_DISTANCE:
+            if not self.obstacle_stop:
+                self.obstacle_stop = True
+                self.get_logger().warn(
+                    'obstacle stop: centre clearance %.2f m < %.2f m (body half-length %.2f m '
+                    'plus %.2f m margin) -- holding zero'
+                    % (clearance, OBSTACLE_STOP_DISTANCE, BODY_HALF_LENGTH, OBSTACLE_MARGIN))
+        elif clearance > OBSTACLE_STOP_DISTANCE + 0.05:
+            self.obstacle_stop = False
+
         if not self.enabled or not image_fresh or self.reached_goal or self.blocked \
-                or not self.line_detected:
+                or not self.line_detected or self.obstacle_stop:
             cmd.linear.x = 0.0
             cmd.angular.z = 0.0
         else:
             cmd.linear.x = 0.12
             cmd.angular.z = -self.yaw * 0.6
         self.cmd_pub.publish(cmd)
+
+    # -- obstacle stop --------------------------------------------------
+    def scan_cb(self, msg: LaserScan) -> None:
+        self.last_scan = msg
+
+    def front_clearance(self) -> float:
+        """Nearest return inside the protected sector, or inf when nothing is seen."""
+        scan = self.last_scan
+        if scan is None:
+            return float('inf')
+        limit = math.radians(OBSTACLE_SECTOR_DEG)
+        best = float('inf')
+        for index, distance in enumerate(scan.ranges):
+            if not math.isfinite(distance):
+                continue
+            if distance < scan.range_min or distance > scan.range_max:
+                continue
+            angle = scan.angle_min + index * scan.angle_increment
+            angle = math.atan2(math.sin(angle), math.cos(angle))
+            if -limit <= angle <= limit:
+                best = min(best, distance)
+        return best
 
     # -- vision --------------------------------------------------------
     def mouse_callback(self, event, x, y, flags, param) -> None:
