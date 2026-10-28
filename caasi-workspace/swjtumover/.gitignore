@@ -9,3 +9,7 @@ __pycache__/
 
 # Run artefacts
 *.bag
+
+# documentation build
+site/
+.mkdocs-venv/

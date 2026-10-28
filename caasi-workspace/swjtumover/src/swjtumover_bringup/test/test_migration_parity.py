@@ -386,3 +386,21 @@ def test_every_package_uri_the_urdf_uses_is_installed():
             missing.append(f'{uri} (package directory {top!r} not installed)')
     assert not missing, 'URDF references resources that would not exist on the robot:\n' + \
         '\n'.join(missing)
+
+
+def test_manual_builds_strictly_when_mkdocs_is_available():
+    """`mkdocs build --strict` must pass: it turns broken links and missing pages into errors.
+
+    mkdocs is not a build dependency of the package, so the check is skipped when the project's
+    docs venv has not been created (scripts/build_docs.sh makes it). The structural test above runs
+    either way; this one catches anything only the real renderer notices.
+    """
+    import subprocess
+    project = PKG.parent.parent
+    mkdocs = project / '.mkdocs-venv' / 'bin' / 'mkdocs'
+    if not mkdocs.is_file():
+        import pytest
+        pytest.skip('mkdocs venv not present; run scripts/build_docs.sh to enable this check')
+    result = subprocess.run([str(mkdocs), 'build', '--strict'], cwd=project,
+                            capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, f'mkdocs build --strict failed:\n{result.stderr[-800:]}'
