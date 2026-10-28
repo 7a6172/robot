@@ -213,3 +213,25 @@ def test_launch_parameter_files_are_ros2_parameter_files():
                 f'{launch_name} -> {path.name}: no ros__parameters (ROS 1 schema cannot be '
                 'passed to a ROS 2 node)')
     assert not problems, '\n'.join(problems)
+
+
+def test_lifecycle_nodes_are_managed():
+    """A lifecycle node left unconfigured publishes nothing, and the launch looks healthy.
+
+    `sync_slam_toolbox_node` is a lifecycle node while ROS 1's gmapping was not, so the launch
+    has to configure and activate it. Found on the robot: slam_toolbox was running, but
+    `ros2 node info /slam_toolbox` showed no `/scan` subscription and no `/map` publisher until
+    `ros2 lifecycle set ... configure/activate` was issued by hand.
+    """
+    lifecycle_managed = {
+        'slam.launch.py': ['slam_toolbox'],
+    }
+    for name, required in lifecycle_managed.items():
+        text = PKG.joinpath('launch', name).read_text(encoding='utf-8')
+        assert 'nav2_lifecycle_manager' in text, f'{name}: no lifecycle manager'
+        assert 'autostart' in text, f'{name}: lifecycle manager does not autostart'
+        for node in required:
+            assert f"'{node}'" in text, f'{name}: {node} not in the manager\'s node_names'
+        # the manager must be started, not merely constructed
+        assert 'lifecycle_manager' in text.split('return LaunchDescription')[-1], (
+            f'{name}: the lifecycle manager is constructed but never added to the description')

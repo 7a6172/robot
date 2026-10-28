@@ -59,3 +59,22 @@ every ROS 2 process binds UDP 7000 here and the driver must own it first.
 `screen_node.cpp`, `motor_node_original_ros1.cpp` and the CRC helper exactly as they are on the
 robot. The parity tests read them, so any future change to the ROS 2 side that silently breaks
 the interface will fail a test rather than a field trial.
+
+## Saving a map
+
+ROS 1 saved maps with `rosrun map_server map_saver -f <prefix>`. On ROS 2 the equivalent for this
+stack is slam_toolbox's own service, which needs the target directory to exist:
+
+```bash
+mkdir -p ~/maps
+ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap \
+  "{name: {data: '/home/swjtumover/maps/map'}}"
+```
+
+`ros2 run nav2_map_server map_saver_cli -f <prefix>` does **not** work against slam_toolbox here
+(`Failed to spin map subscription`) even though `/map` is RELIABLE + TRANSIENT_LOCAL, and it does
+not improve with a longer `map_subscribe_timeout`. Verified on the robot; use the service.
+
+`slam_toolbox` is a lifecycle node, so `slam.launch.py` runs a `nav2_lifecycle_manager` to
+configure and activate it. Without that it starts unconfigured -- no `/scan` subscription and no
+`/map` -- while the launch still looks healthy.

@@ -7,6 +7,11 @@ where the mapping from the old gmapping settings is documented.
 
 It is **not** a like-for-like algorithm: map texture and loop closure will differ. The ROS 1
 map remains the reference for comparison.
+
+`slam_toolbox` is a **lifecycle** node, unlike gmapping which started mapping as soon as it was
+launched. Left alone it stays `unconfigured`: no `/scan` subscription and no `/map` publisher, and
+the launch looks healthy while nothing happens. A lifecycle manager therefore configures and
+activates it, which is what makes this equivalent to the ROS 1 file.
 """
 
 import os
@@ -42,6 +47,12 @@ def generate_launch_description():
         output='screen',
         parameters=[slam_params, {'use_sim_time': use_sim_time}])
 
+    # Without this the node above stays unconfigured and publishes nothing.
+    lifecycle_manager = Node(
+        package='nav2_lifecycle_manager', executable='lifecycle_manager',
+        name='lifecycle_manager_slam', output='screen',
+        parameters=[{'autostart': True, 'node_names': ['slam_toolbox']}])
+
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument(
@@ -51,5 +62,5 @@ def generate_launch_description():
             'lidar_bind_lead', default_value='3.0',
             description='Passed to bringup: the LiDAR must own UDP 7000 before other nodes.'),
         hardware,
-        TimerAction(period=lidar_bind_lead, actions=[slam]),
+        TimerAction(period=lidar_bind_lead, actions=[slam, lifecycle_manager]),
     ])
