@@ -327,3 +327,32 @@ def test_active_ros2_code_is_english():
                 offenders.append(f'{path.relative_to(project)}:{number}: {line.strip()[:70]}')
                 break
     assert not offenders, 'Chinese text in active ROS 2 code:\n' + '\n'.join(offenders[:10])
+
+
+def test_mkdocs_manual_is_consistent():
+    """The manual must build: every nav entry exists and no cross-document link dangles.
+
+    mkdocs is not installed on the build machine, so this checks the structure that mkdocs would
+    fail on -- a missing page or a broken relative link -- rather than the rendered output.
+    """
+    project = PKG.parent.parent        # <project>/src/swjtumover_bringup -> <project>
+    config_path = project / 'mkdocs.yml'
+    assert config_path.is_file(), 'mkdocs.yml missing'
+    config = yaml.safe_load(config_path.read_text(encoding='utf-8'))
+    assert config.get('docs_dir') == 'docs'
+    docs = project / 'docs'
+    nav_paths = []
+    for entry in config['nav']:
+        _title, rel = next(iter(entry.items()))
+        path = docs / rel
+        assert path.is_file(), f'nav points at a missing page: {rel}'
+        nav_paths.append(rel)
+    assert len(nav_paths) >= 5, nav_paths
+    # every page the nav references must be reachable, and links must resolve
+    for md in sorted(docs.glob('*.md')):
+        text = md.read_text(encoding='utf-8')
+        for link in re.findall(r'\]\(([^)#]+\.md)\)', text):
+            assert (docs / link).is_file(), f'{md.name} links to missing {link}'
+    # the two pages the audit and the caasi work produced must be in the nav
+    assert 'ros1-vs-ros2-audit.md' in nav_paths
+    assert 'caasi-commands.md' in nav_paths
