@@ -85,3 +85,7 @@ Every ROS 1 shell command has a caasi entry point in `experiments/`, so bringup,
 the mission, the line follower, the obstacle guard, teleop and rviz are all deployable, runnable
 and monitorable rather than untracked terminals. See `docs/caasi-commands.md` for the table of
 commands and for the current limitation of `caasi run start` on remote robot targets.
+
+## Audit
+
+`docs/ros1-vs-ros2-audit.md` compares the ROS 1 package with this project: file inventory, interface audit per node, parameter parity, the nav2 mapping, every deliberate difference, the thirteen defects found during the migration, the verification matrix and what is still outstanding.
