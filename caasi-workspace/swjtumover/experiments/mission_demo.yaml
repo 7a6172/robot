@@ -1,0 +1,13 @@
+# Run with: caasi run start experiments/mission_demo.yaml -t swjtumover05
+name: swjtumover-mission-demo
+backend: python
+script: ../scripts/caasi_launch.py
+args:
+- launch
+- line_then_home.launch.py
+- follower_end_confirm_frames:=100000
+- follow_timeout:=25.0
+description: 'The mission on a floor where the tape widens into the near field: the
+  follower''s end-of-line test would fire on the first frame, so it is disabled and
+  the mission uses its designed follow timeout instead -- follow for 25 s, stop, navigate
+  home. Start it with experiments/mission_start.yaml.'

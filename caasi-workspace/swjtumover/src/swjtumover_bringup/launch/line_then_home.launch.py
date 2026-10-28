@@ -37,6 +37,8 @@ def generate_launch_description():
     lidar_bind_lead = LaunchConfiguration('lidar_bind_lead')
     color_topic = LaunchConfiguration('color_topic')
     depth_topic = LaunchConfiguration('depth_topic')
+    end_confirm_frames = LaunchConfiguration('follower_end_confirm_frames')
+    follow_timeout = LaunchConfiguration('follow_timeout')
 
     hardware = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(bringup_launch),
@@ -58,7 +60,8 @@ def generate_launch_description():
     line_follower = Node(
         package='swjtumover_bringup', executable='omove_following_feng.py',
         name='omove_following', output='screen',
-        parameters=[{'enabled': False, 'end_confirm_frames': 5, 'image_timeout': 0.5,
+        parameters=[{'enabled': False, 'end_confirm_frames': end_confirm_frames,
+                     'image_timeout': 0.5,
                      # ROS 1 published colour/depth on /d415/...; realsense2_camera on Jazzy uses
                      # /camera/camera/.... Left at the ROS 1 defaults the follower would never see
                      # an image and would simply never move, with no error to explain it.
@@ -71,7 +74,8 @@ def generate_launch_description():
         package='swjtumover_bringup', executable='line_then_home.py',
         name='line_then_home', output='screen',
         parameters=[os.path.join(config_dir, 'line_then_home.yaml'),
-                    {'use_sim_time': use_sim_time}])
+                    {'use_sim_time': use_sim_time,
+                     'follow_timeout': follow_timeout}])
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='false'),
@@ -87,6 +91,14 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'depth_topic', default_value='/camera/camera/depth/image_rect_raw',
             description='Depth image for the line follower.'),
+        DeclareLaunchArgument(
+            'follower_end_confirm_frames', default_value='5',
+            description='Frames of near-horizontal line before the follower calls the line '
+                        'finished. On a floor where the tape widens into the near field this '
+                        'fires immediately; raise it to follow until the timeout instead.'),
+        DeclareLaunchArgument(
+            'follow_timeout', default_value='300.0',
+            description='Seconds of line following before the mission moves to the stop stage.'),
         DeclareLaunchArgument('lidar_bind_lead', default_value='3.0'),
         hardware,
         TimerAction(period=lidar_bind_lead, actions=[navigation, line_follower, mission]),

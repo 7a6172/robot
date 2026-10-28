@@ -331,3 +331,26 @@ def test_caasi_experiment_configs_are_valid_and_complete():
     launches = {a for cfg in configs.values() for a in cfg['args'] if str(a).endswith('.launch.py')}
     for launch in launches:
         assert PKG.joinpath('launch', launch).is_file(), f'experiment names a missing launch: {launch}'
+
+
+def test_follow_phase_can_be_bounded_by_timeout_instead_of_a_false_end_marker():
+    """The follower's end-of-line test is unusable when the tape widens into the near field.
+
+    On this floor the crop's nearest rows are a wide dark band, so `HoughLinesP` finds
+    near-horizontal segments and the follower declares the line finished on the first frames --
+    FOLLOW lasted 1.3 s and the robot never moved. The mission already has a designed
+    follow-timeout path, so both values are launch arguments: the ROS 1 defaults stay, and a floor
+    like this one can bound the phase by time instead.
+    """
+    import pathlib
+    text = (pathlib.Path(__file__).resolve().parent.parent / 'launch'
+            / 'line_then_home.launch.py').read_text(encoding='utf-8')
+    assert "'follower_end_confirm_frames', default_value='5'" in text, 'ROS 1 default must remain'
+    assert "'follow_timeout', default_value='300.0'" in text
+    assert "'end_confirm_frames': end_confirm_frames" in text
+    assert "'follow_timeout': follow_timeout" in text
+
+    project = PKG.parent.parent          # <project> = .../swjtumover
+    demo = yaml.safe_load((project / 'experiments' / 'mission_demo.yaml').read_text())
+    assert any(a.startswith('follower_end_confirm_frames:=') for a in demo['args'])
+    assert any(a.startswith('follow_timeout:=') for a in demo['args'])
