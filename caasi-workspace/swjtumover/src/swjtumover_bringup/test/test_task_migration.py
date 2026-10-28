@@ -52,9 +52,14 @@ def test_line_follower_vision_constants_unchanged():
     assert '0.12' in ros1 and '0.12' in ros2
     assert '-self.yaw * 0.6' in ros1 and '-self.yaw * 0.6' in ros2
     assert '(x - width / 2) / 320.0' in ros1 and '(x - width / 2) / 320.0' in ros2
-    # BGR thresholds and the crop offset
+    # BGR thresholds and the crop offset: the ROS 1 literals in ROS 1, and in ROS 2 the same values
+    # as parameter defaults -- they became parameters so a floor where the tape widens into the near
+    # field can be calibrated without editing code (see test_line_follower_vision_is_calibratable).
     for token in ('[10, 20, 10]', '[40, 50, 40]', 'height // 2 + 100'):
-        assert token in ros1 and token in ros2, token
+        assert token in ros1, token
+    assert "'line_lower', [10, 20, 10]" in ros2
+    assert "'line_upper', [40, 50, 40]" in ros2
+    assert "height // 2 + self.roi_top_offset" in ros2
     # end-of-line detection
     for token in ('minLineLength=100', 'maxLineGap=10', 'threshold=100', 'abs(slope) < 0.2'):
         assert token in ros1 and token in ros2, token
@@ -296,3 +301,25 @@ def test_pose_from_tf_builds_a_pose_and_survives_a_missing_chain():
 
     fake.tf_buffer = BadBuffer()
     assert module.LineThenHome.pose_from_tf(fake) is None, 'a missing chain must not raise'
+
+
+def test_line_follower_vision_is_calibratable_with_ros1_defaults():
+    """The crop and the colour range must be parameters, defaulting to the ROS 1 values.
+
+    On this floor the tape widens into the near field, so the crop's nearest rows are a wide dark
+    band and the end-of-line test fires on the first frames. The ROS 1 author calibrated this
+    interactively (the click-to-print-BGR callback); headless, the same calibration has to be
+    expressible as parameters. The defaults stay exactly as ported.
+    """
+    import pathlib
+    text = (pathlib.Path(__file__).resolve().parent.parent / 'scripts'
+            / 'omove_following_feng.py').read_text(encoding='utf-8')
+    assert "'roi_top_offset', 100" in text, 'ROS 1 crop offset must remain the default'
+    assert "'roi_bottom_offset', 0" in text
+    assert "'line_lower', [10, 20, 10]" in text, 'ROS 1 thresholds must remain the defaults'
+    assert "'line_upper', [40, 50, 40]" in text
+    # and they must actually be used
+    assert 'cv2.inRange(crop_img, self.line_lower, self.line_upper)' in text
+    assert 'self.roi_top_offset' in text and 'self.roi_bottom_offset' in text
+    # the hard-coded values must be gone
+    assert "np.array([10, 20, 10], dtype='uint8')" not in text

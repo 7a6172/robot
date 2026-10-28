@@ -64,6 +64,17 @@ class OmoveFollowing(Node):
         self.end_confirm_frames = max(
             1, int(self.declare_parameter('end_confirm_frames', 1).value))
         self.image_timeout = float(self.declare_parameter('image_timeout', 0.5).value)
+        # Region of interest and colour range. The ROS 1 values are the defaults, so nothing ported
+        # changes silently; a floor where the tape widens into the near field needs a crop that
+        # stops above that band, and the range that isolates the tape on that floor.
+        roi_top = int(self.declare_parameter('roi_top_offset', 100).value)
+        roi_bottom = int(self.declare_parameter('roi_bottom_offset', 0).value)
+        lower = list(self.declare_parameter('line_lower', [10, 20, 10]).value)
+        upper = list(self.declare_parameter('line_upper', [40, 50, 40]).value)
+        self.roi_top_offset = max(0, roi_top)
+        self.roi_bottom_offset = max(0, roi_bottom)
+        self.line_lower = np.array([max(0, min(255, int(v))) for v in lower], dtype='uint8')
+        self.line_upper = np.array([max(0, min(255, int(v))) for v in upper], dtype='uint8')
         self.gui = bool(self.declare_parameter('gui', False).value)
 
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
@@ -204,13 +215,13 @@ class OmoveFollowing(Node):
 
         self.last_image_time = self.get_clock().now()
         height, width, _ = cv_img.shape
-        crop_img = cv_img[height // 2 + 100:height, 1:width]
+        crop_top = min(height - 1, height // 2 + self.roi_top_offset)
+        crop_bottom = max(crop_top + 1, height - self.roi_bottom_offset)
+        crop_img = cv_img[crop_top:crop_bottom, 1:width]
         if crop_img.size == 0:
             return
 
-        lower = np.array([10, 20, 10], dtype='uint8')
-        upper = np.array([40, 50, 40], dtype='uint8')
-        mask = cv2.inRange(crop_img, lower, upper)
+        mask = cv2.inRange(crop_img, self.line_lower, self.line_upper)
         extraction = cv2.bitwise_and(crop_img, crop_img, mask=mask)
 
         moments = cv2.moments(mask, False)

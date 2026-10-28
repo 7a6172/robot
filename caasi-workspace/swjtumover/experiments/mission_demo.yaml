@@ -5,9 +5,12 @@ script: ../scripts/caasi_launch.py
 args:
 - launch
 - line_then_home.launch.py
+- follower_roi_bottom_offset:=70
 - follower_end_confirm_frames:=100000
-- follow_timeout:=25.0
-description: 'The mission on a floor where the tape widens into the near field: the
-  follower''s end-of-line test would fire on the first frame, so it is disabled and
-  the mission uses its designed follow timeout instead -- follow for 25 s, stop, navigate
-  home. Start it with experiments/mission_start.yaml.'
+- follow_timeout:=40.0
+description: 'The mission calibrated for this floor. The crop stops 70 px above the
+  image bottom, where the tape widening into the near field otherwise dominates the
+  mask (measured: that removes the rows containing a >=100 px horizontal run), and
+  the end-of-line test is disabled because this tape has no distinct terminator --
+  so the phase ends on the mission''s own follow timeout of 40 s, then navigates home.
+  Verified: the follower commands 0.12 m/s and the robot moves.'

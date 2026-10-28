@@ -39,6 +39,10 @@ def generate_launch_description():
     depth_topic = LaunchConfiguration('depth_topic')
     end_confirm_frames = LaunchConfiguration('follower_end_confirm_frames')
     follow_timeout = LaunchConfiguration('follow_timeout')
+    roi_top_offset = LaunchConfiguration('follower_roi_top_offset')
+    roi_bottom_offset = LaunchConfiguration('follower_roi_bottom_offset')
+    line_lower = LaunchConfiguration('follower_line_lower')
+    line_upper = LaunchConfiguration('follower_line_upper')
 
     hardware = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(bringup_launch),
@@ -67,6 +71,11 @@ def generate_launch_description():
                      # an image and would simply never move, with no error to explain it.
                      'color_topic': color_topic,
                      'depth_topic': depth_topic,
+                     # calibration; the defaults are the ROS 1 crop and colour range
+                     'roi_top_offset': roi_top_offset,
+                     'roi_bottom_offset': roi_bottom_offset,
+                     'line_lower': line_lower,
+                     'line_upper': line_upper,
                      'use_sim_time': use_sim_time}],
         remappings=[('/cmd_vel', '/cmd_vel/line')])
 
@@ -96,6 +105,19 @@ def generate_launch_description():
             description='Frames of near-horizontal line before the follower calls the line '
                         'finished. On a floor where the tape widens into the near field this '
                         'fires immediately; raise it to follow until the timeout instead.'),
+        DeclareLaunchArgument(
+            'follower_roi_top_offset', default_value='100',
+            description='Crop start below the image centre, as in ROS 1.'),
+        DeclareLaunchArgument(
+            'follower_roi_bottom_offset', default_value='0',
+            description='Crop end above the image bottom, as in ROS 1. Raising it excludes the '
+                        'near field, where a wide dark band makes the end-of-line test fire.'),
+        DeclareLaunchArgument(
+            'follower_line_lower', default_value='[10, 20, 10]',
+            description='BGR lower bound for the line, as in ROS 1.'),
+        DeclareLaunchArgument(
+            'follower_line_upper', default_value='[40, 50, 40]',
+            description='BGR upper bound for the line, as in ROS 1.'),
         DeclareLaunchArgument(
             'follow_timeout', default_value='300.0',
             description='Seconds of line following before the mission moves to the stop stage.'),

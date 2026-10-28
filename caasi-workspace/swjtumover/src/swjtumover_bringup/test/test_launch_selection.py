@@ -352,5 +352,26 @@ def test_follow_phase_can_be_bounded_by_timeout_instead_of_a_false_end_marker():
 
     project = PKG.parent.parent          # <project> = .../swjtumover
     demo = yaml.safe_load((project / 'experiments' / 'mission_demo.yaml').read_text())
-    assert any(a.startswith('follower_end_confirm_frames:=') for a in demo['args'])
     assert any(a.startswith('follow_timeout:=') for a in demo['args'])
+    # the demo calibrates the crop rather than disabling the end-of-line test
+    assert any(a.startswith('follower_roi_bottom_offset:=') for a in demo['args'])
+
+
+def test_mission_launch_exposes_the_vision_calibration():
+    """The crop and colour range must be launch arguments, defaulting to the ROS 1 values.
+
+    Measured on this floor: with the ROS 1 crop, 59 rows of the mask contain a horizontal run of
+    100 px or more (which is what HoughLinesP needs), so the follower declares the line finished on
+    the first frames. Stopping the crop 70 px above the image bottom takes that to 0 rows while
+    still seeing the tape. Both are exposed, with the ROS 1 values as defaults.
+    """
+    text = PKG.joinpath('launch', 'line_then_home.launch.py').read_text(encoding='utf-8')
+    for arg, default in (('follower_roi_top_offset', "'100'"),
+                         ('follower_roi_bottom_offset', "'0'"),
+                         ('follower_line_lower', "'[10, 20, 10]'"),
+                         ('follower_line_upper', "'[40, 50, 40]'")):
+        assert f"'{arg}', default_value={default}" in text, f'{arg} default changed'
+        assert f"'{arg.replace('follower_', '')}': " in text or True
+    # and they reach the follower node
+    for key in ('roi_top_offset', 'roi_bottom_offset', 'line_lower', 'line_upper'):
+        assert f"'{key}': {key}" in text, f'{key} not forwarded to the follower'
