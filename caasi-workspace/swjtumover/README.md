@@ -68,7 +68,7 @@ caasi run status <run>           # logs, state, stop
 | camera | `ros2 launch realsense2_camera rs_launch.py` | `experiments/camera.yaml` |
 | visualization | `rviz2 -d …/config/bringup.rviz` | `experiments/rviz.yaml` |
 
-`docs/commands-ros1-vs-ros2.html` lists every command in full, for both ROS 1 and ROS 2.
+`docs/commands.html` lists every command in full, for both ROS 1 and ROS 2.
 
 ## Documentation
 

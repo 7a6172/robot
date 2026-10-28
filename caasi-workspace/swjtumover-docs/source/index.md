@@ -8,7 +8,7 @@ There are two ways to operate it, and both are first-class:
 * **[Running on the robot](ros2.md)** — direct `ros2 launch` and `ros2 run` commands.
 * **[Running with caasi](caasi-commands.md)** — deploy, build, run and monitor from another machine.
 
-For a side-by-side list of every command, see **[Commands and workflows](commands-ros1-vs-ros2.md)**.
+For a side-by-side list of every command, see **[Commands and workflows](commands.md)**.
 Before driving the robot, read **[Hardware and safety](hardware.md)**. For multi-robot naming and
 seeing the robot's screen remotely, see **[Remote access](fleet-and-display.md)**.
 

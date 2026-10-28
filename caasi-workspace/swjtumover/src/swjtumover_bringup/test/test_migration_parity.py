@@ -339,7 +339,7 @@ def test_the_package_ships_the_manual_as_html():
     assert docs.is_dir(), 'the package has no docs/'
     pages = {p.name for p in docs.glob('*.html')}
     for page in ('index.html', 'ros2.html', 'caasi-commands.html',
-                 'commands-ros1-vs-ros2.html', 'hardware.html', 'fleet-and-display.html'):
+                 'commands.html', 'hardware.html', 'fleet-and-display.html'):
         assert page in pages, f'{page} is missing from docs/'
     assert not list(docs.glob('*.md')), 'Markdown sources do not ship; only the built HTML'
     # pages link to each other by file name, so opening the manual from disk works

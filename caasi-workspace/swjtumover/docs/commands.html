@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>Commands - swjtumover</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Commands";
+        var mkdocs_page_input_path = "commands.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="index.html" class="icon icon-home"> swjtumover
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="index.html">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="ros2.html">Running on the robot</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="caasi-commands.html">Running with caasi</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Commands</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1-bringup">1. Bringup</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-teleoperation">2. Teleoperation</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-visualization">3. Visualization</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4-mapping">4. Mapping</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5-saving-a-map">5. Saving a map</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#6-navigation">6. Navigation</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#7-line-then-home-mission">7. Line-then-home mission</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#8-line-follower-on-its-own">8. Line follower on its own</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#9-obstacle-guard-on-its-own">9. Obstacle guard on its own</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#10-camera">10. Camera</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#11-deploying-and-building">11. Deploying and building</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#12-inspection">12. Inspection</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware and safety</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="fleet-and-display.html">Remote access</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">swjtumover</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html" class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Commands</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h1>
+<p>Every task, in the two places you might run it from:</p>
+<ul>
+<li><strong>Local</strong> — on the robot itself. Both a plain ROS 2 command and a caasi run are given; they do the
+  same thing, caasi adds a record.</li>
+<li><strong>Remote</strong> — from another machine, through caasi. This is the normal way to operate a deployed
+  robot.</li>
+</ul>
+<p><code>&lt;target&gt;</code> is the execution target you enrolled in caasi. Each section also names the ROS 1 command
+it replaces, for comparison.</p>
+<hr />
+<h2 id="1-bringup">1. Bringup<a class="headerlink" href="#1-bringup" title="Permanent link">&para;</a></h2>
+<p>Starts the LiDAR adapter, both state publishers, the motor driver and the screen driver.</p>
+<p><strong>Local</strong></p>
+<pre><code class="language-bash"># ROS 2
+ros2 launch swjtumover_bringup bringup.launch.py
+
+# ROS 2 with rviz, or with the camera, or with a keyboard
+ros2 launch swjtumover_bringup bringup.launch.py enable_visualization:=true
+ros2 launch swjtumover_bringup bringup.launch.py enable_realsense:=true enable_teleop:=true
+
+# caasi, on the robot
+caasi run start experiments/bringup.yaml
+</code></pre>
+<p><strong>Remote</strong></p>
+<pre><code class="language-bash">caasi run start experiments/bringup.yaml -t &lt;target&gt;
+caasi logs 20261029-023042-swjtumover-bringup -f      # follow the output
+caasi run status 20261029-023042-swjtumover-bringup
+caasi run stop   20261029-023042-swjtumover-bringup
+</code></pre>
+<p><strong>Check it worked</strong></p>
+<pre><code class="language-bash">ros2 topic hz /scan                        # ~14 Hz
+ros2 topic hz /odom                        # ~50 Hz
+ros2 topic echo /motor_state/left --once    # fault flags false, rpm ~0 at rest
+</code></pre>
+<p>ROS 1: <code>roslaunch swjtumover_bringup bringup.launch</code></p>
+<hr />
+<h2 id="2-teleoperation">2. Teleoperation<a class="headerlink" href="#2-teleoperation" title="Permanent link">&para;</a></h2>
+<p>Arrow keys drive and turn: 0.2 m/s and 0.4 rad/s, accelerating at 0.2 / 0.4 per second.</p>
+<p><strong>Local</strong></p>
+<pre><code class="language-bash"># ROS 2 (a terminal on the robot's desktop)
+scripts/run_teleop.sh
+
+# caasi, on the robot
+caasi run start experiments/teleop.yaml
+</code></pre>
+<p><strong>Remote</strong></p>
+<p>Teleoperation needs the robot's display, so it is normally started as a run and driven while you
+watch the screen through a remote desktop session (see <a href="fleet-and-display.html">Remote access</a>):</p>
+<pre><code class="language-bash">caasi run start experiments/teleop.yaml -t &lt;target&gt;
+caasi logs 20261022-101500-swjtumover-teleop -f
+</code></pre>
+<p><strong>Check it worked</strong></p>
+<pre><code class="language-bash">ros2 topic echo /cmd_vel     # linear.x reaches ±0.2 while a key is held, 0 when released
+</code></pre>
+<p>On a Wayland desktop the keyboard is only received while an X11 window has focus — click the rviz
+window first. Without any display the node exits with code 3 and says why.</p>
+<p>ROS 1: <code>rosrun swjtumover_bringup teleop_node.py</code></p>
+<hr />
+<h2 id="3-visualization">3. Visualization<a class="headerlink" href="#3-visualization" title="Permanent link">&para;</a></h2>
+<p><strong>Local</strong></p>
+<pre><code class="language-bash"># ROS 2
+rviz2 -d &quot;$(ros2 pkg prefix swjtumover_bringup)/share/swjtumover_bringup/config/bringup.rviz&quot;
+
+# caasi, on the robot
+caasi run start experiments/rviz.yaml
+</code></pre>
+<p><strong>Remote</strong></p>
+<pre><code class="language-bash"># start rviz with the bringup in one go
+caasi run start experiments/bringup_rviz.yaml -t &lt;target&gt;
+
+# or rviz against a bringup that is already running
+caasi run start experiments/rviz.yaml -t &lt;target&gt;
+caasi logs &lt;the rviz run&gt; -f
+</code></pre>
+<p><strong>Check it worked:</strong> the robot body, <code>/scan</code> and the camera image draw with only the bringup running.
+The <code>/map</code> panel fills once something publishes a map; the two costmap panels need nav2 and are off by
+default.</p>
+<p>ROS 1: <code>rosrun rviz rviz -d $(rospack find swjtumover_bringup)/config/bringup.rviz</code></p>
+<hr />
+<h2 id="4-mapping">4. Mapping<a class="headerlink" href="#4-mapping" title="Permanent link">&para;</a></h2>
+<p><strong>Local</strong></p>
+<pre><code class="language-bash"># ROS 2
+ros2 launch swjtumover_bringup slam.launch.py
+
+# caasi, on the robot
+caasi run start experiments/slam.yaml
+</code></pre>
+<p><strong>Remote</strong></p>
+<pre><code class="language-bash">caasi run start experiments/slam.yaml -t &lt;target&gt;
+caasi logs &lt;the slam run&gt; -f
+</code></pre>
+<p><strong>Check it worked</strong></p>
+<pre><code class="language-bash">ros2 lifecycle get /slam_toolbox     # active
+ros2 topic hz /map                   # ~0.3 Hz once the robot moves
+ros2 run tf2_ros tf2_echo map odom   # the transform exists
+</code></pre>
+<p>ROS 1: <code>roslaunch swjtumover_bringup bringup_gmapping.launch</code></p>
+<hr />
+<h2 id="5-saving-a-map">5. Saving a map<a class="headerlink" href="#5-saving-a-map" title="Permanent link">&para;</a></h2>
+<p>The target directory must exist; the service does not create it.</p>
+<p><strong>Local</strong></p>
+<pre><code class="language-bash">mkdir -p ~/maps
+ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap \
+  &quot;{name: {data: '/home/swjtumover/maps/map'}}&quot;
+</code></pre>
+<p><strong>Remote</strong></p>
+<pre><code class="language-bash">caasi exec --target &lt;target&gt; -- bash -c 'mkdir -p ~/maps &amp;&amp; source /opt/ros/jazzy/setup.bash &amp;&amp; \
+  ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap \
+  &quot;{name: {data: \&quot;/home/swjtumover/maps/map\&quot;}}&quot;' | tail -2
+</code></pre>
+<p><code>nav2_map_server</code>'s <code>map_saver_cli</code> does not work against slam_toolbox. ROS 1:
+<code>rosrun map_server map_saver -f ~/maps/map</code></p>
+<hr />
+<h2 id="6-navigation">6. Navigation<a class="headerlink" href="#6-navigation" title="Permanent link">&para;</a></h2>
+<p><strong>Local</strong></p>
+<pre><code class="language-bash"># ROS 2 -- serves the map, localises, plans and drives
+ros2 launch swjtumover_bringup navigation.launch.py
+
+# standalone test: let nav2 drive /cmd_vel directly
+ros2 launch swjtumover_bringup navigation.launch.py cmd_vel_topic:=/cmd_vel
+
+# caasi, on the robot
+caasi run start experiments/navigation.yaml
+</code></pre>
+<p><strong>Remote</strong></p>
+<pre><code class="language-bash">caasi run start experiments/navigation.yaml -t &lt;target&gt;
+</code></pre>
+<p><strong>Give it a pose</strong> — nav2 waits for one before activating its costmaps (the equivalent of rviz's
+"2D Pose Estimate"):</p>
+<pre><code class="language-bash">ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped \
+  &quot;{header: {frame_id: map}, pose: {pose: {position: {x: 2.85, y: -2.77, z: 0.0}, orientation: {w: 1.0}}}}&quot;
+</code></pre>
+<p><strong>Send a goal</strong></p>
+<pre><code class="language-bash">ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose \
+  &quot;{pose: {header: {frame_id: map}, pose: {position: {x: 2.0, y: -2.0, z: 0.0}, orientation: {w: 1.0}}}}&quot; \
+  --feedback
+</code></pre>
+<p><strong>Check it worked</strong></p>
+<pre><code class="language-bash">for n in map_server amcl planner_server controller_server behavior_server bt_navigator velocity_smoother; do
+  printf '%-18s ' &quot;$n&quot;; ros2 lifecycle get &quot;/$n&quot;
+done
+</code></pre>
+<p>Navigation publishes <code>/cmd_vel/nav</code>; the mission node owns <code>/cmd_vel</code>. ROS 1:
+<code>roslaunch swjtumover_bringup map_server.launch</code>, <code>amcl.launch</code>, <code>move_base.launch</code></p>
+<hr />
+<h2 id="7-line-then-home-mission">7. Line-then-home mission<a class="headerlink" href="#7-line-then-home-mission" title="Permanent link">&para;</a></h2>
+<p>One launch brings up the bringup, all of nav2, the line follower and the mission — 21 nodes.</p>
+<p><strong>Local</strong></p>
+<pre><code class="language-bash">ros2 launch swjtumover_bringup line_then_home.launch.py
+ros2 launch swjtumover_bringup line_then_home.launch.py map:=/path/to/nav.yaml follow_timeout:=60.0
+</code></pre>
+<p><strong>Remote</strong></p>
+<pre><code class="language-bash">caasi run start experiments/mission.yaml -t &lt;target&gt;
+</code></pre>
+<p><strong>Start, stop and configure it</strong> — the services keep their ROS 1 names.</p>
+<pre><code class="language-bash"># local
+ros2 service call /line_then_home/start std_srvs/srv/Trigger &quot;{}&quot;
+ros2 service call /line_then_home/record_waypoints std_srvs/srv/Trigger &quot;{}&quot;
+ros2 service call /line_then_home/stop std_srvs/srv/Trigger &quot;{}&quot;
+
+# remote
+caasi run start experiments/mission_start.yaml -t &lt;target&gt;
+caasi run start experiments/mission_record_waypoints.yaml -t &lt;target&gt;
+caasi run start experiments/mission_stop.yaml -t &lt;target&gt;
+</code></pre>
+<p>The run prints what the service answered:</p>
+<pre><code>/line_then_home/start: success=True message='task started: following the line'
+</code></pre>
+<p><strong>Check it worked</strong></p>
+<pre><code class="language-bash">ros2 topic echo /line_then_home/state     # IDLE, FOLLOW, STOP, NAV, DONE, FAILED
+</code></pre>
+<p>A successful run reads <code>FOLLOW → STOP → NAV → DONE</code> and ends where it started. The mission needs a
+pose first: it uses <code>/amcl_pose</code> when available and otherwise the <code>map → base_link</code> transform.</p>
+<p>The follower's image crop and colour range are launch arguments;
+<code>experiments/mission_demo.yaml</code> carries the values measured for the site's floor.</p>
+<p>ROS 1: <code>roslaunch swjtumover_bringup line_then_home.launch</code></p>
+<hr />
+<h2 id="8-line-follower-on-its-own">8. Line follower on its own<a class="headerlink" href="#8-line-follower-on-its-own" title="Permanent link">&para;</a></h2>
+<p><strong>Local</strong></p>
+<pre><code class="language-bash">ros2 run swjtumover_bringup omove_following_feng.py --ros-args \
+  -p color_topic:=/camera/camera/color/image_raw \
+  -p depth_topic:=/camera/camera/depth/image_rect_raw
+
+# tuned for the site floor
+ros2 run swjtumover_bringup omove_following_feng.py --ros-args \
+  -p color_topic:=/camera/camera/color/image_raw \
+  -p depth_topic:=/camera/camera/depth/image_rect_raw \
+  -p roi_bottom_offset:=70
+</code></pre>
+<p><strong>Remote</strong></p>
+<pre><code class="language-bash">caasi run start experiments/line_follower.yaml -t &lt;target&gt;
+</code></pre>
+<p><strong>Check it worked</strong></p>
+<pre><code class="language-bash">ros2 topic echo /cmd_vel      # linear.x 0.12 with a steering term while the line is visible
+ros2 topic echo /reached_goal --once
+</code></pre>
+<p>It stops when the line is lost, when the centre clearance falls below 0.28 m, and when it decides the
+line has ended; publishing <code>true</code> on <code>/line_follow/enable</code> clears that. ROS 1:
+<code>python3 omove_following.py</code></p>
+<hr />
+<h2 id="9-obstacle-guard-on-its-own">9. Obstacle guard on its own<a class="headerlink" href="#9-obstacle-guard-on-its-own" title="Permanent link">&para;</a></h2>
+<p><strong>Local</strong></p>
+<pre><code class="language-bash">ros2 run swjtumover_bringup obstacle_rplidar.py
+</code></pre>
+<p><strong>Remote</strong></p>
+<pre><code class="language-bash">caasi run start experiments/obstacle_guard.yaml -t &lt;target&gt;
+caasi logs &lt;the guard run&gt; -f        # 'Go! path clear' then 'Stop! obstacle at ...'
+</code></pre>
+<p>Drives forward at 0.2 m/s and stops when the ±10° front sector is closer than 0.85 m. ROS 1:
+<code>python3 obstacle_rplidar.py</code></p>
+<hr />
+<h2 id="10-camera">10. Camera<a class="headerlink" href="#10-camera" title="Permanent link">&para;</a></h2>
+<p><strong>Local</strong></p>
+<pre><code class="language-bash">ros2 launch realsense2_camera rs_launch.py
+ros2 topic hz /camera/camera/color/image_raw
+</code></pre>
+<p><strong>Remote</strong></p>
+<pre><code class="language-bash">caasi run start experiments/camera.yaml -t &lt;target&gt;
+</code></pre>
+<p>Start it after nav2 is <code>active</code> and before starting the mission. ROS 1:
+<code>roslaunch realsense2_camera rs_camera.launch</code> (published <code>/d415/...</code>)</p>
+<hr />
+<h2 id="11-deploying-and-building">11. Deploying and building<a class="headerlink" href="#11-deploying-and-building" title="Permanent link">&para;</a></h2>
+<p><strong>Remote</strong> (caasi's purpose)</p>
+<pre><code class="language-bash">caasi deploy &lt;target&gt;              # copy the project to the robot
+caasi deploy &lt;target&gt; --status     # what is deployed, and whether it verified
+caasi build --target &lt;target&gt;      # colcon build there, recorded
+caasi build --target &lt;target&gt; --clean
+</code></pre>
+<p><strong>Local</strong> (on the robot)</p>
+<pre><code class="language-bash">cd ~/caasi/robots/swjtumover
+colcon build --symlink-install
+source install/setup.bash
+</code></pre>
+<p><strong>Tests</strong></p>
+<pre><code class="language-bash">colcon test --packages-select swjtumover_bringup
+colcon test-result --result-base build/swjtumover_bringup
+</code></pre>
+<hr />
+<h2 id="12-inspection">12. Inspection<a class="headerlink" href="#12-inspection" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>task</th>
+<th>ROS 2</th>
+<th>example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>topic rate</td>
+<td><code>ros2 topic hz</code></td>
+<td><code>ros2 topic hz /scan</code></td>
+</tr>
+<tr>
+<td>one message</td>
+<td><code>ros2 topic echo --once</code></td>
+<td><code>ros2 topic echo /motor_state/left --once</code></td>
+</tr>
+<tr>
+<td>node list</td>
+<td><code>ros2 node list</code></td>
+<td><code>ros2 node list</code></td>
+</tr>
+<tr>
+<td>service call</td>
+<td><code>ros2 service call</code></td>
+<td><code>ros2 service call /line_then_home/stop std_srvs/srv/Trigger "{}"</code></td>
+</tr>
+<tr>
+<td>record a bag</td>
+<td><code>ros2 bag record</code></td>
+<td><code>ros2 bag record -o run1 /scan /odom /tf /motor_state/left</code></td>
+</tr>
+<tr>
+<td>transform</td>
+<td><code>tf2_echo</code></td>
+<td><code>ros2 run tf2_ros tf2_echo base_link lidar_link</code></td>
+</tr>
+<tr>
+<td>lifecycle state</td>
+<td><code>lifecycle get</code></td>
+<td><code>ros2 lifecycle get /amcl</code></td>
+</tr>
+<tr>
+<td>remote logs</td>
+<td><code>caasi logs</code></td>
+<td><code>caasi logs &lt;run&gt; -f</code></td>
+</tr>
+<tr>
+<td>remote processes</td>
+<td><code>caasi run list</code></td>
+<td><code>caasi run list</code></td>
+</tr>
+<tr>
+<td>remote occupancy</td>
+<td><code>caasi node occupancy</code></td>
+<td><code>caasi node occupancy</code></td>
+</tr>
+</tbody>
+</table>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="caasi-commands.html" class="btn btn-neutral float-left" title="Running with caasi"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="hardware.html" class="btn btn-neutral float-right" title="Hardware and safety">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="caasi-commands.html" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="hardware.html" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -83,5 +83,5 @@ transitions considerably on a small machine.
 ## Without caasi
 
 Every task above has a direct ROS 2 form; see [Running on the robot](ros2.md) and the full list in
-[Commands and workflows](commands-ros1-vs-ros2.md). caasi is a convenience and a record keeper, not a
+[Commands and workflows](commands.md). caasi is a convenience and a record keeper, not a
 requirement.

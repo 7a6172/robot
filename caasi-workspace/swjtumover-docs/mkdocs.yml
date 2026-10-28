@@ -1,9 +1,3 @@
-# swjtumover documentation source.
-#
-#   ./build.sh          build the HTML into ../swjtumover/docs (the shipped package)
-#   ./build.sh serve    live preview on http://127.0.0.1:8000
-#
-# The package ships only the generated HTML; these sources and the build tooling stay here.
 site_name: swjtumover
 site_description: swjtumover robot -- ROS 2 software, operation and commands
 docs_dir: source
@@ -20,6 +14,6 @@ nav:
 - Home: index.md
 - Running on the robot: ros2.md
 - Running with caasi: caasi-commands.md
-- Commands and workflows: commands-ros1-vs-ros2.md
+- Commands: commands.md
 - Hardware and safety: hardware.md
 - Remote access: fleet-and-display.md

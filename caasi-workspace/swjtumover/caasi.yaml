@@ -1,24 +1,63 @@
 schema: 1
 name: swjtumover
 version: 0.1.0
-# ROS 2 migration of the swjtumover ROS 1 workspace (~/swjtumover/swjtumover_ws on the robot).
-# Scope of this project: the core bringup only -- motor node, screen node, teleoperation, the
-# motor_state message, the bringup launch, its configuration and the robot model. The ROS 1 task
-# scripts (line following, exam, nav goals) and the gmapping/amcl/move_base navigation stack are
-# deliberately NOT part of it yet; see plan/ for the staged plan.
+description: >-
+  ROS 2 software for the swjtumover robot: motor and screen drivers, LiDAR adapter, line following,
+  navigation and the line-then-home mission.
+
 components:
   ros2: true
+
 requires:
   ros2:
     version: jazzy
-  # Teleoperation only; the rest of bringup runs without it.
+
+  # bringup
+  robot_state_publisher:
+    note: "bringup: publishes the TF tree"
+  joint_state_publisher:
+    note: "bringup: publishes the wheel joints"
+
+  # navigation (navigation.launch.py)
+  nav2_bringup:
+    note: "navigation"
+  nav2_amcl:
+    note: "navigation: localisation"
+  nav2_map_server:
+    note: "navigation: map serving and saving"
+  nav2_planner:
+    note: "navigation: global planner"
+  nav2_controller:
+    note: "navigation: local planner"
+  nav2_behaviors:
+    note: "navigation: recovery behaviours"
+  nav2_bt_navigator:
+    note: "navigation: behaviour tree"
+  nav2_velocity_smoother:
+    note: "navigation: command smoothing"
+  nav2_lifecycle_manager:
+    note: "navigation and mapping: activates the lifecycle nodes"
+
+  # mapping (slam.launch.py)
+  slam_toolbox:
+    note: "mapping"
+
+  # perception for line following and visualisation
+  realsense2_camera:
+    note: "camera; the line follower needs colour and depth images"
+  cv_bridge:
+    note: "line follower: image conversion"
+  python3-opencv:
+    note: "line follower: image processing"
   python3-pynput:
     optional_for: [bringup, build]
     note: "teleoperation only; also needs an operator DISPLAY"
+
 project_layout:
   src: src
   config: config
   experiments: experiments
+
 tested:
   - os: linux
     arch: x86_64
