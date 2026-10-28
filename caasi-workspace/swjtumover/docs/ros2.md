@@ -95,7 +95,23 @@ ros2 service call /line_then_home/record_waypoints std_srvs/srv/Trigger "{}"
 ros2 topic echo /line_then_home/state        # IDLE, FOLLOW, STOP, NAV, DONE, FAILED
 ```
 
-The mission refuses to start until it has seen `/amcl_pose`, because it needs the home pose.
+That single launch brings up **21 nodes**: the hardware bringup, all of nav2, the line follower and
+the mission. Arguments worth knowing:
+
+| argument | default | why |
+| --- | --- | --- |
+| `map` | `map/nav_maze.yaml` | cropped maze map; pass `nav.yaml` for the whole building |
+| `color_topic` / `depth_topic` | `/camera/camera/...` | ROS 1 used `/d415/...`; the follower gets no images if these are wrong, and says nothing |
+| `start_hardware` | `true` | set `false` if the bringup is already running |
+| `lidar_bind_lead` | `3.0` | forwarded to the bringup, which is why the LiDAR wins UDP 7000 |
+
+The follower starts **disabled** and is only enabled by `/line_then_home/start`, so the mission
+remains the single publisher of `/cmd_vel`. The mission refuses to start until it has seen
+`/amcl_pose`, because it needs the home pose.
+
+Starting the mission requires odometry: `/amcl_pose` cannot exist without `odom → base_link`, which
+comes from the motor driver. With a silent motor board the mission simply never becomes startable,
+and nav2's global costmap waits for `map → base_link` — both fail safe rather than guessing.
 
 ## Single behaviours
 
