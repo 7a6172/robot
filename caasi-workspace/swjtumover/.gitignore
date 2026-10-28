@@ -11,5 +11,5 @@ __pycache__/
 *.bag
 
 # documentation build
-site/
-.mkdocs-venv/
+.pytest_cache/
+.caasi/

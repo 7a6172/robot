@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>Remote access - swjtumover</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Remote access";
+        var mkdocs_page_input_path = "fleet-and-display.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="index.html" class="icon icon-home"> swjtumover
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="index.html">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="ros2.html">Running on the robot</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="caasi-commands.html">Running with caasi</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="commands-ros1-vs-ros2.html">Commands and workflows</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware and safety</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Remote access</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#naming-and-identity">Naming and identity</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#seeing-the-robots-screen-remotely">Seeing the robot's screen remotely</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#notes">Notes</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">swjtumover</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html" class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Remote access</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="remote-access-and-multiple-robots">Remote access and multiple robots<a class="headerlink" href="#remote-access-and-multiple-robots" title="Permanent link">&para;</a></h1>
+<p>Two practical questions once more than one robot runs this software: how to tell them apart, and how
+to see a robot's screen without sitting in front of it.</p>
+<h2 id="naming-and-identity">Naming and identity<a class="headerlink" href="#naming-and-identity" title="Permanent link">&para;</a></h2>
+<p>Give caasi a target per <strong>machine</strong>, and let the software name stay <code>swjtumover</code> on all of them:</p>
+<pre><code class="language-yaml">targets:
+  swjtumover-05:
+    host: 10.212.19.94
+    user: swjtumover
+    tags: [robot, swjtumover, jazzy]
+    deployment_root: &quot;~/caasi/robots/swjtumover&quot;
+  swjtumover-10:
+    host: 10.212.19.104
+    user: swjtumover
+    tags: [robot, swjtumover, jazzy]
+    deployment_root: &quot;~/caasi/robots/swjtumover&quot;
+</code></pre>
+<p>Why this shape:</p>
+<ul>
+<li><strong>the tag says what it is</strong> — <code>swjtumover</code> identifies the robot family, so every machine running
+  this software is found with one query regardless of its number;</li>
+<li><strong>the target name says which machine</strong> — used for addressing, nothing else;</li>
+<li><strong><code>deployment_root</code> keeps the on-robot path constant</strong> — every robot deploys to
+  <code>~/caasi/robots/swjtumover</code>, so documentation, scripts and muscle memory are identical everywhere.</li>
+</ul>
+<p>caasi does not rely on the name to recognise a machine. Enrolment records the machine itself:</p>
+<pre><code>machine_id = 2c7c442a1da846c6b70f5a2d7712d7db   (/etc/machine-id, strong)
+cpu_model  = Intel(R) N150
+ssh keys:  ecdsa / rsa / ed25519 with SHA256 fingerprints
+endpoint:  10.212.19.94:22, verified
+</code></pre>
+<p>A renamed robot or a changed address is still the same robot, because acceptance requires a matching
+enrolled host key. A different machine answering on a reused address is refused.</p>
+<p>The same physical box can carry two targets when it dual-boots (one per operating system); they are
+distinguished by machine id, which is exactly what that field is for.</p>
+<h2 id="seeing-the-robots-screen-remotely">Seeing the robot's screen remotely<a class="headerlink" href="#seeing-the-robots-screen-remotely" title="Permanent link">&para;</a></h2>
+<p>The robot runs GNOME on Wayland, so classic VNC servers do not apply — they can only capture X11
+windows, not the desktop. GNOME's own remote desktop is already part of the system and streams only
+the regions that change, which keeps it usable on modest hardware.</p>
+<p>Enable it once, on the robot, as the desktop user:</p>
+<pre><code class="language-bash">grdctl rdp set-credentials &lt;user&gt; &lt;password&gt;
+grdctl rdp disable-view-only      # omit to stay read-only
+grdctl rdp enable
+grdctl status                     # expect Status: enabled, Port: 3389
+</code></pre>
+<p>Then reach it without exposing a port on the network, by tunnelling over the SSH access caasi already
+manages:</p>
+<pre><code class="language-bash">ssh -N -L 3389:localhost:3389 &lt;user&gt;@&lt;robot&gt;
+</code></pre>
+<p>and point a client at <code>localhost:3389</code>:</p>
+<ul>
+<li>Remmina — <code>remmina -c rdp://localhost:3389</code></li>
+<li>FreeRDP — <code>xfreerdp /v:localhost:3389 /u:&lt;user&gt;</code></li>
+</ul>
+<p>Install one of them on the machine you sit at (<code>apt install remmina</code> or <code>freerdp3-x11</code>).</p>
+<p><code>grdctl status</code> is also the health check: if it reports a missing or invalid certificate, re-running
+<code>grdctl rdp enable</code> regenerates one.</p>
+<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The display is only needed for interactive work. Bringup, mapping, navigation and the mission all
+  run headless, and that is the normal mode on a robot.</li>
+<li>Interactive extras need the desktop session's display. <code>scripts/run_teleop.sh</code> resolves it
+  automatically (the X cookie on a Wayland session is a file whose name changes per session).</li>
+<li>If a viewer must run on a weak machine, prefer this RDP path over browser-based viewers: the
+  encoding cost stays on the machine that owns the screen.</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="hardware.html" class="btn btn-neutral float-left" title="Hardware and safety"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="hardware.html" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

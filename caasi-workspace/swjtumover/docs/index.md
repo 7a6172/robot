@@ -1,43 +1,54 @@
-# swjtumover — ROS 2 manual
+# swjtumover
 
-`swjtumover` is the robot's own software, migrated from ROS 1 (Noetic, Ubuntu 20.04) to ROS 2
-Jazzy (Ubuntu 24.04). The same robot behaviour is preserved: the same topics, the same services,
-the same parameters, the same message format. What changed is the machinery underneath.
+ROS 2 software for the swjtumover robot. It provides the motor driver, the display driver, a LiDAR
+adapter, line following, navigation and the line-then-home mission.
 
-This manual covers two ways to use it:
+There are two ways to operate it, and both are first-class:
 
-* **[Running with ROS 2](ros2.md)** — build it, start the launch files, use the services.
-* **[Running with caasi](caasi-commands.md)** — deploy, build and run the same things as tracked,
-  monitorable runs on the robot.
+* **[Running on the robot](ros2.md)** — direct `ros2 launch` and `ros2 run` commands.
+* **[Running with caasi](caasi-commands.md)** — deploy, build, run and monitor from another machine.
 
-Read **[Hardware and safety](hardware.md)** before driving the robot. The
-**[audit](ros1-vs-ros2-audit.md)** explains every difference from the ROS 1 original.
+For a side-by-side list of every command, see **[Commands and workflows](commands-ros1-vs-ros2.md)**.
+Before driving the robot, read **[Hardware and safety](hardware.md)**. For multi-robot naming and
+seeing the robot's screen remotely, see **[Remote access](fleet-and-display.md)**.
 
 ## What is in the package
 
-| package | what it does |
+| package | contents |
 | --- | --- |
-| `swjtumover_bringup` | motor driver, screen driver, launch files, configuration, the task scripts |
-| `swjtumover_msgs` | `MotorState` — the same nine fields as ROS 1 |
-| `swjtumover_vanjee` | thin adapter for the Vanjee 718H LiDAR, publishing `/scan` |
+| `swjtumover_msgs` | `MotorState`: header, phase current, rpm, position, five fault flags |
+| `swjtumover_bringup` | motor driver, screen driver, launch files, configuration, task scripts |
+| `swjtumover_vanjee` | LiDAR adapter publishing `/scan` |
 
-## The robot in one table
+## The robot
 
 | item | value |
 | --- | --- |
-| body | 0.32 × 0.30 m, square, 0.089 m tall |
-| LiDAR | Vanjee 718H, single line, mounted at **(0, 0, 0.14114)**, centred, pitch 1.5° |
-| wheels | radius 0.05035 m, track ±0.103 m, 1800 rpm/s acceleration |
-| motor board | `192.168.100.100:23`, UDP, own CRC8-Maxim protocol |
+| body | 0.32 × 0.30 m, 0.089 m tall |
+| LiDAR | Vanjee 718H, single line, at (0, 0, 0.14114) m, centred, pitched 1.5° |
+| wheels | radius 0.05035 m, track ±0.103 m |
+| motor board | `192.168.100.100:23`, UDP, 10-byte frames with CRC8-Maxim |
 | display | `192.168.100.100:26`, UDP |
 | networks | LiDAR `192.168.110.0/24`, motor/IO `192.168.100.0/24` |
 
-## Three things that surprise people
+## Interfaces at a glance
 
-1. **The LiDAR sits in the centre of the body.** Every range it reports is the distance to the
-   *centre*; the body still reaches 0.16 m further ahead. Any obstacle check must account for that.
-2. **Start the LiDAR first.** Every ROS 2 process on this machine will try to bind UDP 7000, and
-   the LiDAR adapter must win. `bringup.launch.py` handles this with `lidar_bind_lead`.
+| topic | direction | rate |
+| --- | --- | --- |
+| `/scan` | from the LiDAR adapter | ~14 Hz |
+| `/odom`, `/motor_state/left`, `/motor_state/right` | from the motor driver | 50 Hz |
+| `/cmd_vel` | to the motor driver — the only actuation path | — |
+| `/cmd_vel/line`, `/cmd_vel/nav` | arbitration inputs to the mission | — |
+| `/line_then_home/state` | mission state | on change |
+| `/qrcode_text` | to the screen driver | on change |
+
+Services on the mission node: `/line_then_home/start`, `…/stop`, `…/record_waypoints`.
+
+## Three things worth knowing up front
+
+1. **The LiDAR sits at the centre of the body.** A range reading is the distance to the centre; the
+   body reaches 0.16 m further ahead. Obstacle checks account for this.
+2. **Start the LiDAR first.** Every ROS 2 process on this machine may compete for UDP 7000.
+   `bringup.launch.py` orders it correctly.
 3. **The motor driver has a watchdog.** If commands stop, or motor feedback stops, the wheels are
-   zeroed within half a second and the driver latches itself off until restarted. That is the
-   behaviour ROS 1 did not have, and it is deliberate.
+   zeroed within half a second and the driver stays off until restarted.

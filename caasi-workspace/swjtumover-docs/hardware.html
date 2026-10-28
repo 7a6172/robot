@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>Hardware and safety - swjtumover</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Hardware and safety";
+        var mkdocs_page_input_path = "hardware.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="index.html" class="icon icon-home"> swjtumover
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="index.html">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="ros2.html">Running on the robot</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="caasi-commands.html">Running with caasi</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="commands-ros1-vs-ros2.html">Commands and workflows</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Hardware and safety</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#interfaces">Interfaces</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#safety-model">Safety model</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#geometry">Geometry</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#before-driving">Before driving</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#health-checks">Health checks</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#if-something-does-not-work">If something does not work</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="fleet-and-display.html">Remote access</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">swjtumover</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html" class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Hardware and safety</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="hardware-and-safety">Hardware and safety<a class="headerlink" href="#hardware-and-safety" title="Permanent link">&para;</a></h1>
+<p>Read this before driving the robot.</p>
+<h2 id="interfaces">Interfaces<a class="headerlink" href="#interfaces" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>what</th>
+<th>where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>motor / IO board</td>
+<td><code>192.168.100.100</code>, TCP/UDP <strong>23</strong> (motors) and UDP <strong>26</strong> (display)</td>
+</tr>
+<tr>
+<td>Vanjee 718H LiDAR</td>
+<td><code>192.168.110.100</code>, UDP <strong>7000</strong> on the host and <code>5000</code> on the LiDAR</td>
+</tr>
+<tr>
+<td>host addresses</td>
+<td><code>192.168.100.10</code> (motor network), <code>192.168.110.10</code> (LiDAR network)</td>
+</tr>
+</tbody>
+</table>
+<p>The motor protocol is the board's own: 10-byte datagrams, CRC8-Maxim in the last byte, motor id
+<code>0x01</code> left / <code>0x02</code> right, speed as a signed RPM. Only the motor driver should talk to port 23.</p>
+<h2 id="safety-model">Safety model<a class="headerlink" href="#safety-model" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>layer</th>
+<th>behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>command watchdog</td>
+<td><code>motor.cmd_vel_timeout</code> (0.5 s): no new <code>/cmd_vel</code> means zero speed</td>
+</tr>
+<tr>
+<td>feedback watchdog</td>
+<td><code>motor.motor_feedback_timeout</code> (0.5 s): lost telemetry means zero speed, and the driver stays off until restarted</td>
+</tr>
+<tr>
+<td>fault latch</td>
+<td>any board fault flag (over-temperature, stall, phase overcurrent, overcurrent, sensor) latches the driver off</td>
+</tr>
+<tr>
+<td>body-aware guard</td>
+<td>the line follower holds zero when the centre clearance falls below 0.28 m</td>
+</tr>
+<tr>
+<td>navigation</td>
+<td>nav2's footprint critic rejects trajectories that would put the body into an obstacle</td>
+</tr>
+</tbody>
+</table>
+<p>A latched driver stays off deliberately: it means something real happened. Restart it after fixing
+the cause.</p>
+<h2 id="geometry">Geometry<a class="headerlink" href="#geometry" title="Permanent link">&para;</a></h2>
+<p>The body is 0.32 × 0.30 m and the LiDAR is at its centre, so every range reading is measured to the
+centre while the body extends 0.16 m further forward. The line follower stops at 0.28 m of centre
+clearance (0.16 m body plus 0.12 m margin); nav2 uses the body footprint with
+<code>footprint_padding: 0.06</code>.</p>
+<p>A single-line LiDAR sweeps one plane at 0.141 m. Objects shorter than that plane are not seen.</p>
+<h2 id="before-driving">Before driving<a class="headerlink" href="#before-driving" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Check the supply.</strong> The motor board goes quiet when the battery sags — it still answers ping
+   while the protocol replies decay. If replies fall below roughly 95 %, charge it.</li>
+<li><strong>Start the LiDAR first.</strong> Whichever process binds UDP 7000 keeps it; if the motor driver wins,
+   there is no <code>/scan</code>.</li>
+<li><strong>Never leave a publisher running.</strong> Every script here publishes a final zero and the watchdog
+   covers the rest, but do not walk away from a live publisher.</li>
+<li><strong>Set a pose before navigating.</strong> nav2 activates its global costmap only once <code>map → base_link</code>
+   exists.</li>
+</ol>
+<h2 id="health-checks">Health checks<a class="headerlink" href="#health-checks" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">ping -c3 192.168.100.100                    # board reachable
+ros2 topic hz /scan                         # ~14 Hz
+ros2 topic hz /odom                         # ~50 Hz
+ros2 topic echo /motor_state/left --once    # fault flags false, rpm ~0 at rest
+ros2 run tf2_ros tf2_echo base_link lidar_link   # z = 0.14114 m, roll = 1.500°
+</code></pre>
+<h2 id="if-something-does-not-work">If something does not work<a class="headerlink" href="#if-something-does-not-work" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>symptom</th>
+<th>cause</th>
+<th>action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>no <code>/scan</code></td>
+<td>another process holds UDP 7000</td>
+<td>restart with the bringup, which orders it correctly</td>
+</tr>
+<tr>
+<td>no <code>/odom</code>, driver logs a feedback timeout then latches</td>
+<td>board silent: supply, cabling</td>
+<td>charge or repair, then restart the driver</td>
+</tr>
+<tr>
+<td>nav2 nodes stay <code>inactive</code></td>
+<td>no <code>map → base_link</code></td>
+<td>publish <code>/initialpose</code></td>
+</tr>
+<tr>
+<td><code>map_server</code> fails to configure</td>
+<td>map yaml path wrong</td>
+<td><code>image:</code> in the yaml must be relative</td>
+</tr>
+<tr>
+<td>the robot does not move although <code>/cmd_vel</code> carries values</td>
+<td>driver latched, or the controller is publishing to <code>/cmd_vel/nav</code></td>
+<td>restart the driver; check <code>cmd_vel_topic</code></td>
+</tr>
+<tr>
+<td>keyboard teleoperation does nothing</td>
+<td>no X11 focus on a Wayland desktop</td>
+<td>click the rviz window, then use the arrow keys</td>
+</tr>
+</tbody>
+</table>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="commands-ros1-vs-ros2.html" class="btn btn-neutral float-left" title="Commands and workflows"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="fleet-and-display.html" class="btn btn-neutral float-right" title="Remote access">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="commands-ros1-vs-ros2.html" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="fleet-and-display.html" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

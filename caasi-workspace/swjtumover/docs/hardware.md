@@ -7,69 +7,62 @@ Read this before driving the robot.
 | what | where |
 | --- | --- |
 | motor / IO board | `192.168.100.100`, TCP/UDP **23** (motors) and UDP **26** (display) |
-| Vanjee 718H LiDAR | `192.168.110.100`, UDP **7000** on the host, `5000` on the LiDAR |
-| host addresses | `192.168.100.10` (motor net), `192.168.110.10` (LiDAR net) |
+| Vanjee 718H LiDAR | `192.168.110.100`, UDP **7000** on the host and `5000` on the LiDAR |
+| host addresses | `192.168.100.10` (motor network), `192.168.110.10` (LiDAR network) |
 
 The motor protocol is the board's own: 10-byte datagrams, CRC8-Maxim in the last byte, motor id
-`0x01` left / `0x02` right, speed as a signed RPM in bytes 2-3. The driver is the only thing that
-should talk to port 23.
+`0x01` left / `0x02` right, speed as a signed RPM. Only the motor driver should talk to port 23.
 
-## The safety model
+## Safety model
 
-Four independent layers. The ROS 1 package had **none** of the first two, which is why the robot
-once kept driving after its process died.
-
-| layer | what it does |
+| layer | behaviour |
 | --- | --- |
-| **command watchdog** | `motor.cmd_vel_timeout` (0.5 s): no new `cmd_vel` → zero speed |
-| **feedback watchdog** | `motor.motor_feedback_timeout` (0.5 s): motor telemetry stops → zero speed and the node **latches off** until restarted |
-| **fault latch** | any of the five board fault flags (over-temperature, stall, phase overcurrent, overcurrent, sensor) → latched off |
-| **costmap + footprint** | nav2's `ObstacleFootprint` critic rejects any trajectory that would put the *body* into an obstacle |
+| command watchdog | `motor.cmd_vel_timeout` (0.5 s): no new `/cmd_vel` means zero speed |
+| feedback watchdog | `motor.motor_feedback_timeout` (0.5 s): lost telemetry means zero speed, and the driver stays off until restarted |
+| fault latch | any board fault flag (over-temperature, stall, phase overcurrent, overcurrent, sensor) latches the driver off |
+| body-aware guard | the line follower holds zero when the centre clearance falls below 0.28 m |
+| navigation | nav2's footprint critic rejects trajectories that would put the body into an obstacle |
 
-A latched-off driver stays off on purpose: it means a real problem happened. Restart it after
-fixing the cause.
+A latched driver stays off deliberately: it means something real happened. Restart it after fixing
+the cause.
 
-## Body geometry matters
+## Geometry
 
-The body is 0.32 × 0.30 m and the LiDAR is at its **centre**. Every range is therefore measured to
-the centre, and the body extends 0.16 m further forward than the number suggests.
+The body is 0.32 × 0.30 m and the LiDAR is at its centre, so every range reading is measured to the
+centre while the body extends 0.16 m further forward. The line follower stops at 0.28 m of centre
+clearance (0.16 m body plus 0.12 m margin); nav2 uses the body footprint with
+`footprint_padding: 0.06`.
 
-* the line follower stops when the centre clearance drops below **0.28 m** (0.16 body + 0.12 margin)
-* nav2's footprint is the body plus `footprint_padding: 0.06`
-* a guard that stops at a raw 0.22 m leaves only 6 cm — too close
+A single-line LiDAR sweeps one plane at 0.141 m. Objects shorter than that plane are not seen.
 
-## Practical rules
+## Before driving
 
-1. **Check the battery first.** The motor board goes silent when the supply sags. Ping succeeds
-   while protocol replies decay — if replies fall below ~95 %, charge it before driving.
-2. **Start the LiDAR first.** Any process that binds UDP 7000 first keeps it; if `motor_node` wins,
-   the LiDAR cannot bind and there is no `/scan`.
-3. **Nothing may be left commanding.** Every script here publishes a final zero and the watchdog
-   covers the rest, but never leave a publisher running when you walk away.
-4. **Set the pose before navigating.** nav2 activates its global costmap only once `map → base_link`
-   exists; without a pose the stack waits (up to 600 s) and never activates.
-5. **Low obstacles are invisible.** This is a single-line LiDAR sweeping one plane at 0.141 m.
-   Anything shorter than that plane is not seen by the scan or the costmap.
+1. **Check the supply.** The motor board goes quiet when the battery sags — it still answers ping
+   while the protocol replies decay. If replies fall below roughly 95 %, charge it.
+2. **Start the LiDAR first.** Whichever process binds UDP 7000 keeps it; if the motor driver wins,
+   there is no `/scan`.
+3. **Never leave a publisher running.** Every script here publishes a final zero and the watchdog
+   covers the rest, but do not walk away from a live publisher.
+4. **Set a pose before navigating.** nav2 activates its global costmap only once `map → base_link`
+   exists.
 
-## Checking the robot is healthy
+## Health checks
 
 ```bash
 ping -c3 192.168.100.100                    # board reachable
-python3 /path/to/probe_prod.py              # protocol replies >= 95 %
 ros2 topic hz /scan                         # ~14 Hz
 ros2 topic hz /odom                         # ~50 Hz
-ros2 topic echo /motor_state/left --once    # all five fault flags false, rpm ~0 at rest
+ros2 topic echo /motor_state/left --once    # fault flags false, rpm ~0 at rest
+ros2 run tf2_ros tf2_echo base_link lidar_link   # z = 0.14114 m, roll = 1.500°
 ```
 
-## Recovery
+## If something does not work
 
-| symptom | cause | fix |
+| symptom | cause | action |
 | --- | --- | --- |
-| `/scan` missing, port 7000 taken by `motor_node` | start order | restart with the LiDAR first (`bringup.launch.py` does this) |
-| no `/odom`, driver logs "feedback timeout" then "latched" | board silent (battery, cable) | charge/repair, then restart the node |
+| no `/scan` | another process holds UDP 7000 | restart with the bringup, which orders it correctly |
+| no `/odom`, driver logs a feedback timeout then latches | board silent: supply, cabling | charge or repair, then restart the driver |
 | nav2 nodes stay `inactive` | no `map → base_link` | publish `/initialpose` |
-| `map_server` fails to configure | map yaml path wrong | the `image:` entry must be relative |
-| robot will not move although `/cmd_vel` has values | driver latched, or the smoother is publishing to `/cmd_vel/nav` instead of `/cmd_vel` | restart the driver; check `cmd_vel_topic` |
-| nav2 nodes stay `unconfigured` and the log shows `failed to send response to /map_server/change_state (timeout)` | RMW response latency under load, not a resource shortage | restart the stack cleanly; bring nav2 up **before** the camera |
-| `/line_then_home/start` refuses with "no /amcl_pose ... set an initial pose first" | neither `/amcl_pose` nor `map -> base_link` exists | publish `/initialpose`; amcl publishes `/amcl_pose` only once the robot moves |
-| publishing `/cmd_vel` does nothing while the mission runs | the mission node owns `/cmd_vel` and holds it at zero in IDLE — that is the arbitration, not a fault | enable it through the mission, or stop the mission node first |
+| `map_server` fails to configure | map yaml path wrong | `image:` in the yaml must be relative |
+| the robot does not move although `/cmd_vel` carries values | driver latched, or the controller is publishing to `/cmd_vel/nav` | restart the driver; check `cmd_vel_topic` |
+| keyboard teleoperation does nothing | no X11 focus on a Wayland desktop | click the rviz window, then use the arrow keys |

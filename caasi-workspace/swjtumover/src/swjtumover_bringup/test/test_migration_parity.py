@@ -353,9 +353,19 @@ def test_mkdocs_manual_is_consistent():
         text = md.read_text(encoding='utf-8')
         for link in re.findall(r'\]\(([^)#]+\.md)\)', text):
             assert (docs / link).is_file(), f'{md.name} links to missing {link}'
-    # the two pages the audit and the caasi work produced must be in the nav
-    assert 'ros1-vs-ros2-audit.md' in nav_paths
-    assert 'caasi-commands.md' in nav_paths
+    # the shipped manual covers operation, commands, hardware and remote access
+    for page in ('ros2.md', 'caasi-commands.md', 'commands-ros1-vs-ros2.md',
+                 'hardware.md', 'fleet-and-display.md'):
+        assert page in nav_paths, f'{page} is not in the nav'
+    # pages are plain .html files, so the site opens from a local checkout without a server
+    assert config.get('use_directory_urls') is False
+    # the build output lives outside the project
+    assert not (project / 'site').exists(), 'documentation output belongs outside the project'
+    # development history belongs in the migration records, not in the product
+    for page in sorted(docs.glob('*.md')):
+        text = page.read_text(encoding='utf-8')
+        for marker in ('defect', 'Defect', '§'):
+            assert marker not in text, f'{page.name} carries development notes: {marker!r}'
 
 
 def test_every_package_uri_the_urdf_uses_is_installed():
@@ -395,12 +405,30 @@ def test_manual_builds_strictly_when_mkdocs_is_available():
     docs venv has not been created (scripts/build_docs.sh makes it). The structural test above runs
     either way; this one catches anything only the real renderer notices.
     """
+    import shutil
     import subprocess
     project = PKG.parent.parent
-    mkdocs = project / '.mkdocs-venv' / 'bin' / 'mkdocs'
-    if not mkdocs.is_file():
+    # Build tooling lives outside the shipped project: either mkdocs on PATH or the shared venv one
+    # directory up. The project itself ships only docs/ and mkdocs.yml.
+    on_path = shutil.which('mkdocs')
+    shared = project.parent / '.docs-venv' / 'bin' / 'python'
+    if on_path:
+        mkdocs_cmd = [on_path]
+    elif shared.is_file():
+        mkdocs_cmd = [str(shared), '-m', 'mkdocs']
+    else:
         import pytest
-        pytest.skip('mkdocs venv not present; run scripts/build_docs.sh to enable this check')
-    result = subprocess.run([str(mkdocs), 'build', '--strict'], cwd=project,
-                            capture_output=True, text=True, timeout=120)
-    assert result.returncode == 0, f'mkdocs build --strict failed:\n{result.stderr[-800:]}'
+        pytest.skip('mkdocs not available; run scripts/build_docs.sh to enable this check')
+    import pathlib as _pathlib
+    import tempfile
+    # everything is inspected inside the temporary directory: it is gone afterwards
+    with tempfile.TemporaryDirectory() as tmp:
+        result = subprocess.run([*mkdocs_cmd, 'build', '--strict', '--site-dir', tmp],
+                                cwd=project, capture_output=True, text=True, timeout=120)
+        assert result.returncode == 0, (
+            f'mkdocs build --strict failed:\n{result.stderr[-800:]}')
+        built = sorted(_pathlib.Path(tmp).glob('*.html'))
+        assert built, 'the build produced no pages'
+        assert any(page.name == 'index.html' for page in built), [p.name for p in built]
+        for page in built:
+            assert 'href="' in page.read_text(encoding='utf-8'), f'{page.name} has no links'

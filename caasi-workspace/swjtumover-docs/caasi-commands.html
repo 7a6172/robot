@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>Running with caasi - swjtumover</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Running with caasi";
+        var mkdocs_page_input_path = "caasi-commands.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="index.html" class="icon icon-home"> swjtumover
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="index.html">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="ros2.html">Running on the robot</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Running with caasi</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#first-time-on-a-robot">First time on a robot</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#run-entry-points">Run entry points</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#running-and-watching">Running and watching</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#order-that-works-for-a-mission">Order that works for a mission</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#where-things-land">Where things land</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#without-caasi">Without caasi</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="commands-ros1-vs-ros2.html">Commands and workflows</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware and safety</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="fleet-and-display.html">Remote access</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">swjtumover</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html" class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Running with caasi</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="running-with-caasi">Running with caasi<a class="headerlink" href="#running-with-caasi" title="Permanent link">&para;</a></h1>
+<p>caasi deploys the project to a robot, builds it there, and runs each task as a tracked process you
+can watch, read and stop from your own machine.</p>
+<p>After the robot is enrolled (its SSH access set up and its host key recorded), everything below is
+driven from the project directory on your machine. No addresses or credentials are repeated per
+command.</p>
+<h2 id="first-time-on-a-robot">First time on a robot<a class="headerlink" href="#first-time-on-a-robot" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi deploy &lt;target&gt;             # copy the project to the robot
+caasi build --target &lt;target&gt;     # colcon build there, recorded against the deployment
+</code></pre>
+<p><code>caasi deploy --status</code> shows what is deployed and whether it verified.</p>
+<h2 id="run-entry-points">Run entry points<a class="headerlink" href="#run-entry-points" title="Permanent link">&para;</a></h2>
+<p>Each task is one file in <code>experiments/</code>. They all go through <code>scripts/caasi_launch.py</code>, which sources
+the ROS environment and then <code>exec</code>s the real command, so <code>caasi run stop</code> reaches ROS 2 the way
+Ctrl-C would.</p>
+<table>
+<thead>
+<tr>
+<th>task</th>
+<th>experiment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>hardware bringup</td>
+<td><code>experiments/bringup.yaml</code></td>
+</tr>
+<tr>
+<td>bringup with teleoperation</td>
+<td><code>experiments/bringup_teleop.yaml</code></td>
+</tr>
+<tr>
+<td>bringup with rviz</td>
+<td><code>experiments/bringup_rviz.yaml</code></td>
+</tr>
+<tr>
+<td>mapping</td>
+<td><code>experiments/slam.yaml</code></td>
+</tr>
+<tr>
+<td>navigation</td>
+<td><code>experiments/navigation.yaml</code></td>
+</tr>
+<tr>
+<td>line-then-home mission</td>
+<td><code>experiments/mission.yaml</code></td>
+</tr>
+<tr>
+<td>mission with the site's line calibration</td>
+<td><code>experiments/mission_demo.yaml</code></td>
+</tr>
+<tr>
+<td>line follower alone</td>
+<td><code>experiments/line_follower.yaml</code></td>
+</tr>
+<tr>
+<td>obstacle guard alone</td>
+<td><code>experiments/obstacle_guard.yaml</code></td>
+</tr>
+<tr>
+<td>keyboard teleoperation alone</td>
+<td><code>experiments/teleop.yaml</code></td>
+</tr>
+<tr>
+<td>camera</td>
+<td><code>experiments/camera.yaml</code></td>
+</tr>
+<tr>
+<td>rviz</td>
+<td><code>experiments/rviz.yaml</code></td>
+</tr>
+<tr>
+<td>mission: start</td>
+<td><code>experiments/mission_start.yaml</code></td>
+</tr>
+<tr>
+<td>mission: stop</td>
+<td><code>experiments/mission_stop.yaml</code></td>
+</tr>
+<tr>
+<td>mission: record return waypoints</td>
+<td><code>experiments/mission_record_waypoints.yaml</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="running-and-watching">Running and watching<a class="headerlink" href="#running-and-watching" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi run start experiments/bringup.yaml -t &lt;target&gt;
+caasi run status &lt;run&gt;
+caasi logs &lt;run&gt; -f
+caasi run stop &lt;run&gt;
+caasi run list
+</code></pre>
+<p>The mission services are runs of their own, so a refused start shows up in the run status rather than
+scrolling past in a terminal:</p>
+<pre><code class="language-bash">caasi run start experiments/mission_start.yaml -t &lt;target&gt;     # prints success + message
+caasi run start experiments/mission_stop.yaml  -t &lt;target&gt;
+</code></pre>
+<h2 id="order-that-works-for-a-mission">Order that works for a mission<a class="headerlink" href="#order-that-works-for-a-mission" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi run start experiments/mission.yaml -t &lt;target&gt;      # bringup + nav2 + mission + follower
+# set the pose (see Running on the robot) once nav2 is up
+# wait until all seven nav2 nodes report active
+caasi run start experiments/camera.yaml -t &lt;target&gt;       # camera after nav2
+caasi run start experiments/mission_start.yaml -t &lt;target&gt;
+caasi logs &lt;mission run&gt; -f                                # watch /line_then_home/state
+</code></pre>
+<p>Bring nav2 up before the camera: the camera at full rate during bringup slows the lifecycle
+transitions considerably on a small machine.</p>
+<h2 id="where-things-land">Where things land<a class="headerlink" href="#where-things-land" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>what</th>
+<th>where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>deployed project</td>
+<td><code>~/caasi/robots/swjtumover</code> on the robot</td>
+</tr>
+<tr>
+<td>run output</td>
+<td><code>&lt;project&gt;/.caasi/runs/&lt;run&gt;/stdout.log</code>, <code>stderr.log</code>, <code>exit_code</code></td>
+</tr>
+<tr>
+<td>run records</td>
+<td><code>~/.caasi/runs/&lt;run&gt;/</code> on your machine</td>
+</tr>
+</tbody>
+</table>
+<h2 id="without-caasi">Without caasi<a class="headerlink" href="#without-caasi" title="Permanent link">&para;</a></h2>
+<p>Every task above has a direct ROS 2 form; see <a href="ros2.html">Running on the robot</a> and the full list in
+<a href="commands-ros1-vs-ros2.html">Commands and workflows</a>. caasi is a convenience and a record keeper, not a
+requirement.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="ros2.html" class="btn btn-neutral float-left" title="Running on the robot"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="commands-ros1-vs-ros2.html" class="btn btn-neutral float-right" title="Commands and workflows">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="ros2.html" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="commands-ros1-vs-ros2.html" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

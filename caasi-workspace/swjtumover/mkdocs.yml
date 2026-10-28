@@ -1,20 +1,29 @@
-site_name: swjtumover — ROS 2 manual
-site_description: How to deploy, run and operate the swjtumover robot with ROS 2 and
-  with caasi
+# swjtumover documentation.
+#
+#   scripts/build_docs.sh          build the HTML site (output goes outside this project)
+#   scripts/build_docs.sh serve    live preview on http://127.0.0.1:8000
+site_name: swjtumover
+site_description: swjtumover robot -- ROS 2 software, operation and commands
 docs_dir: docs
+
 theme:
-  name: mkdocs
+  name: readthedocs
   navigation_depth: 3
+
+# Keep page URLs as plain .html files instead of directory/index.html. Opening the site from a local
+# checkout then works by clicking the links, without a web server resolving directories.
+use_directory_urls: false
+
 markdown_extensions:
-- admonition
-- tables
-- toc:
-    permalink: true
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+
 nav:
-- Home: index.md
-- Running with ROS 2: ros2.md
-- Running with caasi: caasi-commands.md
-- Hardware and safety: hardware.md
-- Commands, ROS 1 vs ROS 2: commands-ros1-vs-ros2.md
-- Fleet identity and remote display: fleet-and-display.md
-- ROS 1 vs ROS 2 audit: ros1-vs-ros2-audit.md
+  - Home: index.md
+  - Running on the robot: ros2.md
+  - Running with caasi: caasi-commands.md
+  - Commands and workflows: commands-ros1-vs-ros2.md
+  - Hardware and safety: hardware.md
+  - Remote access: fleet-and-display.md
