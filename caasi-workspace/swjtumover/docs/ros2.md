@@ -118,6 +118,9 @@ Starting the mission requires odometry: `/amcl_pose` cannot exist without `odom 
 comes from the motor driver. With a silent motor board the mission simply never becomes startable,
 and nav2's global costmap waits for `map → base_link` — both fail safe rather than guessing.
 
+Running it through caasi, the order that works is bringup/nav2 → pose → camera → start; see the
+recipe at the end of [Running with caasi](caasi-commands.md).
+
 ## Single behaviours
 
 ```bash

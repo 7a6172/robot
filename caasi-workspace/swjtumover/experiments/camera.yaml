@@ -1,0 +1,13 @@
+# Run with: caasi run start experiments/camera.yaml -t swjtumover05
+name: swjtumover-camera
+backend: python
+script: ../scripts/caasi_launch.py
+args:
+- cmd
+- ros2
+- launch
+- realsense2_camera
+- rs_launch.py
+description: 'RealSense D415 colour and depth, for the line follower. Start it AFTER
+  nav2 has reached active: at 30 Hz during bringup it starves the lifecycle manager,
+  which then stalls on DDS response timeouts.'

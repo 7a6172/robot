@@ -289,3 +289,45 @@ def test_mission_launch_starts_the_follower_disabled():
     assert "'enabled': False" in text
     assert "remappings=[('/cmd_vel', '/cmd_vel/line')]" in text, (
         'the follower must publish to /cmd_vel/line so the mission stays the only arbiter')
+
+
+def test_caasi_experiment_configs_are_valid_and_complete():
+    """Every ROS 1 shell command must be a working caasi entry point, not just a YAML file.
+
+    A malformed config fails at run time on the robot, which is the worst place to find out, so the
+    whole set is checked here: the schema caasi expects, a script that exists, an argument list that
+    starts with a mode the launcher understands, and coverage of every command in the ROS 1 history.
+    """
+    project = PKG.parent.parent
+    experiments = project / 'experiments'
+    configs = {p.stem: yaml.safe_load(p.read_text(encoding='utf-8'))
+               for p in sorted(experiments.glob('*.yaml'))}
+    assert configs, 'no experiment configs'
+    for script in ('caasi_launch.py', 'mission_control.py'):
+        assert (project / 'scripts' / script).is_file(), f'scripts/{script} is missing'
+
+    for name, cfg in configs.items():
+        assert cfg.get('backend') == 'python', f'{name}: caasi runs python backends as [python, script]'
+        allowed_scripts = {'../scripts/caasi_launch.py', '../scripts/mission_control.py'}
+        assert cfg.get('script') in allowed_scripts, f'{name}: unexpected script {cfg.get("script")}'
+        args = cfg.get('args')
+        assert isinstance(args, list) and args, f'{name}: no args'
+        mode_ok = (args[0] in ('launch', 'run', 'cmd')
+                   if cfg['script'].endswith('caasi_launch.py')
+                   else args[0] in ('start', 'stop', 'record_waypoints'))
+        assert mode_ok, f'{name}: unexpected first argument {args[0]!r}'
+        assert cfg.get('name') and cfg.get('name').startswith('swjtumover-'), f'{name}: bad run name'
+        assert cfg.get('description'), f'{name}: no description'
+
+    # the commands the ROS 1 shell history used must all be reachable
+    required = {'bringup', 'bringup_teleop', 'bringup_rviz', 'slam', 'navigation', 'mission',
+                'line_follower', 'obstacle_guard', 'teleop', 'rviz', 'camera',
+                # the three commands that start, stop and configure the mission
+                'mission_start', 'mission_stop', 'mission_record_waypoints'}
+    missing = required - set(configs)
+    assert not missing, f'no caasi entry point for: {sorted(missing)}'
+
+    # and the launch files they name must exist in the package
+    launches = {a for cfg in configs.values() for a in cfg['args'] if str(a).endswith('.launch.py')}
+    for launch in launches:
+        assert PKG.joinpath('launch', launch).is_file(), f'experiment names a missing launch: {launch}'

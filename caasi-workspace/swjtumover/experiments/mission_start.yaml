@@ -1,0 +1,8 @@
+# Run with: caasi run start experiments/mission_start.yaml -t swjtumover05
+name: swjtumover-mission-start
+backend: python
+script: ../scripts/mission_control.py
+args:
+- start
+description: Start the line-then-home mission via /line_then_home/start. The ROS 1
+  equivalent was `rosservice call /line_then_home/start`.
