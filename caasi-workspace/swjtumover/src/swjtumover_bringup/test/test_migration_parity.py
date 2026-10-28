@@ -356,3 +356,33 @@ def test_mkdocs_manual_is_consistent():
     # the two pages the audit and the caasi work produced must be in the nav
     assert 'ros1-vs-ros2-audit.md' in nav_paths
     assert 'caasi-commands.md' in nav_paths
+
+
+def test_every_package_uri_the_urdf_uses_is_installed():
+    """A `package://` the package does not install is a runtime failure, not a build error.
+
+    The URDF references `package://swjtumover_bringup/meshes/...` 16 times, but CMakeLists only
+    installed launch/config/urdf/param/rviz/map -- so on the robot the meshes were absent and rviz
+    drew a bodyless robot. Found by checking the deployment rather than the source.
+    """
+    import re as _re
+    urdf = _read(PKG / 'urdf' / 'robot_description.urdf')
+    uris = set(_re.findall(r'package://swjtumover_bringup/([^"\s]+)', urdf))
+    assert uris, 'no package:// references found -- test is not looking'
+
+    cmake = _read(PKG / 'CMakeLists.txt')
+    installed = set()
+    for block in _re.findall(r'install\(DIRECTORY ([^)]*?)\s+DESTINATION', cmake, _re.S):
+        installed |= set(block.split())
+    assert 'meshes' in installed, f'meshes not installed; installed dirs: {sorted(installed)}'
+
+    missing = []
+    for uri in sorted(uris):
+        # the file must exist in the package and its top directory must be installed
+        top = uri.split('/')[0]
+        if not (PKG / uri).is_file():
+            missing.append(f'{uri} (not in the package)')
+        elif top not in installed:
+            missing.append(f'{uri} (package directory {top!r} not installed)')
+    assert not missing, 'URDF references resources that would not exist on the robot:\n' + \
+        '\n'.join(missing)

@@ -44,7 +44,9 @@ install(TARGETS motor_node screen_node DESTINATION lib/${PROJECT_NAME})
 # Launch, configuration, model and the ROS 1 parity data that the tests compare against.
 # `map/` holds nav.pgm + nav.yaml, the map the ROS 1 navigation used and navigation.launch.py
 # defaults to. It is installed so the launch file works from the installed package.
-install(DIRECTORY launch config urdf param rviz map
+# meshes must be installed: robot_description.urdf references package://.../meshes 16 times, and
+# without them rviz shows a robot with no body. They are the ROS 1 meshes, copied unchanged.
+install(DIRECTORY launch config urdf param rviz map meshes
         DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
