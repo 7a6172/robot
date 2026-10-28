@@ -1,0 +1,8 @@
+# Run with: caasi run start experiments/slam.yaml -t swjtumover05
+name: swjtumover-slam
+backend: python
+script: ../scripts/caasi_launch.py
+args:
+- launch
+- slam.launch.py
+description: Bringup plus slam_toolbox mapping (replaces the ROS 1 bringup_gmapping.launch).

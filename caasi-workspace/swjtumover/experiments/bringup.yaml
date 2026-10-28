@@ -1,0 +1,9 @@
+# Run with: caasi run start experiments/bringup.yaml -t swjtumover05
+name: swjtumover-bringup
+backend: python
+script: ../scripts/caasi_launch.py
+args:
+- launch
+- bringup.launch.py
+description: 'Hardware bringup: LiDAR adapter, motor driver, screen driver, robot_state_publisher,
+  joint_state_publisher. Core of swjtumover.'

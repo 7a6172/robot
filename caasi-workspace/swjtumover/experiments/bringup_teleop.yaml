@@ -1,0 +1,9 @@
+# Run with: caasi run start experiments/bringup_teleop.yaml -t swjtumover05
+name: swjtumover-bringup-teleop
+backend: python
+script: ../scripts/caasi_launch.py
+args:
+- launch
+- bringup.launch.py
+- enable_teleop:=true
+description: Bringup plus keyboard teleoperation. Needs an operator session with DISPLAY.

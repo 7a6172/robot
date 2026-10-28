@@ -78,3 +78,10 @@ not improve with a longer `map_subscribe_timeout`. Verified on the robot; use th
 `slam_toolbox` is a lifecycle node, so `slam.launch.py` runs a `nav2_lifecycle_manager` to
 configure and activate it. Without that it starts unconfigured -- no `/scan` subscription and no
 `/map` -- while the launch still looks healthy.
+
+## Running through caasi
+
+Every ROS 1 shell command has a caasi entry point in `experiments/`, so bringup, SLAM, navigation,
+the mission, the line follower, the obstacle guard, teleop and rviz are all deployable, runnable
+and monitorable rather than untracked terminals. See `docs/caasi-commands.md` for the table of
+commands and for the current limitation of `caasi run start` on remote robot targets.

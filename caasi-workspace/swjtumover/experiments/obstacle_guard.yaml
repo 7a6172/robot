@@ -1,0 +1,9 @@
+# Run with: caasi run start experiments/obstacle_guard.yaml -t swjtumover05
+name: swjtumover-obstacle-guard
+backend: python
+script: ../scripts/caasi_launch.py
+args:
+- run
+- obstacle_rplidar.py
+description: 'Standalone obstacle guard: drives forward at 0.2 m/s and stops inside
+  0.85 m. Holds zero when blocked.'

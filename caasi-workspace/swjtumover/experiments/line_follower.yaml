@@ -1,0 +1,14 @@
+# Run with: caasi run start experiments/line_follower.yaml -t swjtumover05
+name: swjtumover-line-follower
+backend: python
+script: ../scripts/caasi_launch.py
+args:
+- run
+- omove_following_feng.py
+- --ros-args
+- -p
+- color_topic:=/camera/camera/color/image_raw
+- -p
+- depth_topic:=/camera/camera/depth/image_rect_raw
+description: Line follower on its own. Needs a camera publishing colour and depth,
+  and the black line in view. Remap if the camera namespace differs.

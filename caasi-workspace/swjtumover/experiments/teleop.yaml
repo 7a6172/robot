@@ -1,0 +1,9 @@
+# Run with: caasi run start experiments/teleop.yaml -t swjtumover05
+name: swjtumover-teleop
+backend: python
+script: ../scripts/caasi_launch.py
+args:
+- run
+- teleop_node.py
+description: Keyboard teleoperation on its own. Requires an operator session with
+  DISPLAY; without one the node exits with code 3 and says why.

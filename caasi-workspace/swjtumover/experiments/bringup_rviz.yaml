@@ -1,0 +1,10 @@
+# Run with: caasi run start experiments/bringup_rviz.yaml -t swjtumover05
+name: swjtumover-bringup-rviz
+backend: python
+script: ../scripts/caasi_launch.py
+args:
+- launch
+- bringup.launch.py
+- enable_visualization:=true
+description: Bringup plus rviz. ROS 1 hardcoded rviz on; here it is an argument. Needs
+  DISPLAY, or use experiments/rviz.yaml against a running bringup.

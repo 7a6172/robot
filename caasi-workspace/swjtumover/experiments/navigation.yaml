@@ -1,0 +1,10 @@
+# Run with: caasi run start experiments/navigation.yaml -t swjtumover05
+name: swjtumover-navigation
+backend: python
+script: ../scripts/caasi_launch.py
+args:
+- launch
+- navigation.launch.py
+description: 'nav2: map_server, amcl, planner, controller, behaviors, bt_navigator,
+  velocity_smoother. Publishes /cmd_vel/nav for the mission node to arbitrate; add
+  cmd_vel_topic:=/cmd_vel to drive the wheels directly.'

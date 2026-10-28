@@ -1,0 +1,9 @@
+# Run with: caasi run start experiments/mission.yaml -t swjtumover05
+name: swjtumover-mission
+backend: python
+script: ../scripts/caasi_launch.py
+args:
+- launch
+- line_then_home.launch.py
+description: 'The line-then-home mission supervisor with navigation (replaces the
+  ROS 1 line_then_home.launch). Start it with: caasi ros service call /line_then_home/start'
