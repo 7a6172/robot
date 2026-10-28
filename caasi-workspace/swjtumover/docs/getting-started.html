@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>Getting started - swjtumover</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Getting started";
+        var mkdocs_page_input_path = "getting-started.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="index.html" class="icon icon-home"> swjtumover
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="index.html">Home</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Getting started</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1-prepare-the-robot">1. Prepare the robot</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#1a-enable-ssh-if-it-is-not-already">1a. Enable SSH, if it is not already</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#1b-install-ros-2-and-the-packages-this-project-needs">1b. Install ROS 2 and the packages this project needs</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#1c-check-that-the-camera-is-usable">1c. Check that the camera is usable</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-install-caasi-on-your-computer">2. Install caasi on your computer</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-register-the-robot-with-caasi">3. Register the robot with caasi</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4-check-the-robot-has-what-the-project-needs">4. Check the robot has what the project needs</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5-put-the-software-on-the-robot-and-build-it">5. Put the software on the robot and build it</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#6-run-something">6. Run something</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#7-confirm-it-works">7. Confirm it works</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#8-where-next">8. Where next</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="concepts.html">Concepts</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="commands.html">Commands</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="caasi.html">caasi in depth</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="ros2.html">Inside the robot</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware and safety</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="fleet-and-display.html">Remote access</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">swjtumover</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html" class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Getting started</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="getting-started">Getting started<a class="headerlink" href="#getting-started" title="Permanent link">&para;</a></h1>
+<p>From a robot that has never run this software and a computer that has never heard of caasi, to a
+robot doing something. Follow it in order the first time.</p>
+<p>Two machines are involved:</p>
+<ul>
+<li><strong>the robot</strong> — Ubuntu 24.04 with ROS 2 on it, reachable over the network,</li>
+<li><strong>your computer</strong> — where you type commands. Linux or macOS; Windows works through WSL.</li>
+</ul>
+<h2 id="1-prepare-the-robot">1. Prepare the robot<a class="headerlink" href="#1-prepare-the-robot" title="Permanent link">&para;</a></h2>
+<p>You need a shell on the robot (<code>ssh &lt;user&gt;@&lt;robot-ip&gt;</code>). Everything in this step runs there.</p>
+<h3 id="1a-enable-ssh-if-it-is-not-already">1a. Enable SSH, if it is not already<a class="headerlink" href="#1a-enable-ssh-if-it-is-not-already" title="Permanent link">&para;</a></h3>
+<pre><code class="language-bash">sudo apt update &amp;&amp; sudo apt install -y openssh-server
+sudo systemctl enable --now ssh
+</code></pre>
+<h3 id="1b-install-ros-2-and-the-packages-this-project-needs">1b. Install ROS 2 and the packages this project needs<a class="headerlink" href="#1b-install-ros-2-and-the-packages-this-project-needs" title="Permanent link">&para;</a></h3>
+<pre><code class="language-bash"># ROS 2 Jazzy (Ubuntu 24.04)
+sudo apt install -y software-properties-common
+sudo add-apt-repository -y universe
+sudo apt install -y ros-jazzy-desktop
+
+# the parts of the system swjtumover uses
+sudo apt install -y \
+  ros-jazzy-navigation2 ros-jazzy-nav2-bringup ros-jazzy-slam-toolbox \
+  ros-jazzy-realsense2-camera ros-jazzy-cv-bridge \
+  python3-opencv python3-pynput python3-colcon-common-extensions
+
+# so that a new shell knows about ROS 2
+echo 'source /opt/ros/jazzy/setup.bash' &gt;&gt; ~/.bashrc
+</code></pre>
+<p>The robot's earlier ROS 1 installation used scripts named <code>1.ros_install.sh</code>,
+<code>2.realsense_install.sh</code>, <code>3.install.sh</code> and <code>4.make.sh</code> for the same purpose: install ROS, the
+camera driver, the Python extras, and then build the workspace. The commands above are the ROS 2
+equivalent; caasi checks the result for you in step 3.</p>
+<h3 id="1c-check-that-the-camera-is-usable">1c. Check that the camera is usable<a class="headerlink" href="#1c-check-that-the-camera-is-usable" title="Permanent link">&para;</a></h3>
+<pre><code class="language-bash">sudo usermod -aG video &quot;$USER&quot;      # then log out and back in
+</code></pre>
+<h2 id="2-install-caasi-on-your-computer">2. Install caasi on your computer<a class="headerlink" href="#2-install-caasi-on-your-computer" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">pipx install caasi        # recommended: keeps caasi in its own environment
+</code></pre>
+<p>If <code>pipx</code> is not installed: <code>sudo apt install pipx</code> on Ubuntu, <code>brew install pipx</code> on macOS.
+Alternatives, if you prefer:</p>
+<pre><code class="language-bash">pip install caasi                                            # into the active Python environment
+python3 -m venv ~/.venvs/caasi &amp;&amp; ~/.venvs/caasi/bin/pip install caasi   # a dedicated environment
+</code></pre>
+<p>Check it:</p>
+<pre><code class="language-bash">caasi version
+caasi info          # caasi, Python, and the toolchains it can see
+</code></pre>
+<p>The project lives at <a href="https://github.com/7a6172/caasi/">https://github.com/7a6172/caasi/</a> — its README covers installation options in
+more detail, and the issue tracker is where to ask about caasi itself.</p>
+<h2 id="3-register-the-robot-with-caasi">3. Register the robot with caasi<a class="headerlink" href="#3-register-the-robot-with-caasi" title="Permanent link">&para;</a></h2>
+<p>A machine that caasi may control is called a <strong>target</strong>. Register it once:</p>
+<pre><code class="language-bash">caasi node enroll swjtumover-05 --host 10.212.19.94 --user swjtumover
+</code></pre>
+<p><code>swjtumover-05</code> is the name you will use from now on; <code>--host</code> is where the robot answers today. On
+first contact caasi records the robot's SSH host keys and hardware identity, and it refuses to talk to
+a machine whose keys do not match that record later.</p>
+<p>Name targets after the machine (<code>swjtumover-05</code>, <code>swjtumover-10</code>). The software keeps the name
+<code>swjtumover</code> everywhere, so nothing you type afterwards depends on the robot's number.</p>
+<p>Verify it:</p>
+<pre><code class="language-bash">caasi node list                        # your target appears
+caasi node identity swjtumover-05      # enrolled keys and hardware, endpoint verified
+caasi node check swjtumover-05         # reachable? environment sane?
+</code></pre>
+<p>If the robot's address changes, tell caasi rather than re-enrolling:
+<code>caasi node refresh swjtumover-05</code>.</p>
+<h2 id="4-check-the-robot-has-what-the-project-needs">4. Check the robot has what the project needs<a class="headerlink" href="#4-check-the-robot-has-what-the-project-needs" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">cd &lt;this project&gt;                       # the directory holding caasi.yaml
+caasi target deps swjtumover-05 --for bringup
+</code></pre>
+<p>It reads the requirements declared in <code>caasi.yaml</code> and checks each one <strong>on the robot</strong>, telling you
+what is installed, what is missing, and what to install. Example:</p>
+<pre><code>17 installed, 0 missing, 0 incompatible, 0 optional-absent, 0 unknown
+</code></pre>
+<p>Anything missing is a <code>sudo apt install …</code> away, and the table names the package.</p>
+<h2 id="5-put-the-software-on-the-robot-and-build-it">5. Put the software on the robot and build it<a class="headerlink" href="#5-put-the-software-on-the-robot-and-build-it" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi deploy swjtumover-05                 # copy the project to ~/caasi/robots/swjtumover
+caasi build  --target swjtumover-05        # compile it there
+</code></pre>
+<p><code>caasi deploy --status</code> shows what is deployed and whether it verified. Both commands can be re-run
+at any time; only what changed is transferred and rebuilt.</p>
+<h2 id="6-run-something">6. Run something<a class="headerlink" href="#6-run-something" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi run start experiments/bringup.yaml -t swjtumover-05
+</code></pre>
+<p>That starts the robot's drivers. It answers with a run name:</p>
+<pre><code>Run 20261029-023042-swjtumover-bringup started in background on target 'swjtumover-05'.
+  Follow it with: caasi logs 20261029-023042-swjtumover-bringup -f
+</code></pre>
+<p>Watch it, then stop it:</p>
+<pre><code class="language-bash">caasi logs 20261029-023042-swjtumover-bringup -f     # live output, Ctrl+C only stops watching
+caasi run status 20261029-023042-swjtumover-bringup  # running / stopped / failed
+caasi run stop   20261029-023042-swjtumover-bringup  # actually stop it
+</code></pre>
+<p><strong>Ctrl+C when following logs does not stop the task</strong> — use <code>caasi run stop</code> for that.</p>
+<h2 id="7-confirm-it-works">7. Confirm it works<a class="headerlink" href="#7-confirm-it-works" title="Permanent link">&para;</a></h2>
+<p>With the bringup running, from your computer:</p>
+<pre><code class="language-bash">caasi exec --target swjtumover-05 -- bash -c \
+  'source /opt/ros/jazzy/setup.bash; source ~/caasi/robots/swjtumover/install/setup.bash; ros2 topic hz /scan'
+</code></pre>
+<p>You should see about 14 readings per second. Then check the wheels' odometry:</p>
+<pre><code class="language-bash">caasi exec --target swjtumover-05 -- bash -c \
+  'source /opt/ros/jazzy/setup.bash; source ~/caasi/robots/swjtumover/install/setup.bash; ros2 topic hz /odom'
+</code></pre>
+<p>About 50 per second. (Typing that prefix repeatedly is tedious — see the shortcut at the end of
+<a href="caasi.html">caasi in depth</a>.)</p>
+<p>Stop the bringup when you are done:</p>
+<pre><code class="language-bash">caasi run stop 20261029-023042-swjtumover-bringup
+</code></pre>
+<h2 id="8-where-next">8. Where next<a class="headerlink" href="#8-where-next" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><a href="commands.html">Commands</a></strong> — drive it, map the space, navigate, run the mission. Each task has a
+  local form and a remote form and a way to check it.</li>
+<li><strong><a href="caasi.html">caasi in depth</a></strong> — everything caasi can do while you develop.</li>
+<li><strong><a href="troubleshooting.html">Troubleshooting</a></strong> — when something misbehaves.</li>
+<li><strong><a href="hardware.html">Hardware and safety</a></strong> — before driving on the floor.</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="index.html" class="btn btn-neutral float-left" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="concepts.html" class="btn btn-neutral float-right" title="Concepts">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="index.html" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="concepts.html" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -42,27 +42,39 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="#">Home</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#new-to-this">New to this?</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#what-is-in-the-package">What is in the package</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#the-robot">The robot</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#interfaces-at-a-glance">Interfaces at a glance</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#three-things-worth-knowing-up-front">Three things worth knowing up front</a>
+    <li class="toctree-l2"><a class="reference internal" href="#three-things-worth-knowing-before-you-start">Three things worth knowing before you start</a>
     </li>
     </ul>
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="ros2.html">Running on the robot</a>
+                <li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting started</a>
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="caasi-commands.html">Running with caasi</a>
+                <li class="toctree-l1"><a class="reference internal" href="concepts.html">Concepts</a>
                 </li>
               </ul>
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="commands.html">Commands</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="caasi.html">caasi in depth</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="ros2.html">Inside the robot</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a>
                 </li>
               </ul>
               <ul>
@@ -97,28 +109,53 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="swjtumover">swjtumover<a class="headerlink" href="#swjtumover" title="Permanent link">&para;</a></h1>
-<p>ROS 2 software for the swjtumover robot. It provides the motor driver, the display driver, a LiDAR
-adapter, line following, navigation and the line-then-home mission.</p>
-<p>There are two ways to operate it, and both are first-class:</p>
-<ul>
-<li><strong><a href="ros2.html">Running on the robot</a></strong> — direct <code>ros2 launch</code> and <code>ros2 run</code> commands.</li>
-<li><strong><a href="caasi-commands.html">Running with caasi</a></strong> — deploy, build, run and monitor from another machine.</li>
-</ul>
-<p>For a side-by-side list of every command, see <strong><a href="commands.html">Commands and workflows</a></strong>.
-Before driving the robot, read <strong><a href="hardware.html">Hardware and safety</a></strong>. For multi-robot naming and
-seeing the robot's screen remotely, see <strong><a href="fleet-and-display.html">Remote access</a></strong>.</p>
+<p>Software for the swjtumover robot: it drives the wheels, reads the LiDAR, follows the black line,
+navigates a map, and runs the line-then-home mission.</p>
+<p>It runs on <strong>ROS 2</strong> (the newer version of the robot framework this robot used before) and can be
+operated in two ways:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>what it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>On the robot</strong></td>
+<td>you open a terminal on the robot and type ROS 2 commands</td>
+</tr>
+<tr>
+<td><strong>From your computer</strong></td>
+<td>you use <strong>caasi</strong>, a tool that deploys the software to the robot, starts tasks there, and shows you their output from wherever you are</td>
+</tr>
+</tbody>
+</table>
+<p>There is no wrong choice. caasi adds records and remote control; the plain ROS 2 commands are exactly
+equivalent and always available.</p>
+<h2 id="new-to-this">New to this?<a class="headerlink" href="#new-to-this" title="Permanent link">&para;</a></h2>
+<p>Read in this order:</p>
+<ol>
+<li><strong><a href="getting-started.html">Getting started</a></strong> — prepare the robot, install caasi, connect the two, and
+   run the robot for the first time. Start here if you have never set this up.</li>
+<li><strong><a href="concepts.html">Concepts</a></strong> — the handful of words you need: node, topic, service, launch, target,
+   run. Skim it if you know ROS 2 already.</li>
+<li><strong><a href="commands.html">Commands</a></strong> — every task, in both forms, with an example and a way to check it.</li>
+<li><strong><a href="troubleshooting.html">Troubleshooting</a></strong> — what to do when something does not behave.</li>
+</ol>
+<p>Before driving the robot, read <strong><a href="hardware.html">Hardware and safety</a></strong>.</p>
 <h2 id="what-is-in-the-package">What is in the package<a class="headerlink" href="#what-is-in-the-package" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>package</th>
+<th>part</th>
 <th>contents</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>swjtumover_msgs</code></td>
-<td><code>MotorState</code>: header, phase current, rpm, position, five fault flags</td>
+<td>the message the motor driver publishes: currents, rpm, position, fault flags</td>
 </tr>
 <tr>
 <td><code>swjtumover_bringup</code></td>
@@ -126,7 +163,15 @@ seeing the robot's screen remotely, see <strong><a href="fleet-and-display.html"
 </tr>
 <tr>
 <td><code>swjtumover_vanjee</code></td>
-<td>LiDAR adapter publishing <code>/scan</code></td>
+<td>LiDAR adapter, publishes <code>/scan</code></td>
+</tr>
+<tr>
+<td><code>experiments/</code></td>
+<td>one file per task, used by caasi to run it</td>
+</tr>
+<tr>
+<td><code>docs/</code></td>
+<td>this manual (the pages you are reading)</td>
 </tr>
 </tbody>
 </table>
@@ -145,83 +190,40 @@ seeing the robot's screen remotely, see <strong><a href="fleet-and-display.html"
 </tr>
 <tr>
 <td>LiDAR</td>
-<td>Vanjee 718H, single line, at (0, 0, 0.14114) m, centred, pitched 1.5°</td>
+<td>Vanjee 718H, single line, mounted at the centre of the body, 0.141 m up, tilted 1.5°</td>
 </tr>
 <tr>
 <td>wheels</td>
-<td>radius 0.05035 m, track ±0.103 m</td>
+<td>radius 0.05035 m, 0.206 m apart</td>
 </tr>
 <tr>
 <td>motor board</td>
-<td><code>192.168.100.100:23</code>, UDP, 10-byte frames with CRC8-Maxim</td>
+<td><code>192.168.100.100</code>, UDP port 23</td>
 </tr>
 <tr>
-<td>display</td>
-<td><code>192.168.100.100:26</code>, UDP</td>
+<td>small display</td>
+<td><code>192.168.100.100</code>, UDP port 26</td>
 </tr>
 <tr>
-<td>networks</td>
-<td>LiDAR <code>192.168.110.0/24</code>, motor/IO <code>192.168.100.0/24</code></td>
+<td>internal networks</td>
+<td>LiDAR <code>192.168.110.x</code>, motors <code>192.168.100.x</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="interfaces-at-a-glance">Interfaces at a glance<a class="headerlink" href="#interfaces-at-a-glance" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>topic</th>
-<th>direction</th>
-<th>rate</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>/scan</code></td>
-<td>from the LiDAR adapter</td>
-<td>~14 Hz</td>
-</tr>
-<tr>
-<td><code>/odom</code>, <code>/motor_state/left</code>, <code>/motor_state/right</code></td>
-<td>from the motor driver</td>
-<td>50 Hz</td>
-</tr>
-<tr>
-<td><code>/cmd_vel</code></td>
-<td>to the motor driver — the only actuation path</td>
-<td>—</td>
-</tr>
-<tr>
-<td><code>/cmd_vel/line</code>, <code>/cmd_vel/nav</code></td>
-<td>arbitration inputs to the mission</td>
-<td>—</td>
-</tr>
-<tr>
-<td><code>/line_then_home/state</code></td>
-<td>mission state</td>
-<td>on change</td>
-</tr>
-<tr>
-<td><code>/qrcode_text</code></td>
-<td>to the screen driver</td>
-<td>on change</td>
-</tr>
-</tbody>
-</table>
-<p>Services on the mission node: <code>/line_then_home/start</code>, <code>…/stop</code>, <code>…/record_waypoints</code>.</p>
-<h2 id="three-things-worth-knowing-up-front">Three things worth knowing up front<a class="headerlink" href="#three-things-worth-knowing-up-front" title="Permanent link">&para;</a></h2>
+<h2 id="three-things-worth-knowing-before-you-start">Three things worth knowing before you start<a class="headerlink" href="#three-things-worth-knowing-before-you-start" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>The LiDAR sits at the centre of the body.</strong> A range reading is the distance to the centre; the
-   body reaches 0.16 m further ahead. Obstacle checks account for this.</li>
-<li><strong>Start the LiDAR first.</strong> Every ROS 2 process on this machine may compete for UDP 7000.
-   <code>bringup.launch.py</code> orders it correctly.</li>
-<li><strong>The motor driver has a watchdog.</strong> If commands stop, or motor feedback stops, the wheels are
-   zeroed within half a second and the driver stays off until restarted.</li>
+<li><strong>The LiDAR sits at the centre of the body.</strong> A distance it reports is measured to the centre; the
+   front of the robot is 0.16 m closer to whatever it is measuring. The software accounts for this.</li>
+<li><strong>The LiDAR must start first.</strong> The robot's programs compete for one network port (UDP 7000) and
+   the LiDAR has to win it. The bringup does that in the right order for you.</li>
+<li><strong>The motor driver stops by itself.</strong> If commands stop arriving, or the board stops answering, the
+   wheels are driven to zero within half a second and the driver refuses to move until restarted.</li>
 </ol>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="ros2.html" class="btn btn-neutral float-right" title="Running on the robot">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="getting-started.html" class="btn btn-neutral float-right" title="Getting started">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -245,7 +247,7 @@ seeing the robot's screen remotely, see <strong><a href="fleet-and-display.html"
     
     
     
-      <span><a href="ros2.html" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="getting-started.html" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
@@ -265,5 +267,5 @@ seeing the robot's screen remotely, see <strong><a href="fleet-and-display.html"
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2026-10-28 18:39:12.187641+00:00
+Build Date UTC : 2026-10-28 19:05:22.699032+00:00
 -->

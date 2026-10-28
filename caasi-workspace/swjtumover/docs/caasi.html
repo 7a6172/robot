@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>caasi in depth - swjtumover</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "caasi in depth";
+        var mkdocs_page_input_path = "caasi.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="index.html" class="icon icon-home"> swjtumover
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="index.html">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="concepts.html">Concepts</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="commands.html">Commands</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">caasi in depth</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#first-contact">First contact</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#getting-the-code-onto-the-robot">Getting the code onto the robot</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#starting-a-task">Starting a task</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#watching-it">Watching it</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#when-something-is-wrong">When something is wrong</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#looking-at-the-robot-without-a-session">Looking at the robot without a session</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#tools-you-will-reach-for-eventually">Tools you will reach for eventually</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#a-whole-session-end-to-end">A whole session, end to end</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#what-lives-where">What lives where</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="ros2.html">Inside the robot</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware and safety</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="fleet-and-display.html">Remote access</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">swjtumover</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html" class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">caasi in depth</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="caasi-in-depth">caasi in depth<a class="headerlink" href="#caasi-in-depth" title="Permanent link">&para;</a></h1>
+<p>This chapter follows the way you actually use caasi: first contact with a robot, getting the code
+onto it, starting a task, watching it, and what to do when it misbehaves. Each command is shown with
+its arguments and a real example, so you can adapt rather than memorise.</p>
+<p>It covers what this robot needs; caasi is a general tool with more to it. Its home is
+<a href="https://github.com/7a6172/caasi/">https://github.com/7a6172/caasi/</a>, and every command answers <code>--help</code> with its own details.</p>
+<h2 id="first-contact">First contact<a class="headerlink" href="#first-contact" title="Permanent link">&para;</a></h2>
+<p>You have the robot's address and an account on it. Register it once:</p>
+<pre><code class="language-bash">caasi node enroll swjtumover-05 --host 10.212.19.94 --user swjtumover
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>argument</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>swjtumover-05</code></td>
+<td>the name you will use afterwards. It is the target's identity</td>
+</tr>
+<tr>
+<td><code>--host</code></td>
+<td>where the robot answers <em>today</em>; it may change later</td>
+</tr>
+<tr>
+<td><code>--user</code></td>
+<td>the account caasi logs in as</td>
+</tr>
+<tr>
+<td><code>--port</code></td>
+<td>SSH port, default 22</td>
+</tr>
+<tr>
+<td><code>--expect-fingerprint</code></td>
+<td>require a specific host-key fingerprint, if you were given one out of band</td>
+</tr>
+</tbody>
+</table>
+<p>On that first contact caasi records the robot's SSH host keys and some hardware facts. From then on
+it refuses a machine whose keys do not match — so a different robot at a recycled address cannot
+impersonate yours.</p>
+<p>Confirm what it recorded, and that the address still points at the same machine:</p>
+<pre><code class="language-bash">caasi node identity swjtumover-05
+</code></pre>
+<pre><code>name:         swjtumover-05
+machine_id:   2c7c442a1da846c6b70f5a2d7712d7db   (from /etc/machine-id)
+cpu_model:    Intel(R) N150
+endpoint:     10.212.19.94:22, verified
+</code></pre>
+<p>If the robot moved to a new address, do not re-enrol — follow it:</p>
+<pre><code class="language-bash">caasi node refresh swjtumover-05
+</code></pre>
+<p>Then see whether the machine is ready for this project at all:</p>
+<pre><code class="language-bash">caasi node check swjtumover-05          # reachable, environment sane
+caasi node inspect swjtumover-05        # what hardware and software it has
+caasi target deps swjtumover-05 --for bringup
+</code></pre>
+<p><code>--for</code> picks the part of the project you are asking about (<code>bringup</code>, <code>build</code>, <code>project</code>, <code>sim</code>).
+The last command prints a table of the requirements declared in <code>caasi.yaml</code> and whether each one is
+present <strong>on the robot</strong>:</p>
+<pre><code>17 installed, 0 missing, 0 incompatible, 0 optional-absent, 0 unknown
+</code></pre>
+<p>Anything missing names the package to install.</p>
+<h2 id="getting-the-code-onto-the-robot">Getting the code onto the robot<a class="headerlink" href="#getting-the-code-onto-the-robot" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi deploy swjtumover-05
+</code></pre>
+<p>The first deploy copies the whole project to <code>~/caasi/robots/swjtumover</code>; later ones send only what
+changed, which is why it is cheap to run after every edit.</p>
+<table>
+<thead>
+<tr>
+<th>option</th>
+<th>when you want it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--status</code></td>
+<td>show what is currently deployed, without deploying</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>preview what would be transferred</td>
+</tr>
+<tr>
+<td><code>--dest &lt;path&gt;</code></td>
+<td>deploy somewhere else, once</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td>deploy despite compatibility warnings from the preflight</td>
+</tr>
+<tr>
+<td><code>--list</code></td>
+<td>the deployment records caasi keeps for this project</td>
+</tr>
+</tbody>
+</table>
+<p>Then compile it there:</p>
+<pre><code class="language-bash">caasi build --target swjtumover-05
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>option</th>
+<th>when you want it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-p &lt;package&gt;</code></td>
+<td>build one package, e.g. <code>-p swjtumover_bringup</code></td>
+</tr>
+<tr>
+<td><code>--clean</code></td>
+<td>discard <code>build/</code>, <code>install/</code> and <code>log/</code> first</td>
+</tr>
+<tr>
+<td><code>-j &lt;n&gt;</code></td>
+<td>limit parallel workers on a small machine</td>
+</tr>
+<tr>
+<td><code>--continue-on-error</code></td>
+<td>build the rest even if one package fails</td>
+</tr>
+</tbody>
+</table>
+<p>A build is recorded, so a run can tell you which build it used.</p>
+<h2 id="starting-a-task">Starting a task<a class="headerlink" href="#starting-a-task" title="Permanent link">&para;</a></h2>
+<p>Every task is one file in <code>experiments/</code>. You do not need to remember commands; you point at a file:</p>
+<pre><code class="language-bash">caasi run start experiments/bringup.yaml -t swjtumover-05
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>argument</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>experiments/bringup.yaml</code></td>
+<td>which task</td>
+</tr>
+<tr>
+<td><code>-t, --target</code></td>
+<td>which robot</td>
+</tr>
+<tr>
+<td><code>--name</code></td>
+<td>give the run your own name instead of the experiment's</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>print the command it would run, and start nothing</td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td>machine-readable output, for scripting</td>
+</tr>
+</tbody>
+</table>
+<p>It answers with the run's name, which is what you use from then on:</p>
+<pre><code>Run 20261029-023042-swjtumover-bringup started in background on target 'swjtumover-05'.
+  Follow it with: caasi logs 20261029-023042-swjtumover-bringup -f
+</code></pre>
+<p><code>experiments/</code> covers bringup, mapping, navigation, the mission, the line follower, the obstacle
+guard, teleoperation, the camera, rviz, and starting/stopping the mission. <a href="commands.html">Commands</a>
+maps each task to its file.</p>
+<h2 id="watching-it">Watching it<a class="headerlink" href="#watching-it" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi logs 20261029-023042-swjtumover-bringup -f
+</code></pre>
+<p><code>-f</code> follows until the task ends; <strong>Ctrl+C stops following, not the task</strong>. Filters that save time:</p>
+<table>
+<thead>
+<tr>
+<th>option</th>
+<th>use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n 50</code></td>
+<td>only the last 50 lines, instead of following</td>
+</tr>
+<tr>
+<td><code>--stream stderr</code></td>
+<td>just what went to stderr</td>
+</tr>
+<tr>
+<td><code>--errors</code></td>
+<td>only lines that look like errors</td>
+</tr>
+<tr>
+<td><code>--component &lt;name&gt;</code></td>
+<td>only lines tagged with one component</td>
+</tr>
+</tbody>
+</table>
+<p>Anywhere a run name is expected you can also use a shorter form: a unique prefix, or <code>latest</code>:</p>
+<pre><code class="language-bash">caasi logs latest -n 20
+caasi run status latest
+</code></pre>
+<p>For the state rather than the output:</p>
+<pre><code class="language-bash">caasi run status 20261029-023042-swjtumover-bringup
+</code></pre>
+<p>which reports whether it is running, stopped or failed, <strong>and which build and deployment it used</strong> —
+the fastest way to answer "is the robot running the code I think it is".</p>
+<p><code>caasi run attach &lt;run&gt;</code> joins the live output and detaches with Ctrl+C without stopping anything.
+<code>caasi run list</code> shows recent runs; <code>caasi run list -n 5 -t swjtumover-05</code> narrows to one robot.</p>
+<h2 id="when-something-is-wrong">When something is wrong<a class="headerlink" href="#when-something-is-wrong" title="Permanent link">&para;</a></h2>
+<p>Stop the task:</p>
+<pre><code class="language-bash">caasi run stop 20261029-023042-swjtumover-bringup
+caasi run stop latest
+</code></pre>
+<p><code>caasi run restart &lt;run&gt;</code> starts the same command again as a fresh run, which is quicker than
+retyping the experiment path. If several things are running and you want the robot quiet:</p>
+<pre><code class="language-bash">caasi run list                          # what is running
+caasi node occupancy                    # what caasi sees running on each target
+</code></pre>
+<p><code>caasi run artifacts &lt;run&gt;</code> lists files a task produced, and <code>caasi run delete &lt;run&gt;</code> forgets a
+finished run without touching the robot.</p>
+<h2 id="looking-at-the-robot-without-a-session">Looking at the robot without a session<a class="headerlink" href="#looking-at-the-robot-without-a-session" title="Permanent link">&para;</a></h2>
+<p><code>caasi exec</code> runs one command on the robot and prints the result:</p>
+<pre><code class="language-bash">caasi exec --target swjtumover-05 -- uptime
+</code></pre>
+<p>For anything ROS 2, let caasi prepare the environment instead of sourcing it yourself:</p>
+<pre><code class="language-bash">caasi exec --target swjtumover-05 \
+  --ros --overlay '~/caasi/robots/swjtumover/install/setup.bash' \
+  -- ros2 topic hz /scan
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>option</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--target, -t</code></td>
+<td>which robot</td>
+</tr>
+<tr>
+<td><code>--ros</code></td>
+<td>source the robot's ROS 2 setup first</td>
+</tr>
+<tr>
+<td><code>--overlay &lt;path&gt;</code></td>
+<td>also source this project's workspace</td>
+</tr>
+<tr>
+<td><code>--cwd &lt;path&gt;</code></td>
+<td>run the command in a given directory</td>
+</tr>
+<tr>
+<td><code>--env KEY=VALUE, -e</code></td>
+<td>set an environment variable, repeatable</td>
+</tr>
+<tr>
+<td><code>--timeout &lt;seconds&gt;</code></td>
+<td>give up after this long (default 60)</td>
+</tr>
+<tr>
+<td><code>--detach, -d</code></td>
+<td>run in the background as a managed run; pair with <code>--name</code></td>
+</tr>
+</tbody>
+</table>
+<p>Because that prefix is long, put a function in your <code>~/.bashrc</code>:</p>
+<pre><code class="language-bash">swj() { caasi exec --target swjtumover-05 --ros \
+          --overlay '~/caasi/robots/swjtumover/install/setup.bash' -- bash -c &quot;$*&quot;; }
+</code></pre>
+<pre><code class="language-bash">swj ros2 topic echo /motor_state/left --once
+swj ros2 service call /line_then_home/start std_srvs/srv/Trigger &quot;{}&quot;
+swj ros2 bag record -o /tmp/run1 /scan /odom
+</code></pre>
+<h2 id="tools-you-will-reach-for-eventually">Tools you will reach for eventually<a class="headerlink" href="#tools-you-will-reach-for-eventually" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>command</th>
+<th>what it tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>caasi doctor</code></td>
+<td>whether the robotics environment here is in order</td>
+</tr>
+<tr>
+<td><code>caasi info</code></td>
+<td>caasi's version, Python, and the toolchains it can see</td>
+</tr>
+<tr>
+<td><code>caasi system</code></td>
+<td>operating system, CPU, memory, processes</td>
+</tr>
+<tr>
+<td><code>caasi monitor</code></td>
+<td>CPU, memory and GPU while something runs</td>
+</tr>
+<tr>
+<td><code>caasi sensor</code></td>
+<td>which sensors and SDKs are visible</td>
+</tr>
+<tr>
+<td><code>caasi vision</code></td>
+<td>the computer-vision stack, e.g. whether OpenCV is usable</td>
+</tr>
+<tr>
+<td><code>caasi audit</code></td>
+<td>an account of the project and its reproducibility</td>
+</tr>
+<tr>
+<td><code>caasi check</code></td>
+<td>whether this project can run on this machine</td>
+</tr>
+<tr>
+<td><code>caasi view rviz</code></td>
+<td>open rviz for a run</td>
+</tr>
+<tr>
+<td><code>caasi view foxglove</code></td>
+<td>the same data in Foxglove Studio</td>
+</tr>
+<tr>
+<td><code>caasi teleop</code></td>
+<td>drive a robot, record demonstrations, replay bags</td>
+</tr>
+<tr>
+<td><code>caasi replay</code></td>
+<td>replay a recorded run without re-running it</td>
+</tr>
+<tr>
+<td><code>caasi ros list</code>, <code>caasi ros graph</code></td>
+<td>the ROS 2 graph on the machine you are sitting at</td>
+</tr>
+</tbody>
+</table>
+<p><code>caasi ros</code> acts locally. On the robot, use <code>caasi exec --ros</code>.</p>
+<h2 id="a-whole-session-end-to-end">A whole session, end to end<a class="headerlink" href="#a-whole-session-end-to-end" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">cd &lt;project&gt;
+caasi node check swjtumover-05                        # is the robot there
+caasi target deps swjtumover-05 --for bringup         # does it have what we need
+caasi deploy swjtumover-05                            # copy the code
+caasi build --target swjtumover-05                    # compile
+caasi run start experiments/bringup.yaml -t swjtumover-05
+caasi logs latest -f                                  # watch until satisfied
+caasi exec --target swjtumover-05 --ros \
+  --overlay '~/caasi/robots/swjtumover/install/setup.bash' -- ros2 topic hz /odom
+caasi run stop latest
+</code></pre>
+<h2 id="what-lives-where">What lives where<a class="headerlink" href="#what-lives-where" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>what</th>
+<th>where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the project on the robot</td>
+<td><code>~/caasi/robots/swjtumover</code></td>
+</tr>
+<tr>
+<td>its deployment record</td>
+<td><code>~/caasi/robots/swjtumover/.caasi-deployment.json</code></td>
+</tr>
+<tr>
+<td>per-run output on the robot</td>
+<td><code>&lt;project&gt;/.caasi/runs/&lt;run&gt;/stdout.log</code>, <code>stderr.log</code>, <code>exit_code</code></td>
+</tr>
+<tr>
+<td>your record of each run</td>
+<td><code>~/.caasi/runs/&lt;run&gt;/</code></td>
+</tr>
+<tr>
+<td>registered targets</td>
+<td><code>~/.config/caasi/config.yaml</code></td>
+</tr>
+<tr>
+<td>known host keys</td>
+<td><code>~/.caasi/identity/</code></td>
+</tr>
+</tbody>
+</table>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="commands.html" class="btn btn-neutral float-left" title="Commands"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="ros2.html" class="btn btn-neutral float-right" title="Inside the robot">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="commands.html" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="ros2.html" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

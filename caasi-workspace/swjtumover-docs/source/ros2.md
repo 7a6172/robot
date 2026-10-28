@@ -1,172 +1,120 @@
-# Running on the robot
+# Inside the robot
 
-Everything here runs on the robot itself, with ROS 2 Jazzy.
+What the software is made of, what settings exist, and how to look at it. For *doing* things — drive,
+map, navigate — see [Commands](commands.md).
 
-## Build
+If ROS 2 is new to you, read [Concepts](concepts.md) first.
 
-```bash
-colcon build --symlink-install
-source install/setup.bash
-```
+## The programs
 
-Run the tests:
+| program | job | publishes | subscribes |
+| --- | --- | --- | --- |
+| `vanjee_scan_node` | reads the LiDAR | `/scan` (14 Hz) | — |
+| `motor_node` | talks to the motor board, computes odometry | `/odom`, `/motor_state/left`, `/motor_state/right` (50 Hz), `odom → base_link` transform | `/cmd_vel` |
+| `screen_node` | drives the small display | — | `/qrcode_text` |
+| `robot_state_publisher`, `joint_state_publisher` | publish the robot's shape and joints | `base_link → lidar_link`, wheel joints | — |
+| `slam_toolbox` | builds a map while driving | `/map`, `map → odom` | `/scan` |
+| nav2 (`map_server`, `amcl`, planners, controller, …) | localises and drives to goals | `/cmd_vel/nav` | `/scan`, `/map` |
+| `omove_following_feng.py` | follows the black line | `/cmd_vel/line` | camera images, `/scan` |
+| `line_then_home.py` | runs the mission; the only publisher of `/cmd_vel` | `/cmd_vel`, `/line_then_home/state` | `/cmd_vel/line`, `/cmd_vel/nav`, `/amcl_pose` |
 
-```bash
-colcon test --packages-select swjtumover_bringup
-colcon test-result --result-base build/swjtumover_bringup
-```
+Two conventions worth remembering:
 
-## Hardware bringup
+* **Only the mission publishes `/cmd_vel`.** Line following and navigation publish to
+  `/cmd_vel/line` and `/cmd_vel/nav`, and the mission forwards one of them. For a standalone
+  navigation test you can bypass this with `cmd_vel_topic:=/cmd_vel`.
+* **Nothing drives without fresh feedback.** The motor driver zeroes the wheels if commands or motor
+  telemetry stop.
 
-```bash
-ros2 launch swjtumover_bringup bringup.launch.py
-```
+## Launch files
 
-Starts the LiDAR adapter first, then `robot_state_publisher`, `joint_state_publisher`, `motor_node`
-and `screen_node`.
+| file | brings up |
+| --- | --- |
+| `bringup.launch.py` | LiDAR, both state publishers, motor driver, screen driver |
+| `slam.launch.py` | bringup + `slam_toolbox` |
+| `navigation.launch.py` | nav2's map server, localisation, planner, controller, behaviours |
+| `line_then_home.launch.py` | bringup + nav2 + line follower + the mission (21 programs) |
 
-```bash
-ros2 topic hz /scan                       # ~14 Hz
-ros2 topic hz /odom                       # ~50 Hz
-ros2 topic echo /motor_state/left --once   # fault flags false at rest
-```
-
-Optional parts are launch arguments, all off by default because the robot is normally headless:
-
-```bash
-ros2 launch swjtumover_bringup bringup.launch.py enable_visualization:=true   # rviz
-ros2 launch swjtumover_bringup bringup.launch.py enable_teleop:=true          # keyboard
-ros2 launch swjtumover_bringup bringup.launch.py enable_realsense:=true       # camera
-```
-
-## Teleoperation
+Each takes arguments; the ones you are likely to change:
 
 ```bash
-scripts/run_teleop.sh
+# rviz, the keyboard, or the camera alongside the bringup
+ros2 launch swjtumover_bringup bringup.launch.py enable_visualization:=true
+ros2 launch swjtumover_bringup bringup.launch.py enable_teleop:=true
+ros2 launch swjtumover_bringup bringup.launch.py enable_realsense:=true
+
+# which map navigation serves, and where its commands go
+ros2 launch swjtumover_bringup navigation.launch.py map:=/path/to/nav.yaml cmd_vel_topic:=/cmd_vel
+
+# seed localisation instead of publishing a pose by hand
+ros2 launch swjtumover_bringup navigation.launch.py \
+  set_initial_pose:=true initial_pose_x:=1.2 initial_pose_y:=-0.4 initial_pose_yaw:=0.0
+
+# the mission, with a slower line phase
+ros2 launch swjtumover_bringup line_then_home.launch.py follow_timeout:=60.0
 ```
 
-Arrow keys drive and turn: 0.2 m/s and 0.4 rad/s, accelerating at 0.2 / 0.4 per second. The script
-resolves the display and X cookie itself and loads `config/teleop.yaml`.
+The mission launch also exposes the line follower's image crop and colour range
+(`follower_roi_top_offset`, `follower_roi_bottom_offset`, `follower_line_lower`,
+`follower_line_upper`, `follower_end_confirm_frames`) because those depend on the floor and the tape.
+`experiments/mission_demo.yaml` carries values measured for this building.
 
-If the keys do nothing, give an X11 window focus first — on a Wayland desktop `pynput` only receives
-keys while an Xwayland window is focused.
+## Settings
 
-## Mapping
+Robot settings live in the package's `config/` directory and are loaded by the launch files:
+
+| file | holds |
+| --- | --- |
+| `config/motor.yaml` | wheel radii, wheelbase, acceleration, timeouts, board address |
+| `config/screen.yaml` | display address and refresh rate |
+| `config/teleop.yaml` | teleoperation speeds and acceleration |
+| `config/line_then_home.yaml` | mission timings, whether waypoints are required |
+| `param/nav2_params.yaml` | nav2: localisation, planner, controller, both costmaps |
+| `param/slam_toolbox_params.yaml` | mapping |
+
+Read one without opening the file:
 
 ```bash
-ros2 launch swjtumover_bringup slam.launch.py
+ros2 param get /motor_node motor.wheel_radius
+ros2 param dump /motor_node            # every setting the driver is using
 ```
 
-Check it with `ros2 lifecycle get /slam_toolbox` (expect `active`) and `ros2 topic hz /map` (about
-0.3 Hz once the robot moves).
+## Interface reference
 
-Save the map with slam_toolbox's service; the directory must already exist:
+Topics:
 
-```bash
-mkdir -p ~/maps
-ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap \
-  "{name: {data: '/home/swjtumover/maps/map'}}"
-```
-
-`nav2_map_server`'s `map_saver_cli` does not work against slam_toolbox; use the service above.
-
-## Navigation
-
-```bash
-ros2 launch swjtumover_bringup navigation.launch.py
-```
-
-nav2 comes up waiting for a pose. Give it one, the equivalent of rviz's "2D Pose Estimate":
-
-```bash
-ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped \
-  "{header: {frame_id: map}, pose: {pose: {position: {x: 2.85, y: -2.77, z: 0.0}, orientation: {w: 1.0}}}}"
-```
-
-All seven nav2 nodes then become `active`: `map_server`, `amcl`, `planner_server`,
-`controller_server`, `behavior_server`, `bt_navigator`, `velocity_smoother`.
-
-Send a goal with rviz, or:
-
-```bash
-ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose \
-  "{pose: {header: {frame_id: map}, pose: {position: {x: 2.0, y: -2.0, z: 0.0}, orientation: {w: 1.0}}}}"
-```
-
-Two things to know:
-
-* nav2 publishes **`/cmd_vel/nav`**, not `/cmd_vel`. The mission node owns `/cmd_vel` and arbitrates
-  between the line follower and navigation. For a standalone navigation test, add
-  `cmd_vel_topic:=/cmd_vel`.
-* the default map is `map/nav_maze.yaml`, the maze region of the site map with world coordinates
-  preserved. `map:=<path>/nav.yaml` uses the whole building, which is slower as a nav2 costmap.
-
-Useful launch arguments: `set_initial_pose:=true initial_pose_x:=… initial_pose_y:=…
-initial_pose_yaw:=…`.
-
-## The line-then-home mission
-
-```bash
-ros2 launch swjtumover_bringup line_then_home.launch.py
-
-ros2 service call /line_then_home/start std_srvs/srv/Trigger "{}"
-ros2 service call /line_then_home/stop std_srvs/srv/Trigger "{}"
-ros2 service call /line_then_home/record_waypoints std_srvs/srv/Trigger "{}"
-ros2 topic echo /line_then_home/state        # IDLE, FOLLOW, STOP, NAV, DONE, FAILED
-```
-
-That one launch brings up the hardware bringup, all of nav2, the line follower and the mission
-together — 21 nodes.
-
-| argument | default | purpose |
+| topic | type | direction |
 | --- | --- | --- |
-| `map` | `map/nav_maze.yaml` | map to serve |
-| `color_topic`, `depth_topic` | `/camera/camera/...` | images for the line follower |
-| `start_hardware` | `true` | set `false` if the bringup already runs |
-| `lidar_bind_lead` | `3.0` | passed to the bringup so the LiDAR wins UDP 7000 |
-| `follower_roi_top_offset`, `follower_roi_bottom_offset` | `100`, `0` | the follower's image crop |
-| `follower_line_lower`, `follower_line_upper` | `[10,20,10]`, `[40,50,40]` | its colour range |
-| `follower_end_confirm_frames` | `5` | frames before the end of the line counts |
-| `follow_timeout` | `300.0` | seconds of following before moving on |
+| `/scan` | `sensor_msgs/LaserScan` | LiDAR → everyone |
+| `/odom` | `nav_msgs/Odometry` | motor driver → everyone |
+| `/motor_state/left`, `/motor_state/right` | `swjtumover_msgs/MotorState` | motor driver → everyone |
+| `/cmd_vel` | `geometry_msgs/Twist` | mission → motor driver |
+| `/cmd_vel/line`, `/cmd_vel/nav` | `geometry_msgs/Twist` | behaviours → mission |
+| `/map` | `nav_msgs/OccupancyGrid` | mapping → everyone |
+| `/line_then_home/state` | `std_msgs/String` | mission → everyone |
+| `/qrcode_text` | `std_msgs/String` | anyone → screen |
+| `/reached_goal`, `/line_follow/end`, `/line_follow/enable` | `std_msgs/Bool` | line follower ↔ everyone |
 
-The follower starts disabled and is enabled by `/line_then_home/start`, so the mission remains the
-only publisher of `/cmd_vel`. Start the robot on the line with a valid pose; the mission records
-where it started and returns there.
+Services on the mission: `/line_then_home/start`, `/line_then_home/stop`,
+`/line_then_home/record_waypoints` — all `std_srvs/srv/Trigger`.
 
-## Individual behaviours
+Actions: `/navigate_to_pose` (`nav2_msgs/action/NavigateToPose`), used by the mission and by any
+other navigation client.
 
-```bash
-ros2 run swjtumover_bringup obstacle_rplidar.py      # forward, stop inside 0.85 m
-ros2 run swjtumover_bringup omove_following_feng.py  # follow the black line
-ros2 run swjtumover_bringup teleop_node.py           # keyboard
-```
+Transforms: `map → odom` (localisation or mapping), `odom → base_link` (motor driver),
+`base_link → lidar_link` (static, from the robot description).
 
-The line follower needs colour and depth images; with `realsense2_camera`:
+## Looking inside
 
 ```bash
-ros2 run swjtumover_bringup omove_following_feng.py --ros-args \
-  -p color_topic:=/camera/camera/color/image_raw \
-  -p depth_topic:=/camera/camera/depth/image_rect_raw
+ros2 node list                     # what is running
+ros2 node info /motor_node         # one program's topics and services
+ros2 topic list
+ros2 topic hz /scan
+ros2 topic echo /motor_state/left --once
+ros2 lifecycle get /amcl           # navigation and mapping nodes are lifecycle-managed
+ros2 param dump /controller_server # the settings a node actually uses
+ros2 bag record -o run1 /scan /odom /tf /motor_state/left
 ```
 
-It drives at 0.12 m/s and steers in proportion to the line's offset. It stops when the line is lost,
-when the front sector closes to 0.28 m, and when it decides the line has ended — publishing `true`
-on `/line_follow/enable` clears that.
-
-## Visualization
-
-```bash
-rviz2 -d "$(ros2 pkg prefix swjtumover_bringup)/share/swjtumover_bringup/config/bringup.rviz"
-```
-
-The robot model, `/scan` and the camera image draw as soon as the bringup is running. The map panel
-fills once something publishes `/map`. The two costmap panels are off by default because they need
-nav2.
-
-## Camera
-
-```bash
-ros2 launch realsense2_camera rs_launch.py
-```
-
-It publishes under `/camera/camera/...`. Start it after nav2 has reached `active`.
+With a remote desktop session you can watch all of it in rviz; see [Remote access](fleet-and-display.md).

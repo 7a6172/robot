@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>Troubleshooting - swjtumover</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Troubleshooting";
+        var mkdocs_page_input_path = "troubleshooting.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="index.html" class="icon icon-home"> swjtumover
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="index.html">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="concepts.html">Concepts</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="commands.html">Commands</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="caasi.html">caasi in depth</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="ros2.html">Inside the robot</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Troubleshooting</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#the-robot-does-not-move">The robot does not move</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#there-is-no-lidar-data">There is no LiDAR data</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#navigation-does-nothing-nodes-stay-inactive">Navigation does nothing, nodes stay inactive</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#the-mission-will-not-start">The mission will not start</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#rviz-shows-nothing-or-frame-map-does-not-exist">rviz shows nothing, or "frame [map] does not exist"</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#keyboard-teleoperation-does-nothing">Keyboard teleoperation does nothing</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#caasi-cannot-reach-the-robot">caasi cannot reach the robot</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#a-run-reports-failed-immediately">A run reports failed immediately</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#starting-over-cleanly">Starting over cleanly</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware and safety</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="fleet-and-display.html">Remote access</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">swjtumover</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html" class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Troubleshooting</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h1>
+<p>Work down the list for the symptom you have. Every command that acts on the robot is given in the
+remote form; anything here also works locally, as in <a href="commands.html">Commands</a>.</p>
+<h2 id="the-robot-does-not-move">The robot does not move<a class="headerlink" href="#the-robot-does-not-move" title="Permanent link">&para;</a></h2>
+<p>Check in this order — each step rules out the one below it.</p>
+<p><strong>1. Is anything even publishing a command?</strong></p>
+<pre><code class="language-bash">swj ros2 topic echo /cmd_vel --once
+</code></pre>
+<p>Nothing at all means no program is asking the robot to move — the mission is idle, or the controller
+is not running. If it prints <code>linear: x: 0.0</code>, something is publishing but asking for standstill.</p>
+<p><strong>2. Is the motor driver still alive?</strong></p>
+<pre><code class="language-bash">swj ros2 topic echo /motor_state/left --once
+</code></pre>
+<p>If this prints nothing, the driver has stopped talking to the motor board. Its log says why:</p>
+<pre><code class="language-bash">caasi logs latest --errors
+</code></pre>
+<p>A line like this means the board went quiet — usually the battery:</p>
+<pre><code>motor feedback timeout, locked to zero speed; left gap 21.4s, right gap 21.4s
+</code></pre>
+<p>The driver <strong>latches off</strong> in that case and will not move until restarted: charge the robot, then
+<code>caasi run stop &lt;the bringup run&gt;</code> and start it again.</p>
+<p><strong>3. Is the driver refusing because of a fault?</strong></p>
+<p><code>/motor_state/…</code> carries five flags — over-temperature, stall, phase overcurrent, overcurrent,
+sensor. Any of them true is why. Restart after fixing the cause; the latch is deliberate.</p>
+<p><strong>4. Is navigation the one holding the robot back?</strong></p>
+<p>If you are driving with nav2, remember it publishes <code>/cmd_vel/nav</code>, and the mission node is what
+sends that to <code>/cmd_vel</code>. For a standalone navigation test, launch it with
+<code>cmd_vel_topic:=/cmd_vel</code>.</p>
+<h2 id="there-is-no-lidar-data">There is no LiDAR data<a class="headerlink" href="#there-is-no-lidar-data" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">swj ros2 topic hz /scan
+</code></pre>
+<p>Nothing, or the log says the adapter could not open a port: something else took <strong>UDP 7000</strong>. The
+LiDAR has to start before the other programs, which <code>bringup.launch.py</code> does for you — if you started
+nodes by hand, stop everything and use the launch file.</p>
+<h2 id="navigation-does-nothing-nodes-stay-inactive">Navigation does nothing, nodes stay <code>inactive</code><a class="headerlink" href="#navigation-does-nothing-nodes-stay-inactive" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">swj ros2 lifecycle get /amcl
+</code></pre>
+<p><code>inactive</code> means nav2 has not been told where the robot is. Give it a pose; the equivalent of
+clicking "2D Pose Estimate" in rviz:</p>
+<pre><code class="language-bash">swj ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped \
+  &quot;{header: {frame_id: map}, pose: {pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}}&quot;
+</code></pre>
+<p>If a launch was already aborted by the time you set the pose, restart the navigation launch — a
+lifecycle manager that has given up does not retry.</p>
+<p>Bring nav2 up <strong>before</strong> the camera. With the camera streaming at full rate during start-up, the
+lifecycle transitions slow down badly on a small machine and the manager can give up.</p>
+<h2 id="the-mission-will-not-start">The mission will not start<a class="headerlink" href="#the-mission-will-not-start" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi run start experiments/mission_start.yaml -t swjtumover-05
+</code></pre>
+<p>It prints the service's answer. The two common ones:</p>
+<table>
+<thead>
+<tr>
+<th>answer</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>no /amcl_pose and no map -&gt; base_link transform yet: set an initial pose first</code></td>
+<td>the robot does not know where it is — see the pose command above</td>
+</tr>
+<tr>
+<td><code>/line_then_home/start is not available -- is the mission launch running?</code></td>
+<td><code>experiments/mission.yaml</code> is not running</td>
+</tr>
+</tbody>
+</table>
+<h2 id="rviz-shows-nothing-or-frame-map-does-not-exist">rviz shows nothing, or "frame [map] does not exist"<a class="headerlink" href="#rviz-shows-nothing-or-frame-map-does-not-exist" title="Permanent link">&para;</a></h2>
+<p><code>map</code> only exists once localisation or mapping is running. With just the bringup, the fixed frame
+<code>odom</code> is the right one — the shipped configuration already uses it, so a "map does not exist" error
+means an older configuration file is in use.</p>
+<p>If the robot model is missing while everything else draws, the description did not reach rviz; the
+shipped configuration asks for it correctly, so check you are loading
+<code>config/bringup.rviz</code> and not another file.</p>
+<p>The map panel stays empty until something publishes <code>/map</code>. The two costmap panels need nav2 and are
+off by default.</p>
+<h2 id="keyboard-teleoperation-does-nothing">Keyboard teleoperation does nothing<a class="headerlink" href="#keyboard-teleoperation-does-nothing" title="Permanent link">&para;</a></h2>
+<p>The node needs a display. If it prints <code>keyboard teleoperation: node started</code> it is listening, and the
+likely reason keys do nothing is focus: on a Wayland desktop the keyboard is only received while an
+X11 window has focus, so click the rviz window first.</p>
+<p>If it exits with code 3 instead, there is no display at all — run it from a terminal inside the
+robot's desktop session, or through a remote desktop session (see <a href="fleet-and-display.html">Remote access</a>).</p>
+<h2 id="caasi-cannot-reach-the-robot">caasi cannot reach the robot<a class="headerlink" href="#caasi-cannot-reach-the-robot" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi node check swjtumover-05
+</code></pre>
+<ul>
+<li><strong>unreachable</strong> — the robot is off, or on a different address. <code>caasi node refresh swjtumover-05</code>
+  re-verifies and follows it.</li>
+<li><strong>identity mismatch</strong> — the machine answering is not the one you enrolled. Do not re-enrol blindly:
+  confirm which robot it is, then <code>caasi node reenroll</code> if the hardware legitimately changed.</li>
+<li><strong>slow or flaky</strong> — small machines over Wi-Fi drop connections. Retry; a run that reports <code>lost</code>
+  started but its wrapper could not be placed. <code>caasi run start</code> again after the link settles.</li>
+</ul>
+<h2 id="a-run-reports-failed-immediately">A run reports <code>failed</code> immediately<a class="headerlink" href="#a-run-reports-failed-immediately" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi logs &lt;run&gt; --errors
+</code></pre>
+<p>The usual causes: the service it needed was not running (see the mission above), the robot's build is
+older than the code you think it has (<code>caasi run status &lt;run&gt;</code> names the build), or a package is
+missing (<code>caasi target deps swjtumover-05 --for bringup</code>).</p>
+<h2 id="starting-over-cleanly">Starting over cleanly<a class="headerlink" href="#starting-over-cleanly" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi run list                     # stop anything running
+caasi run stop &lt;each run&gt;
+caasi build --target swjtumover-05 --clean
+caasi deploy swjtumover-05
+caasi build --target swjtumover-05
+</code></pre>
+<p>If you moved or renamed the project directory on the robot, a clean build is required: the build
+system records absolute paths and refuses to reuse them elsewhere.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="ros2.html" class="btn btn-neutral float-left" title="Inside the robot"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="hardware.html" class="btn btn-neutral float-right" title="Hardware and safety">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="ros2.html" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="hardware.html" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
