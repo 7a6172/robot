@@ -26,7 +26,7 @@ from geometry_msgs.msg import Twist
 from rclpy.node import Node
 
 NODE_NAME = "teleop_node"
-TAG = "键盘手动控制"
+TAG = "keyboard teleoperation"
 
 _KEYBOARD_IMPORT_ERROR: str | None = None
 try:  # pynput raises at import when no X server is reachable, even though it is installed
@@ -103,7 +103,7 @@ class TeleopNode(Node):
         self.listener.start()
 
         self.timer = self.create_timer(1.0 / self.hz, self.tick)
-        self.get_logger().info("%s：节点已启动。" % TAG)
+        self.get_logger().info("%s: node started." % TAG)
 
     # -- keyboard ------------------------------------------------------
     def _recompute_target(self) -> None:

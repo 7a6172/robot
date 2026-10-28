@@ -43,7 +43,7 @@
 #include <unistd.h>
 
 #define NODE_NAME "motor_node"
-#define TAG "机器人电机驱动"
+#define TAG "motor driver"
 
 namespace
 {
@@ -103,11 +103,11 @@ public:
   MotorNode() : rclcpp::Node(NODE_NAME)
   {
     setlocale(LC_CTYPE, "zh_CN.utf8");
-    RCLCPP_INFO(get_logger(), "%s：节点已启动。", TAG);
+    RCLCPP_INFO(get_logger(), "%s: node started.", TAG);
 
     declare_parameters();
     if (!parameters_valid()) {
-      RCLCPP_FATAL(get_logger(), "%s：电机参数无效，拒绝启动。", TAG);
+      RCLCPP_FATAL(get_logger(), "%s: invalid motor parameters, refusing to start.", TAG);
       throw std::runtime_error("invalid motor parameters");
     }
     guard_ = motor_safety::Guard(cmd_vel_timeout_, motor_feedback_timeout_, steady_seconds());
@@ -149,12 +149,13 @@ public:
         left_feedback_pending_ = false;
       }
       RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 2000,
-        "%s：电机反馈超时，已锁定零速度；左反馈间隔 %.3fs，右反馈间隔 %.3fs。修复通信后需重启节点。",
+        "%s: motor feedback timeout, locked to zero speed; left gap %.3fs, right gap %.3fs. "
+        "Restart the node once the link is repaired.",
         TAG, guard_.feedback_age(0, wall_now), guard_.feedback_age(1, wall_now));
     } else if (!guard_.command_fresh(wall_now) &&
                (cmd_.speed_rpm_left != 0 || cmd_.speed_rpm_right != 0)) {
       RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000,
-        "%s：cmd_vel 超时，输出零速度。", TAG);
+        "%s: cmd_vel timeout, commanding zero speed.", TAG);
     }
 
     const bool left_turn = comm_state_ == STATE_CONTROL_LEFT_MOTOR;
@@ -194,7 +195,8 @@ public:
     if (!udp_error) {
       const double deadline = steady_seconds() + 0.01;
       do {
-        // 接收地址独立保存，绝不能让回包改写发送目标 serv_addr。
+        // The receive address is kept separately: a reply must never rewrite the send target
+    // (serv_addr).
         sockaddr_in reply_addr{};
         socklen_t addr_len = sizeof(reply_addr);
         uint8_t datagram[MOTOR_RECV_BUFFER_SIZE + 1] = {};
@@ -206,7 +208,7 @@ public:
             continue;
           }
           RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000,
-            "%s：接收电机反馈失败: %s", TAG, strerror(errno));
+            "%s: failed to receive motor feedback: %s", TAG, strerror(errno));
           break;
         }
         if (recv_len != MOTOR_RECV_BUFFER_SIZE ||
@@ -216,7 +218,8 @@ public:
             crc8_maxim(datagram, MOTOR_RECV_BUFFER_SIZE - 1) !=
               datagram[MOTOR_RECV_BUFFER_SIZE - 1]) {
           RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000,
-            "%s：忽略无效电机反馈，长度=%ld，ID=%u，当前请求ID=%u；检查回包来源、长度和CRC。",
+            "%s: ignoring invalid motor feedback (length=%ld, id=%u, requested id=%u); check the reply "
+        "source, length and CRC.",
             TAG, static_cast<long>(recv_len), static_cast<unsigned>(datagram[0]),
             static_cast<unsigned>(packet_send_buffer_[0]));
           continue;
@@ -229,7 +232,7 @@ public:
 
     if (udp_error) {
       RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 1000,
-        "%s：UDP发送失败，已锁定零速度，准备重新创建套接字。", TAG);
+        "%s: UDP send failed, locked to zero speed, recreating the socket.", TAG);
       guard_.latch_fault();
       motor_ready_ = false;
       left_feedback_pending_ = false;
@@ -240,14 +243,16 @@ public:
       handle_feedback(left_turn);
     }
 
-    // 无论成功、超时还是坏包，都必须轮到另一侧接收指令（含零速度）。
+    // Whether this exchange succeeded, timed out or produced a bad packet, the other side must
+    // still get its turn (including zero speed).
     comm_state_ = static_cast<uint8_t>(motor_safety::next_motor(comm_state_));
 
     RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 5000,
-      "%s：UDP目标=%s:%d，最近提交发送的左/右协议RPM=%d/%d，左/右有效反馈间隔=%.3f/%.3fs，故障锁定=%s。",
+      "%s: UDP target=%s:%d, last committed left/right protocol RPM=%d/%d, valid feedback gap "
+        "left/right=%.3f/%.3fs, fault latched=%s.",
       TAG, ip_address_.c_str(), port_, last_sent_left_rpm_, last_sent_right_rpm_,
       guard_.feedback_age(0, steady_seconds()), guard_.feedback_age(1, steady_seconds()),
-      guard_.fault_latched() ? "是" : "否");
+      guard_.fault_latched() ? "yes" : "no");
   }
 
   //! Final zero-velocity flush, then close the socket. Called once on shutdown.
@@ -356,14 +361,14 @@ private:
       sock_ = -1;
     }
     if ((sock_ = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-      RCLCPP_ERROR(get_logger(), "%s：创建套接字失败。", TAG);
+      RCLCPP_ERROR(get_logger(), "%s: failed to create the socket.", TAG);
       return false;
     }
     memset(&serv_addr_, 0, sizeof(serv_addr_));
     serv_addr_.sin_family = AF_INET;
     serv_addr_.sin_port = htons(static_cast<uint16_t>(port_));
     if (inet_pton(AF_INET, ip_address_.c_str(), &serv_addr_.sin_addr) <= 0) {
-      RCLCPP_ERROR(get_logger(), "%s：无效地址/地址不支持。", TAG);
+      RCLCPP_ERROR(get_logger(), "%s: invalid or unsupported address.", TAG);
       close(sock_);
       sock_ = -1;
       return false;
@@ -372,12 +377,12 @@ private:
     timeval tv_send{0, 10000};
     if (setsockopt(sock_, SOL_SOCKET, SO_RCVTIMEO, &tv_recv, sizeof(tv_recv)) != 0 ||
         setsockopt(sock_, SOL_SOCKET, SO_SNDTIMEO, &tv_send, sizeof(tv_send)) != 0) {
-      RCLCPP_ERROR(get_logger(), "%s：无法设置 UDP 超时: %s", TAG, strerror(errno));
+      RCLCPP_ERROR(get_logger(), "%s: cannot set the UDP timeout: %s", TAG, strerror(errno));
       close(sock_);
       sock_ = -1;
       return false;
     }
-    RCLCPP_INFO(get_logger(), "%s：UDP套接字已创建，等待电机有效反馈。", TAG);
+    RCLCPP_INFO(get_logger(), "%s: UDP socket created, waiting for valid motor feedback.", TAG);
     return true;
   }
 
@@ -388,7 +393,7 @@ private:
       cmd_.speed_rpm_right = 0;
       guard_.invalidate_command();
       RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 1000,
-        "%s：速度含无效数值，输出零速度。", TAG);
+        "%s: velocity contains a non-finite value, commanding zero speed.", TAG);
       return;
     }
     const double line_speed = msg->angular.z * chassis_radius_;
@@ -403,7 +408,7 @@ private:
       cmd_.speed_rpm_right = 0;
       guard_.invalidate_command();
       RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 1000,
-        "%s：转速计算溢出，输出零速度。", TAG);
+        "%s: wheel speed overflow, commanding zero speed.", TAG);
       return;
     }
     const double limit = static_cast<double>(wheel_max_speed_rpm_);
@@ -441,8 +446,9 @@ private:
         360.0f - (static_cast<float>(position_deg_recv) * 360.0f / 32767.0f);
       motor_data_.error_code_right = error_code_recv;
 
-      // 只有本轮左、右有效反馈齐全时才更新里程计。
-      // 不能在一侧掉线后用旧位置伪造新的 odom/TF。
+      // Update odometry only when both sides produced valid feedback this cycle.
+      // A dropped side must not be papered over with a stale position: that would fabricate new
+      // odom/TF.
       if (left_feedback_pending_ && guard_.feedback_fresh(steady_seconds())) {
         if (!motor_ready_) {
           last_motor_data_ = motor_data_;
@@ -481,7 +487,7 @@ private:
     motor_right_state_data_.overcurrent_fault = (motor_data_.error_code_right & (1 << 1)) != 0;
     motor_right_state_data_.sensor_fault = (motor_data_.error_code_right & (1 << 0)) != 0;
 
-    // 计算里程
+    // Integrate the travelled distance.
     double dl = -(motor_data_.position_deg_left - last_motor_data_.position_deg_left) *
                 M_PI / 180.0 * wheel_radius_;
     double dr = -(motor_data_.position_deg_right - last_motor_data_.position_deg_right) *
@@ -489,7 +495,7 @@ private:
     dl *= odom_compensation_ratio_;
     dr *= odom_compensation_ratio_;
 
-    // 角度跳变处理
+    // Handle the angle wrap.
     int loop = 0;
     while (dl > M_PI * wheel_radius_ && loop++ < 5) {
       dl -= 2 * M_PI * wheel_radius_;
@@ -559,7 +565,7 @@ private:
       geometry_msgs::msg::TransformStamped transform;
       transform.header = odom_data_.header;
       transform.child_frame_id = LOCALIZATION_BASE_LINK;
-      // 静止时同样发布有效姿态，避免初始四元数全零。
+      // Publish a valid pose even when stationary, so the quaternion is never all zeros.
       transform.transform.translation.x = odom_data_.pose.pose.position.x;
       transform.transform.translation.y = odom_data_.pose.pose.position.y;
       transform.transform.rotation = odom_data_.pose.pose.orientation;
@@ -616,7 +622,7 @@ int main(int argc, char ** argv)
   try {
     node = std::make_shared<MotorNode>();
   } catch (const std::exception & err) {
-    RCLCPP_FATAL(rclcpp::get_logger(NODE_NAME), "启动失败: %s", err.what());
+    RCLCPP_FATAL(rclcpp::get_logger(NODE_NAME), "start-up failed: %s", err.what());
     rclcpp::shutdown();
     return 1;
   }

@@ -179,7 +179,7 @@ class OmoveFollowing(Node):
                       'window': 'Image window'}
         if event == cv2.EVENT_LBUTTONDOWN:
             self.get_logger().info(
-                '[Image window] 鼠标点击: x=%d, y=%d, BGR=(%d, %d, %d)'
+                '[image window] click: x=%d, y=%d, BGR=(%d, %d, %d)'
                 % (x, y, self.mouse['b'], self.mouse['g'], self.mouse['r']))
 
     def _draw_bgr_text(self, img):
@@ -199,7 +199,7 @@ class OmoveFollowing(Node):
         try:
             cv_img = self.bridge.imgmsg_to_cv2(data, 'bgr8')
         except Exception as exc:  # noqa: BLE001 - conversion failure is reported, not fatal
-            self.get_logger().error('彩色图像转换失败: %s' % exc)
+            self.get_logger().error('colour image conversion failed: %s' % exc)
             return
 
         self.last_image_time = self.get_clock().now()
@@ -251,7 +251,7 @@ class OmoveFollowing(Node):
         try:
             self.lane_img_pub.publish(self.bridge.cv2_to_imgmsg(show_img, 'bgr8'))
         except Exception as exc:  # noqa: BLE001
-            self.get_logger().error('调试图像发布失败: %s' % exc)
+            self.get_logger().error('publishing the debug image failed: %s' % exc)
 
         if self.gui:
             cv2.imshow('Image window', self._draw_bgr_text(show_img))
@@ -261,7 +261,7 @@ class OmoveFollowing(Node):
         try:
             depth_img = self.bridge.imgmsg_to_cv2(data, '16UC1')
         except Exception as exc:  # noqa: BLE001
-            self.get_logger().error('深度图像转换失败: %s' % exc)
+            self.get_logger().error('depth image conversion failed: %s' % exc)
             return
         height, width = depth_img.shape
         if height > 400:

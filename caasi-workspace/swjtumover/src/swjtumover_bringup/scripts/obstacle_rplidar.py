@@ -40,9 +40,9 @@ class ObstacleAvoidance(Node):
         self.create_subscription(LaserScan, '/scan', self.scan_callback, scan_qos)
         self.create_timer(0.1, self.step)
 
-        self.get_logger().info('避障节点已启动')
-        self.get_logger().info('检测范围：正前方 ±%.1f 度' % FRONT_ANGLE_DEG)
-        self.get_logger().info('安全停止距离：%.3f m' % SAFE_STOP_DISTANCE)
+        self.get_logger().info('obstacle guard started')
+        self.get_logger().info('detection sector: +-%.1f degrees ahead' % FRONT_ANGLE_DEG)
+        self.get_logger().info('stop distance: %.3f m' % SAFE_STOP_DISTANCE)
 
     def scan_callback(self, msg: LaserScan) -> None:
         self.scan_msg = msg
@@ -83,23 +83,23 @@ class ObstacleAvoidance(Node):
         front = self.get_front_distances()
         if not front:
             self.get_logger().warn(
-                '前方没有有效雷达数据，出于安全考虑停车', throttle_duration_sec=1.0)
+                'no valid scan data ahead, stopping for safety', throttle_duration_sec=1.0)
             self.stop_robot()
             return
         min_distance = min(front)
         if min_distance < SAFE_STOP_DISTANCE:
             if self.moving:
                 self.get_logger().warn(
-                    'Stop! 前方障碍物距离 %.3f m 小于安全距离 %.3f m'
+                    'Stop! obstacle at %.3f m, inside the %.3f m stop distance'
                     % (min_distance, SAFE_STOP_DISTANCE))
             self.stop_robot()
         else:
             self.move_forward()
             self.get_logger().info(
-                'Go! 前方安全，距离 %.3f m' % min_distance, throttle_duration_sec=1.0)
+                'Go! path clear, %.3f m' % min_distance, throttle_duration_sec=1.0)
 
     def shutdown(self) -> None:
-        self.get_logger().info('节点关闭，停止小车')
+        self.get_logger().info('shutting down, stopping the robot')
         self.stop_robot()
 
 

@@ -299,3 +299,31 @@ def test_dwb_checks_the_whole_footprint_not_the_centre():
     footprint = follow.get('footprint') or data['local_costmap']['local_costmap'][
         'ros__parameters']['footprint']
     assert '0.16' in str(footprint) and '0.15' in str(footprint), footprint
+
+
+def test_active_ros2_code_is_english():
+    """ROS 1 is commented in Chinese; the ROS 2 code is English throughout.
+
+    The ROS 1 originals are kept under *_ros1 / ros1_reference for byte comparison and keep their
+    Chinese. Everything that actually runs on Jazzy is English, including log strings, because
+    those are what an operator reads at 2 a.m.
+    """
+    import re as _re
+    cjk = _re.compile(r'[\u4e00-\u9fff]')
+    project = PKG.parent
+    reference_markers = ('ros1_reference', '_ros1.yaml', 'ros1.yaml',
+                         'costmap_params', 'planner_params', 'dwa_local', 'teb_local',
+                         'exam_goals', 'lidar.yaml')
+    offenders = []
+    for path in list(project.rglob('*.py')) + list(project.rglob('*.cpp')) + \
+            list(project.rglob('*.h')) + list(project.rglob('*.yaml')):
+        text_path = str(path)
+        if any(marker in text_path for marker in reference_markers):
+            continue
+        if 'build/' in text_path or 'install/' in text_path or '__pycache__' in text_path:
+            continue
+        for number, line in enumerate(path.read_text(encoding='utf-8', errors='replace').splitlines(), 1):
+            if cjk.search(line):
+                offenders.append(f'{path.relative_to(project)}:{number}: {line.strip()[:70]}')
+                break
+    assert not offenders, 'Chinese text in active ROS 2 code:\n' + '\n'.join(offenders[:10])

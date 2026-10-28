@@ -27,7 +27,7 @@
 #include <unistd.h>
 
 #define NODE_NAME "screen_handler"
-#define TAG "屏幕驱动"
+#define TAG "screen driver"
 
 namespace
 {
@@ -54,7 +54,7 @@ public:
   ScreenNode() : rclcpp::Node(NODE_NAME)
   {
     setlocale(LC_CTYPE, "zh_CN.utf8");
-    RCLCPP_INFO(get_logger(), "%s:节点已启动。", TAG);
+    RCLCPP_INFO(get_logger(), "%s: node started.", TAG);
 
     control_freq_ = declare_parameter<double>("screen.control_freq", 5.0);
     ip_address_ = declare_parameter<std::string>("screen.ip_address", "192.168.100.100");
@@ -92,14 +92,14 @@ private:
       sock_ = -1;
     }
     if ((sock_ = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-      RCLCPP_ERROR(get_logger(), "%s：创建套接字失败。", TAG);
+      RCLCPP_ERROR(get_logger(), "%s: failed to create the socket.", TAG);
       return false;
     }
     memset(&serv_addr_, 0, sizeof(serv_addr_));
     serv_addr_.sin_family = AF_INET;
     serv_addr_.sin_port = htons(static_cast<uint16_t>(port_));
     if (inet_pton(AF_INET, ip_address_.c_str(), &serv_addr_.sin_addr) <= 0) {
-      RCLCPP_ERROR(get_logger(), "%s：无效地址/地址不支持。", TAG);
+      RCLCPP_ERROR(get_logger(), "%s: invalid or unsupported address.", TAG);
       close(sock_);
       sock_ = -1;
       return false;
@@ -108,7 +108,7 @@ private:
     timeval tv_send{0, 10000};
     setsockopt(sock_, SOL_SOCKET, SO_RCVTIMEO, &tv_recv, sizeof(tv_recv));
     setsockopt(sock_, SOL_SOCKET, SO_SNDTIMEO, &tv_send, sizeof(tv_send));
-    RCLCPP_INFO(get_logger(), "%s：UDP连接成功。", TAG);
+    RCLCPP_INFO(get_logger(), "%s: UDP connected.", TAG);
     return true;
   }
 
@@ -118,7 +118,7 @@ private:
                                 reinterpret_cast<struct sockaddr *>(&serv_addr_),
                                 sizeof(serv_addr_));
     if (sent != static_cast<ssize_t>(frame.size())) {
-      RCLCPP_ERROR(get_logger(), "%s：屏幕发送失败: %s", TAG, strerror(errno));
+      RCLCPP_ERROR(get_logger(), "%s: screen send failed: %s", TAG, strerror(errno));
       return false;
     }
     return true;
@@ -155,7 +155,7 @@ int main(int argc, char ** argv)
   try {
     rclcpp::spin(std::make_shared<ScreenNode>());
   } catch (const std::exception & err) {
-    RCLCPP_FATAL(rclcpp::get_logger(NODE_NAME), "启动失败: %s", err.what());
+    RCLCPP_FATAL(rclcpp::get_logger(NODE_NAME), "start-up failed: %s", err.what());
     rclcpp::shutdown();
     return 1;
   }

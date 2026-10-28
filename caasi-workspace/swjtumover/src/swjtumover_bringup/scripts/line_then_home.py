@@ -110,20 +110,20 @@ class LineThenHome(Node):
     @staticmethod
     def validate_waypoints(raw):
         if not isinstance(raw, list):
-            raise ValueError('return_waypoints 必须是列表')
+            raise ValueError('return_waypoints must be a list')
         waypoints = []
         for index, item in enumerate(raw):
             if not isinstance(item, dict) or 'x' not in item or 'y' not in item:
-                raise ValueError('第 %d 个途经点必须包含 x、y' % (index + 1))
+                raise ValueError('waypoint %d must have x and y' % (index + 1))
             point = {}
             for key in ('x', 'y', 'yaw'):
                 if key in item:
                     try:
                         value = float(item[key])
                     except (TypeError, ValueError, OverflowError):
-                        raise ValueError('第 %d 个途经点的 %s 必须是有限数值' % (index + 1, key))
+                        raise ValueError('waypoint %d field %s must be a finite number' % (index + 1, key))
                     if isinstance(item[key], bool) or not math.isfinite(value):
-                        raise ValueError('第 %d 个途经点的 %s 必须是有限数值' % (index + 1, key))
+                        raise ValueError('waypoint %d field %s must be a finite number' % (index + 1, key))
                     point[key] = value
             waypoints.append(point)
         return waypoints
@@ -156,41 +156,41 @@ class LineThenHome(Node):
             return
         if msg.header.frame_id != self.map_frame:
             self.get_logger().warn(
-                '忽略途经点：请将 Fixed Frame 设为 %s' % self.map_frame)
+                'waypoints ignored: set the fixed frame to %s' % self.map_frame)
             return
         x, y = msg.point.x, msg.point.y
         if not math.isfinite(x) or not math.isfinite(y):
-            self.get_logger().warn('忽略坐标无效的途经点')
+            self.get_logger().warn('ignoring a waypoint with invalid coordinates')
             return
         self.return_waypoints.append({'x': x, 'y': y})
-        self.get_logger().info('已录入返航途经点 %d: x=%.3f, y=%.3f'
+        self.get_logger().info('recorded return waypoint %d: x=%.3f, y=%.3f'
                                % (len(self.return_waypoints), x, y))
 
     def record_waypoints_cb(self, _request, response):
         if self.state != STATE_IDLE:
             response.success = False
-            response.message = '只能在任务开始前录入途经点'
+            response.message = 'waypoints can only be recorded before the task starts'
             return response
         self.return_waypoints = []
         self.recording_waypoints = True
         response.success = True
-        response.message = ('已清空途经点。请按返航顺序点选，最后一个点后会自动追加起点。')
+        response.message = ('Waypoints cleared. Click them in return order; the start point is appended after the last one.')
         self.get_logger().info(response.message)
         return response
 
     def start_cb(self, _request, response):
         if self.state != STATE_IDLE:
             response.success = False
-            response.message = '任务已在运行中'
+            response.message = 'the task is already running'
             return response
         if self.require_return_waypoints and not self.return_waypoints:
             response.success = False
-            response.message = '需要先录入返航途经点'
+            response.message = 'record the return waypoints first'
             return response
         pose = getattr(self, 'last_pose', None)
         if pose is None:
             response.success = False
-            response.message = '尚未收到 /amcl_pose，无法开始'
+            response.message = 'no /amcl_pose received yet, cannot start'
             return response
         self.home_pose = copy.deepcopy(pose.pose.pose)
         self.nav_targets = self.build_nav_targets(self.home_pose, self.return_waypoints)
@@ -199,7 +199,7 @@ class LineThenHome(Node):
         self.enable_pub.publish(Bool(data=True))
         self.set_state(STATE_FOLLOW)
         response.success = True
-        response.message = '任务已开始：寻线中'
+        response.message = 'task started: following the line'
         return response
 
     def stop_cb(self, _request, response):
@@ -210,7 +210,7 @@ class LineThenHome(Node):
             self.nav_goal_handle = None
         self.set_state(STATE_IDLE)
         response.success = True
-        response.message = '已停止'
+        response.message = 'stopped'
         return response
 
     # -- navigation ----------------------------------------------------
@@ -245,14 +245,14 @@ class LineThenHome(Node):
             self.set_state(STATE_DONE)
             return
         if not self.nav_client.wait_for_server(timeout_sec=self.tf_timeout):
-            self.get_logger().error('nav2 的 navigate_to_pose 服务不可用')
+            self.get_logger().error('nav2 navigate_to_pose action is unavailable')
             self.set_state(STATE_FAILED)
             return
         target = copy.deepcopy(self.nav_targets[self.target_index])
         target.header.stamp = self.get_clock().now().to_msg()
         goal = NavigateToPose.Goal()
         goal.pose = target
-        self.get_logger().info('导航到第 %d/%d 个目标 (%.2f, %.2f)'
+        self.get_logger().info('navigating to target %d/%d (%.2f, %.2f)'
                                % (self.target_index + 1, len(self.nav_targets),
                                   target.pose.position.x, target.pose.position.y))
         send_future = self.nav_client.send_goal_async(goal, feedback_callback=None)
@@ -261,7 +261,7 @@ class LineThenHome(Node):
     def goal_response_cb(self, future) -> None:
         handle = future.result()
         if handle is None or not handle.accepted:
-            self.get_logger().error('导航目标被拒绝')
+            self.get_logger().error('navigation goal rejected')
             self.set_state(STATE_FAILED)
             return
         self.nav_goal_handle = handle
@@ -271,7 +271,7 @@ class LineThenHome(Node):
         status = future.result().status
         # 4 = STATUS_SUCCEEDED in action_msgs/GoalStatus
         if status != 4:
-            self.get_logger().error('导航失败，状态码 %d' % status)
+            self.get_logger().error('navigation failed, status %d' % status)
             self.set_state(STATE_FAILED)
             return
         self.target_index += 1
@@ -290,7 +290,7 @@ class LineThenHome(Node):
                      (now - stamp).nanoseconds / 1e9 <= self.cmd_timeout)
             self.cmd_pub.publish(cmd if fresh else Twist())
             if self.elapsed() > self.follow_timeout:
-                self.get_logger().warn('寻线超时，进入停车阶段')
+                self.get_logger().warn('line-following timed out, moving to the stop stage')
                 self.set_state(STATE_STOP)
         elif self.state == STATE_STOP:
             self.cmd_pub.publish(Twist())
@@ -306,7 +306,7 @@ class LineThenHome(Node):
             # mission is in the navigation phase.
             self.cmd_pub.publish(cmd if fresh else Twist())
             if self.elapsed() > self.nav_timeout:
-                self.get_logger().error('导航超时')
+                self.get_logger().error('navigation timed out')
                 if self.nav_goal_handle is not None:
                     self.nav_goal_handle.cancel_goal_async()
                     self.nav_goal_handle = None
