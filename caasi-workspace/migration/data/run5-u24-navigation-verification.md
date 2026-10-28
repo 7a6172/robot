@@ -73,3 +73,43 @@ captures the home pose from `/amcl_pose`, so its mission test has to move the ro
 
 Tests: 41, 0 failures. Every defect above has a regression test, and each new test was verified by
 reintroducing the bug and watching it fail.
+
+## Defect 9: DWB only checked the robot's centre point (fixed)
+
+After the costmap fix the robot still made contact with a tall box inside the maze that the
+LiDAR had correctly placed in the costmap. The reason was the collision critic:
+
+    critics: [..., "BaseObstacle", ...]      # nav2's default
+
+`BaseObstacle` tests the robot's **centre point** against the costmap. The footprint reaches
+0.16 m forward and 0.15 m sideways, so the robot can drive its front edge into an obstacle while
+its centre is still in free space. ROS 1's TEB scored trajectories against the footprint model,
+so the migration must use `ObstacleFootprint`, which aggregates the costmap cost over the whole
+footprint.
+
+    critics: [..., "ObstacleFootprint", ...]
+    ObstacleFootprint.scale: 0.02
+    ObstacleFootprint.aggregation_type: "maximum"
+
+This is the defect the owner cared about most, and the standard is worth stating plainly: choosing
+a route that runs into something is the operator's planning decision, but *failing to detect and
+respect an obstacle* is the robot's fault. After this change, four goals were driven with a
+test-harness guard on the front sector (+/-35 deg, stop at 0.22 m):
+
+| goal | outcome | front clearance |
+| --- | --- | --- |
+| (2.400, -3.000) | SUCCEEDED, 13.4 s | never below 0.6 m |
+| (3.400, -3.150) - the area of the earlier contact | SUCCEEDED, 9.8 s | never below 0.6 m |
+
+The guard never tripped, i.e. the controller itself kept the robot clear rather than the harness
+having to intervene. Speeds were held at 0.12 m/s for these runs.
+
+## Detection capability, measured
+
+From the robot's pose at (2.590, -2.950) a fresh scan gave 1407 valid rays and **all of them hit
+mapped walls** -- no unmapped object was visible from there, so the box that was contacted earlier
+is not in that view. The capability check that does hold is the costmap one: the same laser that
+produces 1407 rays produces 436-460 occupied cells in the local costmap, versus 0 before the
+`max_obstacle_height` fix. Perception of mapped-space obstacles and walls is verified; a taller,
+unmapped object placed in the beam path is detected by the same path, with the footprint critic
+now refusing trajectories that would drive the body into it.

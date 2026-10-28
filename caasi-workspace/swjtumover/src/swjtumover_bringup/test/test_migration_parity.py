@@ -279,3 +279,23 @@ def test_maze_map_preserves_world_coordinates():
     assert fx <= mx and fy <= my, 'crop origin must lie inside the full map'
     assert mx + mw * maze['resolution'] <= fx + fw * full['resolution'] + 1e-9
     assert my + mh * maze['resolution'] <= fy + fh * full['resolution'] + 1e-9
+
+
+def test_dwb_checks_the_whole_footprint_not_the_centre():
+    """`BaseObstacle` only tests the robot's centre point; the body is 0.32 x 0.30 m.
+
+    With BaseObstacle the robot drove its front edge into a tall box that the LiDAR had
+    correctly placed in the costmap, because its centre was still in free space when the
+    collision happened. ROS 1's TEB scored against the footprint model, so the migrated stack
+    must do the equivalent: ObstacleFootprint.
+    """
+    data = yaml.safe_load(_read(PARAM / 'nav2_params.yaml'))
+    follow = data['controller_server']['ros__parameters']['FollowPath']
+    critics = follow['critics']
+    assert 'ObstacleFootprint' in critics, f'no footprint collision critic: {critics}'
+    assert 'BaseObstacle' not in critics, 'BaseObstacle alone only checks the centre point'
+    assert 'ObstacleFootprint.scale' in follow
+    # and the footprint must be the ROS 1 one
+    footprint = follow.get('footprint') or data['local_costmap']['local_costmap'][
+        'ros__parameters']['footprint']
+    assert '0.16' in str(footprint) and '0.15' in str(footprint), footprint

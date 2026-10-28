@@ -141,9 +141,16 @@ controller_server:
       trans_stopped_velocity: 0.25
       short_circuit_trajectory_evaluation: True
       stateful: True
-      critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign",
+      # `BaseObstacle` (nav2's default) only tests the robot's CENTRE POINT against the costmap.
+      # The footprint reaches 0.16 m forward and 0.15 m sideways, so the robot can drive its front
+      # edge into a box while the centre is still clear -- which is exactly what happened in the
+      # maze against a tall, unmapped box that the LiDAR did see. `ObstacleFootprint` scores every
+      # trajectory by the costmap cost under the whole footprint, which is what ROS 1's TEB did
+      # with its footprint model.
+      critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign",
                 "PathDist", "GoalDist"]
-      BaseObstacle.scale: 0.02
+      ObstacleFootprint.scale: 0.02
+      ObstacleFootprint.aggregation_type: "maximum"
       PathAlign.scale: 32.0
       PathAlign.forward_point_distance: 0.1
       GoalAlign.scale: 24.0
