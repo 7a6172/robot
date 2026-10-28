@@ -223,17 +223,34 @@ Plus one safety addition (body-aware obstacle stop) and one caasi defect.
 | obstacle guard | 0.2 m/s, stop 0.85 m | **same, measured** | `Stop!` at 0.847 m |
 | line follower | vision + 0.12 m/s | **same, measured** | 6147 px, 0.58 m with 0.18 m drift |
 | mission supervisor | services + state machine | **interface measured** | `/line_then_home/{start,stop,record_waypoints,state}` |
+| mission launch (single command) | `line_then_home.launch` | **21 nodes, mission IDLE, services answering, cropped map loaded** | run 7 |
 | teleop | keyboard | **backend check measured** | exits 3 without a display |
 | map saving | `map_saver` | **`save_map` service** | `result=0` |
 
 ## 10. Outstanding
 
-1. **Full mission round trip** (FOLLOW → STOP → NAV → DONE) has not been run end to end: it needs
-   the robot positioned on the line with room to drive, plus nav2 and the camera up together. The
-   interface and the state machine are verified; the sequence is not.
-2. **`/amcl_pose`-driven home capture** inside the mission is unverified for the same reason. Note
-   that nav2's amcl publishes `/amcl_pose` only when the filter updates, i.e. while the robot moves.
-3. **Teleop key handling** needs a display; only the refusal path is verified.
-4. **ROS 1 `teleop_node.py` line-by-line diff** pending access to the ROS 1 machine.
-5. **TEB-specific behaviour** (its obstacle-distance weighting) is not reproduced by DWB; if the ROS
-   1 trajectories mattered for a particular task, that task needs re-tuning.
+1. **The mission round trip** (FOLLOW -> STOP -> NAV -> DONE) has not been completed end to end. The
+   interface, the state machine, the launch and every component are verified individually, and the
+   one defect that would have blocked it (15, below) is fixed and unit-tested, but the sequence
+   itself needs a charged robot on the line with permission to move. The attempts so far stopped
+   for battery.
+2. **Teleop key handling** needs a display; only the refusal path (exit 3, "pynput is installed but
+   cannot attach to a window server") is verified.
+3. **ROS 1 `teleop_node.py` line-by-line diff** is pending access to the ROS 1 machine. Its
+   parameters are compared in §4; the script itself was never copied as a reference.
+4. **TEB-specific behaviour** (its obstacle-distance weighting) is not reproduced by DWB; a task that
+   depended on the exact ROS 1 trajectories needs re-tuning.
+
+### Operational findings that are not defects in this package
+
+* **nav2's lifecycle manager is unreliable on this robot under load.** It stalls with
+  `failed to send response to /map_server/change_state (timeout)` -- an RMW response timeout, not a
+  resource shortage (`/dev/shm` was 12 MB of 3.8 GB, no SHM errors in that run). Manual
+  `ros2 lifecycle set` was equally unreliable (`shutdown [6]` returned while the state still read
+  `inactive`). A clean restart brings all seven nodes to `active`, as run 5 showed.
+* **Order matters.** With the camera at 30 Hz during bringup, each configure transition took tens of
+  seconds and the manager stalled. Bringup/nav2 first, then a pose, then the camera, then the
+  mission.
+* **The mission node owns `/cmd_vel`** and holds it at zero while IDLE, so publishing `/cmd_vel`
+  yourself does nothing. That is the arbitration preserved from ROS 1; it is also what turned defect
+  15 from an inconvenience into a deadlock.
