@@ -225,23 +225,28 @@ Plus one safety addition (body-aware obstacle stop) and one caasi defect.
 | line follower | vision + 0.12 m/s | **same, measured** | in the mission: 0.5 m travelled, steering w=-0.23..-0.11, body-aware stop at 0.27 m |
 | mission supervisor | services + state machine | **round trip verified with motion** | FOLLOW 0.12 m/s steering along the tape, STOP on timeout, NAV reversing home, DONE |
 | mission launch (single command) | `line_then_home.launch` | **21 nodes, mission IDLE, services answering, cropped map loaded** | run 7 |
-| teleop | keyboard | **backend check measured** | exits 3 without a display |
+| teleop | keyboard | **keys verified with a display** | exit 3 headless; with a display, Up gave `linear.x = 0.200`, exactly the configured `velocity_x` |
+| rviz | `bringup.rviz` | **starts and renders** | OpenGL 4.5, zero mesh-loading errors, 8 meshes present |
 | map saving | `map_saver` | **`save_map` service** | `result=0` |
 
 ## 10. Outstanding
 
-1. **Teleop key handling** cannot be verified here: `pynput` on Linux needs an X display, and the
-   robot has none. The refusal path is verified precisely (exit 3, "pynput is installed but cannot
-   attach to a window server"), which is the path a headless operator actually hits. Verifying the
-   keys themselves needs a display or Xvfb on the robot.
-2. **ROS 1 `teleop_node.py` line-by-line diff** is pending access to the ROS 1 machine; its
-   parameters are compared in §4, but the script was never copied as a reference.
-3. **TEB-specific behaviour** (its obstacle-distance weighting) is not reproduced by DWB. A task that
+1. **ROS 1 `teleop_node.py` line-by-line diff** is the one remaining audit gap: its parameters are
+   compared in §4 and the ROS 2 node is verified on hardware, but the script itself was never copied
+   as a reference, so a source diff needs the ROS 1 machine.
+2. **TEB-specific behaviour** (its obstacle-distance weighting) is not reproduced by DWB. A task that
    depended on the exact ROS 1 trajectories needs re-tuning.
-4. **Line vision is calibrated per floor.** The crop, colour range, end-of-line frame count and
-   follow timeout are launch arguments defaulting to the ROS 1 values.
-   `experiments/mission_demo.yaml` carries the calibration measured for this maze; a different floor
-   and tape need their own.
+3. **Line vision is calibrated per floor.** The crop, colour range, end-of-line frame count and
+   follow timeout are launch arguments defaulting to the ROS 1 values;
+   `experiments/mission_demo.yaml` carries the calibration measured for this maze.
+
+### A note on teleop's defaults
+
+The script's own declared defaults are `velocity_x 0.4 / velocity_yaw 0.8 / max_x_acc 0.5`, while
+`config/teleop.yaml` (the ROS 1 values, loaded by `bringup.launch.py` exactly as ROS 1 did) has
+`0.2 / 0.4 / 0.2`. Launching normally therefore gives the ROS 1 speeds, verified at 0.200 m/s; running
+the node bare gives twice that. Recorded rather than changed, because the ROS 1 script is not
+available to say which value its own defaults held.
 
 ### Operational findings that are not defects in this package
 
@@ -249,8 +254,11 @@ Plus one safety addition (body-aware obstacle stop) and one caasi defect.
   /map_server/change_state (timeout)` -- an RMW response timeout, not a resource shortage). A clean
   restart brings all seven nodes to `active`.
 * **Order matters**: bringup/nav2 first, then a pose, then the camera, then the mission. With the
-  camera at 30 Hz during bringup the configure transitions crawl and the manager stalls.
+  camera at 30 Hz during bringup the configure transitions crawl.
 * **The mission node owns `/cmd_vel`** and holds it at zero while IDLE, so publishing `/cmd_vel`
   yourself does nothing. That arbitration is preserved from ROS 1.
-* **A silent motor board cascades**: no telemetry means the driver latches, so there is no
-  `odom -> base_link`, so amcl cannot publish `map -> odom`, so nav2 waits. Every stage fails safe.
+* **A silent motor board cascades**: no telemetry means the driver latches, so no `odom -> base_link`,
+  so amcl cannot publish `map -> odom`, so nav2 waits. Every stage fails safe.
+* **A GUI needs the session's X cookie.** `DISPLAY=:0` alone is refused ("Authorization required");
+  the working combination here is `XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.*`, which is how
+  rviz and teleop were verified.
