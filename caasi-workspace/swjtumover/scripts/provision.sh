@@ -108,28 +108,71 @@ stage_camera() {
 
 stage_shell() {
   echo "== shell =="
+  local env_file="${HOME}/.caasi_env.sh"
   local bashrc="${HOME}/.bashrc"
-  # Guarded, so a shell still opens if the workspace has not been built yet.
-  # A machine set up by hand may already source ROS 2 unguarded; that counts as done, and adding a
-  # second line would only source it twice.
-  #   add_line <line to add> [<text meaning it is already covered>]
-  add_line() {
-    local line="$1" covered="${2:-$1}"
-    if grep -Fq -- "${line}" "${bashrc}" 2>/dev/null; then
-      echo "   already present: ${line}"
-    elif grep -Fq -- "${covered}" "${bashrc}" 2>/dev/null; then
-      echo "   already covered by: ${covered}"
-    elif [ "${APPLY}" -eq 1 ]; then
-      printf '%s\n' "${line}" >> "${bashrc}"
-      echo "+ added to ${bashrc}: ${line}"
-    else
-      echo "  would add to ${bashrc}: ${line}"
-    fi
-  }
-  add_line "[ -f ${ROS_SETUP} ] && source ${ROS_SETUP}" "source ${ROS_SETUP}"
-  add_line "[ -f ${OVERLAY} ] && source ${OVERLAY}"     "source ${OVERLAY}"
+  local profile="${HOME}/.profile"
+
+  # Ubuntu's ~/.bashrc returns early when the shell is not interactive:
+  #
+  #     case $- in *i*) ;; *) return;; esac
+  #
+  # Anything appended after that guard works in a terminal and nowhere else -- so a desktop
+  # shortcut, a cron job, or `ssh robot 'ros2 topic list'` gets no ROS at all, which looks like
+  # "the shortcut opens the wrong terminal". The environment therefore lives in one file that is
+  # sourced from *above* the guard, and from ~/.profile for login shells.
+  if [ "${APPLY}" -eq 1 ]; then
+    cat > "${env_file}" <<ENVFILE
+# caasi: ROS 2 and this robot's own packages, for every shell -- interactive or not.
+# Sourced from ~/.bashrc (above the interactive-only guard) and from ~/.profile.
+if [ -f ${ROS_SETUP} ]; then
+  . ${ROS_SETUP}
+fi
+if [ -f ${OVERLAY} ]; then
+  . ${OVERLAY}
+fi
+case ":\$PATH:" in
+  *":\$HOME/.local/bin:"*) ;;
+  *) PATH="\$PATH:\$HOME/.local/bin"; export PATH ;;
+esac
+ENVFILE
+    echo "+ wrote ${env_file}"
+  else
+    echo "  would write ${env_file} (ROS 2 + overlay + ~/.local/bin)"
+  fi
+
+  local source_line='[ -f "$HOME/.caasi_env.sh" ] && . "$HOME/.caasi_env.sh"'
+  if grep -Fq -- '.caasi_env.sh' "${bashrc}" 2>/dev/null; then
+    echo "   already sourced from ${bashrc}"
+  elif [ "${APPLY}" -eq 1 ]; then
+    python3 - "${bashrc}" <<'PYFILE'
+import pathlib, sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text() if path.exists() else ""
+block = ('# caasi: environment for every shell, placed above the interactive-only guard below\n'
+         '[ -f "$HOME/.caasi_env.sh" ] && . "$HOME/.caasi_env.sh"\n\n')
+marker = "# If not running interactively, don't do anything"
+if block.splitlines()[1] not in text:
+    text = text.replace(marker, block + marker, 1) if marker in text else block + text
+    path.write_text(text)
+    print("+ added the caasi block to", path)
+PYFILE
+  else
+    echo "  would source .caasi_env.sh from ${bashrc} (before the interactive guard)"
+  fi
+
+  if grep -Fq -- '.caasi_env.sh' "${profile}" 2>/dev/null; then
+    echo "   already sourced from ${profile}"
+  elif [ "${APPLY}" -eq 1 ]; then
+    printf '\n# caasi: ROS 2 + this robot, for login shells and the desktop session\n%s\n' \
+      "${source_line}" >> "${profile}"
+    echo "+ added the caasi block to ${profile}"
+  else
+    echo "  would source .caasi_env.sh from ${profile}"
+  fi
+
   if [ -n "${DOMAIN_ID}" ]; then
-    add_line "export ROS_DOMAIN_ID=${DOMAIN_ID}"
+    echo "   ROS_DOMAIN_ID=${DOMAIN_ID} (add it to ${env_file} to make it permanent)"
   else
     echo "   no --domain given: ROS_DOMAIN_ID is left alone. With several robots on one network a"
     echo "   distinct domain per robot keeps their graphs apart."

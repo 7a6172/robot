@@ -105,7 +105,8 @@ def test_optional_components_start_only_when_asked():
 def test_lidar_starts_before_everything_else():
     """The driver must own UDP 7000 before any other ROS 2 node binds it."""
     from launch import LaunchContext
-    from launch.actions import DeclareLaunchArgument, OpaqueFunction
+    from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
+    from launch_ros.actions import Node
 
     module = _load()
     context = LaunchContext()
@@ -118,7 +119,11 @@ def test_lidar_starts_before_everything_else():
 
     first_node = None
     for entity in description.entities:
+        # A plain ExecuteProcess is a setup step (the ros2 daemon stop), not a robot node. Node
+        # subclasses ExecuteProcess, so the check has to exclude Nodes explicitly.
         if isinstance(entity, (DeclareLaunchArgument, OpaqueFunction)):
+            continue
+        if isinstance(entity, ExecuteProcess) and not isinstance(entity, Node):
             continue
         first_node = entity
         break

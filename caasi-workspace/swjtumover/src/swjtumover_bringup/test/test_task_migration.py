@@ -7,6 +7,7 @@ behaviour depends on.
 from __future__ import annotations
 
 import pathlib
+from pathlib import Path
 import re
 
 import yaml
@@ -350,8 +351,8 @@ def test_provisioning_a_new_robot_is_one_rerunnable_command():
     assert 'grep -Fq' in text, 'the .bashrc lines must be checked before being added'
     assert '>>' in text
     # guarded, so a shell still opens when the workspace has not been built
-    assert '] && source ${ROS_SETUP}' in text
-    assert '] && source ${OVERLAY}' in text
+    assert 'if [ -f ${ROS_SETUP} ]' in text
+    assert 'if [ -f ${OVERLAY} ]' in text
     # dry by default: installing needs an explicit --apply
     assert 'APPLY=0' in text and '--apply' in text
 
@@ -363,3 +364,22 @@ def test_provisioning_a_new_robot_is_one_rerunnable_command():
     assert cfg['args'][:3] == ['cmd', 'bash', '../scripts/provision.sh']
     # cmd mode is the only one that may run on a machine without ROS 2, which provisioning needs
     assert cfg['script'] == '../scripts/caasi_launch.py'
+
+
+def test_the_shell_stage_places_the_environment_above_the_interactive_guard():
+    """Ubuntu's ~/.bashrc returns early when the shell is not interactive.
+
+    Appending source lines to the end of it therefore works in a terminal and nowhere else: a desktop
+    shortcut, a cron job or `ssh robot 'ros2 topic list'` gets no ROS, which reads as "the shortcut
+    opens the wrong terminal". The stage must write one environment file and source it from above
+    that guard, and from ~/.profile for login shells.
+    """
+    script = PKG.parent.parent / 'scripts' / 'provision.sh'
+    source = script.read_text(encoding="utf-8")
+    assert ".caasi_env.sh" in source
+    assert "If not running interactively" in source, "the guard must be handled explicitly"
+    assert "~/.profile" in source or ".profile" in source
+    # the marker it inserts before, and a python patch step that puts it above the guard
+    assert "marker" in source and "replace(marker" in source
+    # no plain append of the source lines any more
+    assert ">> \"${bashrc}\"" not in source
