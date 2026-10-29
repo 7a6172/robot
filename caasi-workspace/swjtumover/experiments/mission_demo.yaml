@@ -1,4 +1,4 @@
-# Run with: caasi run start experiments/mission_demo.yaml -t swjtumover05
+# Run with: caasi run start experiments/mission_demo.yaml    [-t <target>]
 name: swjtumover-mission-demo
 backend: python
 script: ../scripts/caasi_launch.py

@@ -1,4 +1,4 @@
-# Run with: caasi run start experiments/camera.yaml -t swjtumover05
+# Run with: caasi run start experiments/camera.yaml    [-t <target>]
 name: swjtumover-camera
 backend: python
 script: ../scripts/caasi_launch.py

@@ -1,0 +1,13 @@
+# Run with: caasi run start experiments/provision.yaml -t <target>
+name: swjtumover-provision
+backend: python
+script: ../scripts/caasi_launch.py
+args:
+- cmd
+- bash
+- ../scripts/provision.sh
+- --apply
+description: 'Prepare a robot: ROS 2 Jazzy, the packages this project uses, the camera
+  group, and guarded .bashrc lines so ros2 works in any terminal. Idempotent, so it
+  is safe to re-run. Run it once per new machine, after deploy and before the first
+  build. Drop --apply from args to see the commands without running them.'

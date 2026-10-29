@@ -1,4 +1,4 @@
-# Run with: caasi run start experiments/navigation.yaml -t swjtumover05
+# Run with: caasi run start experiments/navigation.yaml    [-t <target>]
 name: swjtumover-navigation
 backend: python
 script: ../scripts/caasi_launch.py

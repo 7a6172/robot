@@ -1,4 +1,4 @@
-# Run with: caasi run start experiments/line_follower.yaml -t swjtumover05
+# Run with: caasi run start experiments/line_follower.yaml    [-t <target>]
 name: swjtumover-line-follower
 backend: python
 script: ../scripts/caasi_launch.py

@@ -1,4 +1,4 @@
-# Run with: caasi run start experiments/mission_stop.yaml -t swjtumover05
+# Run with: caasi run start experiments/mission_stop.yaml    [-t <target>]
 name: swjtumover-mission-stop
 backend: python
 script: ../scripts/mission_control.py

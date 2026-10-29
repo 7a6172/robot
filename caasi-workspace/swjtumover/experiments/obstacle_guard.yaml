@@ -1,4 +1,4 @@
-# Run with: caasi run start experiments/obstacle_guard.yaml -t swjtumover05
+# Run with: caasi run start experiments/obstacle_guard.yaml    [-t <target>]
 name: swjtumover-obstacle-guard
 backend: python
 script: ../scripts/caasi_launch.py

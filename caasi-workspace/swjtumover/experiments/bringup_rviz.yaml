@@ -1,4 +1,4 @@
-# Run with: caasi run start experiments/bringup_rviz.yaml -t swjtumover05
+# Run with: caasi run start experiments/bringup_rviz.yaml    [-t <target>]
 name: swjtumover-bringup-rviz
 backend: python
 script: ../scripts/caasi_launch.py

@@ -1,4 +1,4 @@
-# Run with: caasi run start experiments/slam.yaml -t swjtumover05
+# Run with: caasi run start experiments/slam.yaml    [-t <target>]
 name: swjtumover-slam
 backend: python
 script: ../scripts/caasi_launch.py

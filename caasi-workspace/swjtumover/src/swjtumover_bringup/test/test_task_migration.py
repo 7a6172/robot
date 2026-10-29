@@ -323,3 +323,43 @@ def test_line_follower_vision_is_calibratable_with_ros1_defaults():
     assert 'self.roi_top_offset' in text and 'self.roi_bottom_offset' in text
     # the hard-coded values must be gone
     assert "np.array([10, 20, 10], dtype='uint8')" not in text
+
+def test_provisioning_a_new_robot_is_one_rerunnable_command():
+    """Preparing a machine is a caasi run, not a list of commands in a README.
+
+    The ROS 1 setup was four scripts run once by hand; a second run had to be avoided because
+    repeating them was not safe. This one is checked for the properties that make repeating it safe:
+    every change is guarded, and nothing is written to a shell file twice.
+    """
+    import os
+    import shutil
+    import subprocess
+
+    import yaml
+
+    project = PKG.parent.parent
+    script = project / 'scripts' / 'provision.sh'
+    assert script.is_file(), 'scripts/provision.sh is missing'
+    assert os.access(script, os.X_OK), 'provision.sh must be executable'
+
+    text = script.read_text(encoding='utf-8')
+    # the five things a new robot needs, in the order they must happen
+    for stage in ('ros', 'packages', 'camera', 'shell', 'build'):
+        assert f'stage_{stage}()' in text, f'{stage} is not a stage'
+    # idempotent: a line is only appended when it is not already there
+    assert 'grep -Fq' in text, 'the .bashrc lines must be checked before being added'
+    assert '>>' in text
+    # guarded, so a shell still opens when the workspace has not been built
+    assert '] && source ${ROS_SETUP}' in text
+    assert '] && source ${OVERLAY}' in text
+    # dry by default: installing needs an explicit --apply
+    assert 'APPLY=0' in text and '--apply' in text
+
+    if shutil.which('bash'):
+        result = subprocess.run(['bash', '-n', str(script)], capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+
+    cfg = yaml.safe_load((project / 'experiments' / 'provision.yaml').read_text(encoding='utf-8'))
+    assert cfg['args'][:3] == ['cmd', 'bash', '../scripts/provision.sh']
+    # cmd mode is the only one that may run on a machine without ROS 2, which provisioning needs
+    assert cfg['script'] == '../scripts/caasi_launch.py'

@@ -1,4 +1,4 @@
-# Run with: caasi run start experiments/mission_record_waypoints.yaml -t swjtumover05
+# Run with: caasi run start experiments/mission_record_waypoints.yaml    [-t <target>]
 name: swjtumover-mission-record-waypoints
 backend: python
 script: ../scripts/mission_control.py

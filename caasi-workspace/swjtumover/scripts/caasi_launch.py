@@ -55,16 +55,25 @@ def build_argv(argv: list[str]) -> list[str]:
 
 def main(argv: list[str]) -> int:
     command = build_argv(argv)
+    mode = argv[0]
     project = pathlib.Path(__file__).resolve().parent.parent
     overlay = project / "install" / "setup.bash"
     # Source the ROS environment here rather than relying on the caller's shell: a caasi run
     # starts from a clean environment, and silently running without ROS would look like a node
     # crash. `set -e` makes a broken setup script fail loudly instead of continuing half-configured.
-    script = f"set -e; source {ROS_SETUP}"
+    #
+    # `cmd` is the exception: it runs an arbitrary command, and provisioning is the one command whose
+    # job is to install ROS 2 in the first place -- it must be runnable on a machine that has none.
+    # For `cmd` the source is therefore best-effort; for `launch` and `run` it stays mandatory.
+    lines = ["set -e"]
+    if mode == "cmd":
+        lines.append(f"if [ -f {ROS_SETUP} ]; then source {ROS_SETUP}; fi")
+    else:
+        lines.append(f"source {ROS_SETUP}")
     if overlay.is_file():
-        script += f"; source {overlay}"
-    script += '; exec "$@"'
-    os.execvp("bash", ["bash", "-c", script, "caasi_launch", *command])
+        lines.append(f"source {overlay}")
+    lines.append('exec "$@"')
+    os.execvp("bash", ["bash", "-c", "; ".join(lines), "caasi_launch", *command])
     return 0
 
 

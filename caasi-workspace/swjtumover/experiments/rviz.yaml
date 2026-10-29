@@ -6,9 +6,9 @@ args:
 - cmd
 - rviz2
 - -d
-- /home/swjtumover/caasi/robots/swjtumover05/install/swjtumover_bringup/share/swjtumover_bringup/config/bringup.rviz
+- ../install/swjtumover_bringup/share/swjtumover_bringup/config/bringup.rviz
 description: 'rviz against an already running bringup. Needs DISPLAY and the session
-  X cookie; the config is config/bringup.rviz (rviz 2 plugin names, fixed frame odom,
-  camera on the Jazzy topic). Start it with: caasi exec --target swjtumover05 --detach
-  -- bash -c "export DISPLAY=:0; export XAUTHORITY=/run/user/1000/.mutter-Xwaylandauth.*;
-  ..."'
+  X cookie. The config path is relative to the run directory, so it follows the deployment.
+  Start it on a robot with: scripts/run_teleop.sh-style DISPLAY handling, or caasi
+  exec --detach -- bash -c "export DISPLAY=:0; export XAUTHORITY=$(ls /run/user/1000/.mutter-Xwaylandauth.*
+  | head -1); ros2 launch ... "'
