@@ -147,6 +147,22 @@ A **name is enough**. caasi looks in the layout above, on the machine you are wo
 
 A path still works for anything outside that tree: `caasi choose project ~/work/hw1`.
 
+**A chosen project or robot is also where relative paths are looked up** — experiments, task
+scripts, maps, bags, definition files. So after `caasi choose robot swjtumover`, this works from any
+directory, on the robot or over SSH:
+
+```bash
+caasi run start experiments/bringup.yaml     # ~/caasi/robots/swjtumover/experiments/bringup.yaml
+```
+
+Two rules keep it from surprising you:
+
+* **The current directory wins.** If the path exists where you are standing, that is the file used --
+  `cd ~/caasi/robots/swjtumover/experiments && caasi run start bringup.yaml` behaves exactly as before.
+  An absolute path is never redirected.
+* **A path that is nowhere is reported with the places tried**, and with the command that fixes it
+  (`caasi choose project <path>` or `caasi choose robot <name>`).
+
 Everything afterwards follows the choice:
 
 ```bash

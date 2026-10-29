@@ -307,3 +307,84 @@ def test_choose_target_with_a_role_is_stored_separately(runner, tmp_path, monkey
     assert saved["defaults"]["targets"]["gpu"] == "robot-02"
     # the general choice is untouched: a role is not a machine-wide default
     assert "target" not in saved["defaults"]
+
+
+# ---------------------------------------------------------------------------
+# A chosen robot or project is where relative paths are looked up
+# ---------------------------------------------------------------------------
+
+
+def test_a_chosen_robot_makes_relative_paths_work_from_anywhere(tmp_path, monkeypatch, runner):
+    """`caasi choose robot` must be worth doing: paths resolve into that robot's tree."""
+    home = tmp_path / "home"
+    robot = make_tree(home, "robots/demo")
+    (robot / "experiments").mkdir()
+    (robot / "experiments" / "bringup.yaml").write_text(
+        yaml.safe_dump({"name": "demo-bringup", "backend": "python", "script": "x.py"}),
+        encoding="utf-8")
+    write_config(tmp_path, monkeypatch, TARGETS)
+    assert runner.invoke(app, ["choose", "robot", "demo"]).exit_code == 0
+
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    from caasi.core import project as project_core
+
+    assert project_core.resolve_path(Path("experiments/bringup.yaml")) == (
+        robot / "experiments" / "bringup.yaml")
+    assert project_core.chosen_robot_root() == robot
+
+
+def test_a_path_that_exists_here_is_never_redirected(tmp_path, monkeypatch, runner):
+    """Manual directory calling keeps working: the current directory wins over any choice."""
+    home = tmp_path / "home"
+    robot = make_tree(home, "robots/demo")
+    (robot / "experiments").mkdir()
+    (robot / "experiments" / "bringup.yaml").write_text("name: x\n", encoding="utf-8")
+    write_config(tmp_path, monkeypatch, TARGETS)
+    assert runner.invoke(app, ["choose", "robot", "demo"]).exit_code == 0
+
+    here = tmp_path / "here"
+    (here / "experiments").mkdir(parents=True)
+    local = here / "experiments" / "bringup.yaml"
+    local.write_text("name: local\n", encoding="utf-8")
+    monkeypatch.chdir(here)
+
+    from caasi.core import project as project_core
+
+    assert project_core.resolve_path(Path("experiments/bringup.yaml")) == Path("experiments/bringup.yaml")
+
+
+def test_an_experiment_path_resolves_through_the_chosen_tree(tmp_path, monkeypatch, runner):
+    home = tmp_path / "home"
+    robot = make_tree(home, "robots/demo")
+    (robot / "experiments").mkdir()
+    (robot / "scripts").mkdir()
+    (robot / "scripts" / "launch.py").write_text("print('x')\n", encoding="utf-8")
+    (robot / "experiments" / "bringup.yaml").write_text(
+        yaml.safe_dump({"name": "demo", "backend": "python",
+                        "script": "../scripts/launch.py"}), encoding="utf-8")
+    write_config(tmp_path, monkeypatch, TARGETS)
+    assert runner.invoke(app, ["choose", "robot", "demo"]).exit_code == 0
+
+    monkeypatch.chdir(tmp_path / "home")
+    from caasi.core import experiment as experiment_core
+
+    exp = experiment_core.load_experiment("experiments/bringup.yaml")
+    assert exp.config_path == robot / "experiments" / "bringup.yaml"
+    # the script inside it is relative to the experiment, as always
+    assert exp.script_path == robot / "scripts" / "launch.py"
+
+
+def test_the_not_found_message_names_what_was_searched(tmp_path, monkeypatch, runner):
+    home = tmp_path / "home"
+    make_tree(home, "robots/demo")
+    write_config(tmp_path, monkeypatch, TARGETS)
+    assert runner.invoke(app, ["choose", "robot", "demo"]).exit_code == 0
+    monkeypatch.chdir(tmp_path)
+
+    from caasi.core import experiment as experiment_core
+
+    message = experiment_core.experiment_not_found_message(Path("experiments/nope.yaml"))
+    assert "also tried" in message
+    assert "robots/demo" in message

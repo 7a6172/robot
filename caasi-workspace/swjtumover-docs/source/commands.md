@@ -435,6 +435,11 @@ A **name** is looked up in caasi's layout (`~/caasi/robots`, `~/caasi/projects`,
 this computer, with the notice `no target set, defaulting to local machine`. Nothing found is reported
 with the places it looked.
 
+The chosen project or robot is also the base for **relative paths**: `caasi run start
+experiments/bringup.yaml` finds `~/caasi/robots/swjtumover/experiments/bringup.yaml` after
+`caasi choose robot swjtumover`. A path that exists in the current directory is used as given, so
+`cd`-then-run keeps working, and an absolute path is never redirected.
+
 A flag always wins for a single command: `caasi exec -t local -- uptime`. When a command acts on a
 chosen target it prints one dim line naming it, so you are never guessing which machine is involved.
 

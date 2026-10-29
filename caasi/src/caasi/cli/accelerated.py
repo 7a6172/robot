@@ -22,6 +22,7 @@ import yaml
 from rich.table import Table
 
 from .. import state
+from ..core import project as projects
 from ..checks import CheckResult
 from ..core import catalog, nvidia, ros as ros_core, rosenv, sensors
 from ..i18n import _
@@ -465,6 +466,7 @@ def slam_benchmark(
 ) -> None:
     extra = [str(arg) for arg in ctx.args]
     if script is not None:
+        script = projects.resolve_path(script)
         if not script.is_file():
             output.fail(_("motion.no_script", path=script))
             return

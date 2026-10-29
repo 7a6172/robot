@@ -7,6 +7,7 @@ from typing import Optional
 
 import typer
 
+from ..core import project as projects
 from ..core import runs
 from ..core import viewers as viewers_core
 from ..i18n import _
@@ -59,6 +60,7 @@ def view_open3d(
     dry_run: bool = typer.Option(False, "--dry-run", help=_("view.flag.dry_run")),
 ) -> None:
     binary = _require_viewer("open3d")
+    target = projects.resolve_path(target)
     if not target.exists():
         output.fail(_("view.path_missing", path=str(target)))
         return

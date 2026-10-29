@@ -365,6 +365,19 @@ caasi choose                         # what is set, and where each answer came f
   <code>No project called 'maze_run_1' on 'swjtumover05'. Looked in ~/caasi/projects/maze_run_1, ~/caasi/workspaces/maze_run_1.</code></li>
 </ul>
 <p>A path still works for anything outside that tree: <code>caasi choose project ~/work/hw1</code>.</p>
+<p><strong>A chosen project or robot is also where relative paths are looked up</strong> — experiments, task
+scripts, maps, bags, definition files. So after <code>caasi choose robot swjtumover</code>, this works from any
+directory, on the robot or over SSH:</p>
+<pre><code class="language-bash">caasi run start experiments/bringup.yaml     # ~/caasi/robots/swjtumover/experiments/bringup.yaml
+</code></pre>
+<p>Two rules keep it from surprising you:</p>
+<ul>
+<li><strong>The current directory wins.</strong> If the path exists where you are standing, that is the file used --
+  <code>cd ~/caasi/robots/swjtumover/experiments &amp;&amp; caasi run start bringup.yaml</code> behaves exactly as before.
+  An absolute path is never redirected.</li>
+<li><strong>A path that is nowhere is reported with the places tried</strong>, and with the command that fixes it
+  (<code>caasi choose project &lt;path&gt;</code> or <code>caasi choose robot &lt;name&gt;</code>).</li>
+</ul>
 <p>Everything afterwards follows the choice:</p>
 <pre><code class="language-bash">caasi run start experiments/bringup.yaml    # on swjtumover05, no -t needed
 caasi ros2 list topics                      # the robot's topics

@@ -205,7 +205,7 @@ def project_add_file(
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
     root = require_project()
-    source = Path(file).expanduser()
+    source = projects.resolve_path(Path(file).expanduser())
     try:
         dest = projects.place_file(root, domain, kind, source)
     except projects.ProjectError as exc:

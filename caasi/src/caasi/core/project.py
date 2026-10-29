@@ -180,6 +180,16 @@ def work_roots() -> list[Path]:
     return roots
 
 
+def resolve_path(path: Path) -> Path:
+    """Resolve any local path argument against the chosen project or robot.
+
+    Same rule as :func:`resolve_in_project`, named for the general case: experiment configs, task
+    scripts, map files, bags -- anything the operator names relative to the tree they are working in.
+    A path that already exists (so `cd`-then-run still works) and any absolute path are untouched.
+    """
+    return resolve_in_project(path)
+
+
 def resolve_in_project(path: Path) -> Path:
     """Resolve a relative path argument against the chosen project or robot.
 

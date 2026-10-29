@@ -14,6 +14,7 @@ import yaml
 from rich.table import Table
 
 from .. import state
+from ..core import project as projects
 from ..core import catalog, dataset as dataset_core, project as projects, rosenv, runs, usd
 from ..core import ros as ros_core
 from ..i18n import _
@@ -179,7 +180,7 @@ def build_app(kind: str) -> typer.Typer:
             dry_run: bool = typer.Option(False, "--dry-run", help=_("def.flag.dry_run")),
         ) -> None:
             cfg = state.cfg()
-            source = file.expanduser()
+            source = projects.resolve_path(file.expanduser())
             if not source.exists():
                 output.fail(_("def.no_file", path=str(source)))
                 return

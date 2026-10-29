@@ -87,7 +87,12 @@ def experiment_not_found_message(path: Path) -> str:
 
 
 def load_experiment(path: Path | str) -> Experiment:
-    path = Path(path).expanduser().resolve()
+    path = Path(path)
+    # Every command that understands an experiment comes through here, so the chosen project or
+    # robot is honoured once, for all of them, and a path that exists locally is left alone.
+    from . import project as project_core
+
+    path = project_core.resolve_path(path).expanduser().resolve()
     if not path.is_file():
         raise ExperimentError(experiment_not_found_message(path))
     try:

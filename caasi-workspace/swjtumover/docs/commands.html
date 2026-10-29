@@ -514,6 +514,10 @@ colcon test-result --result-base build/swjtumover_bringup
 <code>~/caasi/workspaces</code>) <strong>on the machine you are working on</strong>: the chosen target if one is set, otherwise
 this computer, with the notice <code>no target set, defaulting to local machine</code>. Nothing found is reported
 with the places it looked.</p>
+<p>The chosen project or robot is also the base for <strong>relative paths</strong>: <code>caasi run start
+experiments/bringup.yaml</code> finds <code>~/caasi/robots/swjtumover/experiments/bringup.yaml</code> after
+<code>caasi choose robot swjtumover</code>. A path that exists in the current directory is used as given, so
+<code>cd</code>-then-run keeps working, and an absolute path is never redirected.</p>
 <p>A flag always wins for a single command: <code>caasi exec -t local -- uptime</code>. When a command acts on a
 chosen target it prints one dim line naming it, so you are never guessing which machine is involved.</p>
 <h2 id="14-preparing-a-new-robot">14. Preparing a new robot<a class="headerlink" href="#14-preparing-a-new-robot" title="Permanent link">&para;</a></h2>
