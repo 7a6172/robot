@@ -19,6 +19,7 @@ from ..core import manifest as manifests
 from ..core import project as projects
 from ..core import ros as ros_core
 from ..core import runs
+from ..core import defaults as defaults_core
 from ..core import targets as targets_core
 from ..i18n import _
 from ..utils import output
@@ -30,6 +31,7 @@ _EXTRA_SETTINGS = {"allow_extra_args": True, "ignore_unknown_options": True}
 LIST_KINDS = {"topics": "topic", "nodes": "node", "services": "service", "actions": "action"}
 
 # A remote query is bounded by the target's SSH budget plus the ros2 call itself.
+SERVICE_CALL_TIMEOUT = 60.0
 REMOTE_QUERY_TIMEOUT = 60.0
 
 
@@ -48,7 +50,11 @@ def _resolve_query_target(name: Optional[str]):
     back to querying the workstation instead of the intended machine.
     """
     if not name:
-        return None
+        # no --target: the chosen target applies, if it is not the workstation itself
+        resolved = defaults_core.resolve_target_name(state.cfg())
+        if resolved == defaults_core.LOCAL:
+            return None
+        name = resolved
     target = targets_core.find_target(state.cfg(), name)
     if target is None:
         valid = ", ".join(t.name for t in targets_core.list_targets(state.cfg())) or "-"
@@ -343,9 +349,29 @@ json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
     target = _resolve_query_target(target_name)
     if target is not None and echo_stream:
-        # Streaming a remote topic is a long-lived tracked run, not a query.
-        # That is the execution lifecycle, not observability - kept out of scope
-        # here so the two concepts stay separate.
+        # An unbounded stream is the execution lifecycle, not a query, and stays out of scope here.
+        # A single message is a query: it finishes, so it is answered like every other one.
+        if "--once" in [str(a) for a in ctx.args]:
+            result = _query(target, ["topic", "echo", "--once", name,
+                                     *[str(a) for a in ctx.args]], domain=domain)
+            if not result.ok:
+                if result.returncode == -1:
+                    output.fail(_("ros.no_message", name=name, target=target.name))
+                    return
+                # The topic tool says precisely why (unknown type, no publisher); pass that on
+                # rather than replacing it with a generic failure.
+                detail = (result.stderr or "").strip().splitlines()
+                if detail:
+                    output.fail(detail[-1])
+                else:
+                    _report_query_failure(target, result, name)
+                return
+            if output.wants_json(json_output):
+                output.echo_json({"topic": name, "target": target.name,
+                                  "message": result.stdout.strip()})
+                return
+            output.echo(result.stdout.rstrip(), markup=False)
+            return
         output.fail(_("ros.remote_echo_unsupported", target=target.name))
         return
     binary = _binary_or_fail() if target is None else None
@@ -480,12 +506,35 @@ def service_call(
     ctx: typer.Context,
     name: str = typer.Argument(..., help=_("ros.arg.service")),
     service_type: str = typer.Argument(..., help=_("ros.arg.service_type")),
+    target_name: Optional[str] = typer.Option(
+        None, "--target", "-t", help=_("ros.flag.target")
+    ),
+    domain: Optional[int] = typer.Option(
+        None, "--domain", "-d", help=_("ros.flag.domain")
+    ),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
-    _binary_or_fail()
-    result = ros_core.run_ros2(
-        ["service", "call", name, service_type, *[str(a) for a in ctx.args]]
+    # Callable on a target like every other query: starting a mission on the robot is the commonest
+    # reason to call a service at all, and it should not need a shell wrapper to reach it.
+    target = _resolve_query_target(target_name)
+    if target is None:
+        _binary_or_fail()
+    result = _query(
+        target,
+        ["service", "call", name, service_type, *[str(a) for a in ctx.args]],
+        timeout=SERVICE_CALL_TIMEOUT,
+        domain=domain,
     )
+    if target is not None and not result.ok:
+        if result.returncode == -1:
+            # A call that produced no reply is not an unreachable robot: say what actually happened.
+            output.fail(
+                _("ros.service.no_response", name=name, target=target.name,
+                  seconds=int(SERVICE_CALL_TIMEOUT))
+            )
+            return
+        _report_query_failure(target, result, name)
+        return
     if output.wants_json(json_output):
         output.echo_json(
             {

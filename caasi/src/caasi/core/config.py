@@ -59,6 +59,19 @@ def project_config_path(start: Path | None = None) -> Path:
     return (start or Path.cwd()) / PROJECT_FILE_NAME
 
 
+def writable_config_path() -> Path:
+    """The file a preference belongs in.
+
+    The global config is where a personal setting lives, so that is the default. When ``CAASI_CONFIG``
+    points somewhere else (CI, an experiment) writing the global file would silently land where the
+    caller is not looking, so that path wins instead.
+    """
+    override = os.environ.get(ENV_CONFIG)
+    if override and override.strip():
+        return Path(override).expanduser()
+    return global_config_path()
+
+
 def load_yaml_file(path: Path) -> dict[str, Any]:
     try:
         text = path.read_text(encoding="utf-8")

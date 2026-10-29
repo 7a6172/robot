@@ -22,6 +22,7 @@ import typer
 
 from .. import state
 from ..core import targets as targets_core
+from ..core import defaults as defaults_core
 from ..core import toolctx as toolctx_core
 from ..core.toolctx import ToolInvocationError
 from ..i18n import _
@@ -78,7 +79,9 @@ def tools_list(
 def tools_run(
     ctx: typer.Context,
     tool: str = typer.Argument(..., help=_("toolctx.arg.tool")),
-    target: str = typer.Option(..., "--target", "-t", help=_("toolctx.flag.target")),
+    target: Optional[str] = typer.Option(
+        None, "--target", "-t", help=_("toolctx.flag.target")
+    ),
     domain: Optional[int] = typer.Option(None, "--domain", help=_("toolctx.flag.domain")),
     dry_run: bool = typer.Option(False, "--dry-run", help=_("toolctx.flag.dry_run")),
     exec_tool: bool = typer.Option(
@@ -93,6 +96,12 @@ def tools_run(
     target, that is reported rather than worked around.
     """
     cfg = state.cfg()
+    # -t wins; otherwise the chosen target decides which graph the tool attaches to
+    given = target is not None
+    target = defaults_core.resolve_target_name(cfg, target)
+    if not given and target == defaults_core.LOCAL:
+        output.fail(_("exec.error.no_target"))
+        raise typer.Exit(1)
     registry = toolctx_core.load_registry(cfg)
 
     try:
@@ -182,7 +191,9 @@ def register_direct_tools(application) -> None:
 def _make_direct(tool_name: str):
     def _command(
         ctx: typer.Context,
-        target: str = typer.Option(..., "--target", "-t", help=_("toolctx.flag.target")),
+        target: Optional[str] = typer.Option(
+            None, "--target", "-t", help=_("toolctx.flag.target")
+        ),
         domain: Optional[int] = typer.Option(
             None, "--domain", help=_("toolctx.flag.domain")
         ),

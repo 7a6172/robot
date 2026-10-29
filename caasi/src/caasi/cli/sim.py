@@ -14,6 +14,7 @@ import typer
 from rich.table import Table
 
 from .. import state
+from ..core import defaults as defaults_core
 from ..core.check import CheckContext, CheckEngine
 from ..i18n import _
 from ..utils import output
@@ -28,10 +29,12 @@ def _sim_launch(
     name: Optional[str],
     dry_run: bool,
     json_output: bool,
+    target: Optional[str] = None,
     force_headless: bool = False,
 ) -> None:
     run_cmd.launch_experiment(
         config_path,
+        target=defaults_core.resolve_role_target_name(state.cfg(), defaults_core.ROLE_GPU, target),
         expect_backend="sim",
         name=name,
         kind="experiment",
@@ -51,10 +54,13 @@ def sim_run(
     ctx: typer.Context,
     config_path: Path = typer.Argument(..., help=_("sim.run.config_help")),
     name: Optional[str] = typer.Option(None, "--name", help=_("sim.run.name_help")),
+    target: Optional[str] = typer.Option(
+        None, "--target", "-t", help=_("gpu.flag.target")
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help=_("sim.run.dry_run_help")),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
-    _sim_launch(ctx, config_path, name, dry_run, json_output)
+    _sim_launch(ctx, config_path, name, dry_run, json_output, target)
 
 
 @app.command(
@@ -66,10 +72,13 @@ def sim_headless(
     ctx: typer.Context,
     config_path: Path = typer.Argument(..., help=_("sim.run.config_help")),
     name: Optional[str] = typer.Option(None, "--name", help=_("sim.run.name_help")),
+    target: Optional[str] = typer.Option(
+        None, "--target", "-t", help=_("gpu.flag.target")
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help=_("sim.run.dry_run_help")),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
-    _sim_launch(ctx, config_path, name, dry_run, json_output, force_headless=True)
+    _sim_launch(ctx, config_path, name, dry_run, json_output, target, force_headless=True)
 
 
 @app.command("check", help=_("sim.check_help"))

@@ -11,6 +11,7 @@ from rich.table import Table
 from .. import state
 from ..core import deploy as deploy_core
 from ..core import project as projects
+from ..core import defaults as defaults_core
 from ..core import targets as targets_core
 from ..i18n import _
 from ..utils import output
@@ -123,9 +124,14 @@ def deploy_command(
         return
 
     if target is None:
-        output.echo("Usage: caasi deploy <target> [OPTIONS]")
-        output.echo("Run 'caasi deploy --help' for details.")
-        raise typer.Exit(0)
+        # `caasi choose target` makes the argument unnecessary; without a choice, say so.
+        chosen = defaults_core.resolve_target_name(state.cfg())
+        if chosen == defaults_core.LOCAL:
+            output.echo("Usage: caasi deploy <target> [OPTIONS]")
+            output.echo("Choose one with 'caasi choose target <name>', or pass it as an argument.")
+            output.echo("Run 'caasi deploy --help' for details.")
+            raise typer.Exit(0)
+        target = chosen
 
     if status:
         _render_status(target, dest, json_output)

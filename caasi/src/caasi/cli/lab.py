@@ -14,6 +14,7 @@ from typing import Optional
 import typer
 
 from .. import state
+from ..core import defaults as defaults_core
 from ..checks.isaac import detect_isaac_lab
 from ..core import experiment
 from ..i18n import _
@@ -80,11 +81,15 @@ def lab_run(
     ctx: typer.Context,
     config_path: Path = typer.Argument(..., help=_("sim.run.config_help")),
     name: Optional[str] = typer.Option(None, "--name", help=_("sim.run.name_help")),
+    target: Optional[str] = typer.Option(
+        None, "--target", "-t", help=_("gpu.flag.target")
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help=_("sim.run.dry_run_help")),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
     run_cmd.launch_experiment(
         config_path,
+        target=defaults_core.resolve_role_target_name(state.cfg(), defaults_core.ROLE_GPU, target),
         expect_backend="lab",
         name=name,
         kind="experiment",
@@ -100,11 +105,15 @@ def lab_play(
     config_path: Path = typer.Argument(..., help=_("sim.run.config_help")),
     checkpoint: Optional[Path] = typer.Option(None, "--checkpoint", help=_("lab.flag.checkpoint")),
     name: Optional[str] = typer.Option(None, "--name", help=_("sim.run.name_help")),
+    target: Optional[str] = typer.Option(
+        None, "--target", "-t", help=_("gpu.flag.target")
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help=_("sim.run.dry_run_help")),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
     run_cmd.launch_experiment(
         config_path,
+        target=defaults_core.resolve_role_target_name(state.cfg(), defaults_core.ROLE_GPU, target),
         expect_backend="lab",
         name=name,
         kind="play",
@@ -122,11 +131,15 @@ def lab_evaluate(
     config_path: Path = typer.Argument(..., help=_("sim.run.config_help")),
     checkpoint: Optional[Path] = typer.Option(None, "--checkpoint", help=_("lab.flag.checkpoint")),
     name: Optional[str] = typer.Option(None, "--name", help=_("sim.run.name_help")),
+    target: Optional[str] = typer.Option(
+        None, "--target", "-t", help=_("gpu.flag.target")
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help=_("sim.run.dry_run_help")),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
     run_cmd.launch_experiment(
         config_path,
+        target=defaults_core.resolve_role_target_name(state.cfg(), defaults_core.ROLE_GPU, target),
         expect_backend="lab",
         name=name,
         kind="evaluate",

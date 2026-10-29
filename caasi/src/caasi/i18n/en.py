@@ -1697,6 +1697,73 @@ MESSAGES: dict[str, str] = {
     "deploy.flag.status": "Show status of current deployment on target without deploying.",
     "deploy.list_help": "List recorded deployment records for the project.",
     "deploy.status_help": "Inspect the active deployment status on an execution target.",
+
+    # -- choose -------------------------------------------------------
+    "exec.error.no_target": (
+        "No target given and none chosen. Pass --target/-t, or fix one for the commands that follow "
+        "with 'caasi choose target <name>'."
+    ),
+    "ros.service.no_response": (
+        "No reply from {name} on '{target}' within {seconds}s. The service may not exist, or the "
+        "node that offers it may not be running."
+    ),
+    "ros.no_message": (
+        "No message arrived on {name} from '{target}' in time. Check that something publishes it "
+        "with 'caasi ros2 topic {name} -t {target}'."
+    ),
+    "choose.robot_help": "Fix the robot that commands act on (its entry under ~/caasi/robots).",
+    "choose.arg.robot": "Robot name as it appears under ~/caasi/robots, on the chosen target",
+    "choose.flag.session_robot": "Print a shell export instead of storing the choice",
+    "choose.robot.cleared": "Robot choice cleared.",
+    "choose.saved_local": "{kind} '{name}' set to {path} (this machine).",
+    "choose.saved_remote": "{kind} '{name}' set to {path} on '{machine}'.",
+    "choose.not_found": (
+        "No {kind} called '{name}' on '{machine}'. Looked in {places}. "
+        "Pass a path instead, or choose the machine it lives on with 'caasi choose target <name>'."
+    ),
+    "choose.help": "Show or fix the target and project that commands act on.",
+    "choose.title": "Current selection",
+    "choose.col.what": "Setting",
+    "choose.col.value": "Value",
+    "choose.col.from": "From",
+    "choose.row.target": "target (machine)",
+    "choose.row.role": "{role} work",
+    "choose.row.robot": "robot (shipped software)",
+    "choose.row.cwd": "working directory project",
+    "choose.row.unset": "not set",
+    "choose.row.working_directory": "working directory",
+    "choose.row.project": "project (software)",
+    "choose.none": "(none)",
+    "choose.hint": (
+        "Change with 'caasi choose target <name>' or 'caasi choose project <path>'. "
+        "Add --session to scope the choice to this shell: eval \"$(caasi choose --session target <name>)\""
+    ),
+    "gpu.flag.target": (
+        "Machine to run this on: a GPU target, or this computer when none is chosen."
+    ),
+    "choose.arg_required": (
+        "Name what to choose, or add --clear to forget the current {what} choice."
+    ),
+    "choose.flag.role": "Which kind of machine this target fills, e.g. gpu or robot (a target tag).",
+    "choose.role.saved": "{role} target set to {target}. {role} work now runs there.",
+    "choose.role.no_tag": "note: {target} is not tagged '{role}'; 'caasi node inspect {target}' shows what it is.",
+    "choose.target_help": "Fix the machine that commands act on.",
+    "choose.project_help": "Fix the project that commands act on.",
+    "choose.show_help": "Show the current selection.",
+    "choose.arg.target": "Target name, as listed by 'caasi node list'",
+    "choose.arg.project": "Path to a project directory, or the name of the project you are in",
+    "choose.flag.session": "Print a shell export for this terminal instead of storing the choice",
+    "choose.flag.session_target": "Print a shell export instead of storing the choice",
+    "choose.flag.session_project": "Print a shell export instead of storing the choice",
+    "choose.flag.clear": "Forget the stored choice",
+    "choose.target.saved": "Target set to {target}. Commands now use it when -t is omitted.",
+    "choose.target.cleared": "Target choice cleared; commands fall back to local.",
+    "choose.project.saved": "Project set to {project}. Commands no longer need to run inside it.",
+    "choose.project.cleared": "Project choice cleared; commands use the working directory.",
+    "choose.unknown_target": (
+        "Unknown target '{query}'. Known targets: {valid}. Enrol one with 'caasi node enroll'."
+    ),
+    "choose.not_a_project": (
+        "'{value}' is not a project directory (no caasi.yaml) and does not name the project you are in."
+    ),
 }
-
-

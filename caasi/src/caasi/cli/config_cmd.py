@@ -11,7 +11,12 @@ from rich.table import Table
 
 from .. import state
 from ..core import catalog
-from ..core.config import ENV_CONFIG, global_config_path, project_config_path
+from ..core.config import (
+    ENV_CONFIG,
+    global_config_path,
+    project_config_path,
+    writable_config_path,
+)
 from ..i18n import _
 from ..utils import output
 
@@ -55,7 +60,7 @@ def config_set(
     if parsed is None:
         parsed = value
     cfg.set(key, parsed)
-    saved = cfg.save()
+    saved = cfg.save(writable_config_path())
     output.echo(_("config.set.done", key=key, value=parsed, file=saved))
 
 

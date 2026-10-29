@@ -75,12 +75,42 @@ def valid_name(name: str) -> bool:
     return bool(_NAME_RE.match(name))
 
 
+#: A project chosen with ``caasi choose project``, used when the working directory is not inside one.
+#: Process-wide because every command asks :func:`find_project_root` the same question, and threading
+#: a configuration object through every caller would put the choice in seventeen places instead of
+#: one. It is set once, from the configuration, by :func:`caasi.state.cfg`; nothing else writes it.
+_fallback_root: Path | None = None
+
+
+def set_fallback_root(root: Path | None) -> None:
+    """Record the chosen project root, or clear it with ``None``.
+
+    Only used when :func:`find_project_root` is called *without* a starting directory: a caller that
+    passes an explicit start is asking about that location and must not be redirected.
+    """
+    global _fallback_root
+    _fallback_root = Path(root).expanduser() if root is not None else None
+
+
+def fallback_root() -> Path | None:
+    """The chosen project root, if one is set and still holds a manifest."""
+    if _fallback_root is not None and (_fallback_root / PROJECT_FILE).is_file():
+        return _fallback_root
+    return None
+
+
 def find_project_root(start: Path | None = None) -> Path | None:
-    """Walk up from *start* (default cwd) looking for ``caasi.yaml``."""
+    """Walk up from *start* (default cwd) looking for ``caasi.yaml``.
+
+    With no *start*, a project chosen with ``caasi choose project`` is used when the working
+    directory is not inside one, so commands work from anywhere once a project is chosen.
+    """
     current = (start or Path.cwd()).resolve()
     for candidate in (current, *current.parents):
         if (candidate / PROJECT_FILE).is_file():
             return candidate
+    if start is None:
+        return fallback_root()
     return None
 
 

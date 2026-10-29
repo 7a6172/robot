@@ -799,7 +799,10 @@ def read_run_log(
             return ""
         ssh_prefix = targets_core.target_ssh_prefix(target)
         log_file = f"{record.remote_run_dir.rstrip('/')}/{stream}.log"
-        cmd = ssh_prefix + [f"tail -n {max(lines, 1)} '{log_file}' 2>/dev/null"]
+        # Expand ~ on the target: a quoted '~/...' is a directory literally named "~".
+        cmd = ssh_prefix + [
+            f"tail -n {max(lines, 1)} {targets_core.remote_path_expr(log_file)} 2>/dev/null"
+        ]
         # One tail over SSH; budget from the target's link latency.
         res = subprocess.run(cmd, capture_output=True, text=True,
                              timeout=max(10.0, float(target.ssh_timeout) * 2))
@@ -836,7 +839,8 @@ def inspect_run_files(record: RunRecord, config: Config | None = None) -> list[d
         ssh_prefix = targets_core.target_ssh_prefix(target)
         run_dir = record.remote_run_dir.rstrip("/")
         cmd = ssh_prefix + [
-            f"find '{run_dir}' -maxdepth 2 -type f -exec stat -c '%n %s' {{}} + 2>/dev/null"
+            f"find {targets_core.remote_path_expr(run_dir)} -maxdepth 2 -type f "
+            f"-exec stat -c '%n %s' {{}} + 2>/dev/null"
         ]
         res = subprocess.run(cmd, capture_output=True, text=True,
                              timeout=max(10.0, float(target.ssh_timeout) * 2))
@@ -1120,7 +1124,9 @@ done
 
     target_manifest_yaml = yaml.safe_dump(manifest_data, sort_keys=False)
     if target.transport == "ssh":
-        write_target_man = f"cat > '{target_run_dir}/manifest.yaml'"
+        write_target_man = (
+            f"cat > {targets_core.remote_path_expr(target_run_dir + '/manifest.yaml')}"
+        )
         subprocess.run(
             ssh_prefix + [write_target_man],
             input=target_manifest_yaml,

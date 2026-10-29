@@ -18,6 +18,7 @@ import typer
 
 from .. import state
 from ..core import execution
+from ..core import defaults as defaults_core
 from ..core import targets as targets_core
 from ..i18n import _
 from ..utils import output
@@ -27,8 +28,8 @@ def exec_command(
     command: list[str] = typer.Argument(
         ..., help=_("exec.arg.command")
     ),
-    target_name: str = typer.Option(
-        ..., "--target", "-t", help=_("exec.flag.target")
+    target_name: Optional[str] = typer.Option(
+        None, "--target", "-t", help=_("exec.flag.target")
     ),
     cwd: Optional[str] = typer.Option(None, "--cwd", help=_("exec.flag.cwd")),
     env: Optional[list[str]] = typer.Option(
@@ -50,9 +51,18 @@ def exec_command(
 ) -> None:
     """Run CMD on a target and report exit status, output and outcome."""
     cfg = state.cfg()
-    target = targets_core.find_target(cfg, target_name)
+    resolved = defaults_core.resolve_target_name(cfg, target_name)
+    if target_name is None and resolved == defaults_core.LOCAL:
+        # No flag and no choice: refuse rather than quietly running on this workstation.
+        output.fail(_("exec.error.no_target"))
+        raise typer.Exit(1)
+    note = defaults_core.target_note(cfg, target_name)
+    if note and not output.wants_json(json_output):
+        output.echo(f"[dim]{note}[/dim]")
+
+    target = targets_core.find_target(cfg, resolved)
     if target is None:
-        output.fail(_("exec.error.unknown_target", name=target_name))
+        output.fail(_("exec.error.unknown_target", name=resolved))
 
     env_map: dict[str, str] = {}
     for entry in env or []:

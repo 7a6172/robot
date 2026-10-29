@@ -63,9 +63,14 @@ def cfg() -> "Config":
     """Return the loaded configuration, loading it lazily when needed."""
     if _state.config is None:
         from .core.config import Config
+        from .core import project as project_core
+        from .core import defaults as defaults_core
 
         _state.config = Config.load(config_path_override=_state.config_path)
         set_locale(resolve_locale(_state.lang, _state.config.language))
+        # A project chosen with `caasi choose project` applies to commands run from anywhere, so the
+        # resolver is told about it once, here, rather than by every caller.
+        project_core.set_fallback_root(defaults_core.resolve_project_root(_state.config))
     return _state.config
 
 

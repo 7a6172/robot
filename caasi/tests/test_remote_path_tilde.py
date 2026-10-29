@@ -104,3 +104,52 @@ def test_run_wrapper_expands_tilde_inside_arguments():
     assert '"~/"*)' in src
     assert '$HOME/${{a#"~/"}}' in src, "the pattern must be quoted or the prefix is not stripped"
     assert "${a#~/}" not in src.replace('${a#"~"}', ''), "unquoted pattern does not strip in bash 5"
+
+
+def test_run_logs_and_file_listing_expand_tilde():
+    """`caasi logs` and the file inventory read the remote run directory.
+
+    Both built their command with a single-quoted path and swallowed the error (``2>/dev/null``), so
+    a run that had plainly succeeded showed no output at all. Measured on the robot: the provisioning
+    run's log was empty before this fix and complete after it.
+    """
+    src = Path(runs.__file__).read_text(encoding="utf-8")
+    assert "tail -n {max(lines, 1)} '{log_file}'" not in src, "quoted tilde in the log tail"
+    assert "find '{run_dir}'" not in src, "quoted tilde in the file inventory"
+    assert "remote_path_expr(log_file)" in src
+    assert "remote_path_expr(run_dir)" in src
+
+
+def test_the_target_side_manifest_is_written_through_the_home_directory():
+    """A successful run still printed `bash: line 1: ~/.../manifest.yaml: No such file or directory`.
+
+    The manifest write single-quoted the run directory, so on the robot the provenance file simply
+    was not created -- the run worked, its record did not.
+    """
+    src = Path(runs.__file__).read_text(encoding="utf-8")
+    assert "cat > '{target_run_dir}/manifest.yaml'" not in src
+    assert "remote_path_expr(target_run_dir + '/manifest.yaml')" in src
+
+
+def test_read_run_log_expands_tilde_in_the_command_it_sends(monkeypatch):
+    """The command actually sent over SSH must name the home directory, not a literal tilde."""
+    from types import SimpleNamespace
+
+    from caasi.core.config import Config
+
+    sent: list[str] = []
+
+    def fake_run(cmd, **kwargs):
+        sent.append(cmd[-1])
+        return SimpleNamespace(returncode=0, stdout="line\n", stderr="")
+
+    monkeypatch.setattr(runs.subprocess, "run", fake_run)
+    config = Config({"targets": {"r1": {"host": "10.0.0.5", "user": "robot"}}}, [])
+    record = SimpleNamespace(
+        target="r1", target_transport="ssh",
+        remote_run_dir="~/caasi/robots/p/.caasi/runs/x",
+    )
+    runs.read_run_log(record, config, stream="stdout", lines=5)
+    assert sent, "no command was sent"
+    assert "'~" not in sent[-1], sent[-1]
+    assert '"$HOME"' in sent[-1], sent[-1]

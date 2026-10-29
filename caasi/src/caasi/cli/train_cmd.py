@@ -14,6 +14,8 @@ from typing import Optional
 
 import typer
 
+from .. import state
+from ..core import defaults as defaults_core
 from ..core import experiment
 from ..i18n import _
 from ..utils import output
@@ -55,6 +57,9 @@ def train_command(
     resume: Optional[Path] = typer.Option(None, "--resume", help=_("train.flag.resume")),
     seed: Optional[int] = typer.Option(None, "--seed", help=_("train.flag.seed")),
     device: Optional[str] = typer.Option(None, "--device", help=_("train.flag.device")),
+    target: Optional[str] = typer.Option(
+        None, "--target", "-t", help=_("gpu.flag.target")
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help=_("train.flag.dry_run")),
 ) -> None:
     # Preload only to read `headless` for flag translation; the canonical
@@ -70,6 +75,9 @@ def train_command(
     )
     run_cmd.launch_experiment(
         config_path,
+        # training is the heaviest GPU user of all: resolve the gpu role like sim/lab do
+        target=defaults_core.resolve_role_target_name(
+            state.cfg(), defaults_core.ROLE_GPU, target),
         kind="train",
         extra_args=extra_args,
         extra={"steps": steps, "envs": envs},

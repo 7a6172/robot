@@ -3,7 +3,7 @@
 **Auditable mapping from each CLI command to the example that demonstrates it.**
 
 Generated from the **live command tree**, not maintained by hand: the current CLI has
-**58 root commands and 266 command paths**, and **every one is listed below**. A
+**60 root commands and 283 command paths**, and **every one is listed below**. A
 command that has no runnable example is still listed, with the reason — nothing is
 silently omitted.
 
@@ -50,6 +50,11 @@ of them invents a `--dry-run` that the CLI does not provide.
 | `caasi benchmark start` | 06 | Isaac/Isaac ROS | opt-in | needs GPU + Isaac |
 | `caasi build` | 07 | runnable | CI/opt-in | chain; SSH target optional |
 | `caasi check` | 01 | runnable | CI |  |
+| `caasi choose` | 01 | runnable | CI | stores a default; no target needed |
+| `caasi choose project` | 01 | runnable | CI |  |
+| `caasi choose robot` | 01 | runnable | CI | searches ~/caasi/robots by name |
+| `caasi choose show` | 01 | runnable | CI |  |
+| `caasi choose target` | 07 | runnable | CI/opt-in | chain; SSH target optional |
 | `caasi config` | cookbook | read-only | CI |  |
 | `caasi config catalog` | cookbook | read-only | CI |  |
 | `caasi config get` | cookbook | read-only | CI |  |
@@ -221,6 +226,18 @@ of them invents a `--dry-run` that the CLI does not provide.
 | `caasi ros service list` | 03 | ROS 2 | CI | canonical demo_nodes_py |
 | `caasi ros status` | 03 | ROS 2 | CI | canonical demo_nodes_py |
 | `caasi ros topic` | 03 | ROS 2 | CI | canonical demo_nodes_py |
+| `caasi ros2` | 03 | ROS 2 | CI | same tree as `caasi ros` |
+| `caasi ros2 doctor` | 03 | ROS 2 | CI | canonical demo_nodes_py |
+| `caasi ros2 graph` | 03 | ROS 2 | CI | canonical demo_nodes_py |
+| `caasi ros2 launch` | 03 | ROS 2 | CI | canonical demo_nodes_py |
+| `caasi ros2 list` | 03 | ROS 2 | CI | canonical demo_nodes_py |
+| `caasi ros2 node` | 03 | ROS 2 | CI | canonical demo_nodes_py |
+| `caasi ros2 service` | 03 | ROS 2 | CI | canonical demo_nodes_py |
+| `caasi ros2 service call` | 03 | ROS 2 | CI | canonical demo_nodes_py |
+| `caasi ros2 service info` | 03 | ROS 2 | CI | canonical demo_nodes_py |
+| `caasi ros2 service list` | 03 | ROS 2 | CI | canonical demo_nodes_py |
+| `caasi ros2 status` | 03 | ROS 2 | CI | canonical demo_nodes_py |
+| `caasi ros2 topic` | 03 | ROS 2 | CI | canonical demo_nodes_py |
 | `caasi rosbag` | 03 | ROS 2 | CI | canonical demo_nodes_py |
 | `caasi rqt` | 05 | GUI | manual | needs a display |
 | `caasi run` | 01 | runnable | CI |  |

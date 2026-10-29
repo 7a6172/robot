@@ -50,6 +50,7 @@ from . import (
     view_cmd,
     vision_cmd,
 )
+from . import choose_cmd
 from . import platform as platform_cmd
 from . import system as system_cmd
 from .doctor import doctor_command
@@ -66,6 +67,7 @@ HELP_PANELS: dict[str, tuple[str, ...]] = {
     _("help.panel.environment"): ("config", "env", "gpu", "monitor", "sensor", "system", "vision"),
     _("help.panel.projects"): (
         "build",
+        "choose",
         "deploy",
         "logs",
         "project",
@@ -76,7 +78,7 @@ HELP_PANELS: dict[str, tuple[str, ...]] = {
     ),
     _("help.panel.simulation"): ("benchmark", "lab", "physics", "sim", "train"),
     _("help.panel.data"): ("dataset", "teleop"),
-    _("help.panel.ros"): ("control", "moveit", "nav", "ros"),
+    _("help.panel.ros"): ("control", "moveit", "nav", "ros", "ros2"),
     _("help.panel.accelerated"): (
         "isaac-ros",
         "mapping",
@@ -234,6 +236,10 @@ app.add_typer(sensor_cmd.app, name="sensor", help=_("sensor.help"))
 app.add_typer(view_cmd.app, name="view", help=_("view.help"))
 app.add_typer(vision_cmd.app, name="vision", help=_("vision.help"))
 app.add_typer(ros_cmd.app, name="ros", help=_("ros.help"))
+# `caasi ros2 …` is the same command: caasi invokes the real tool, and ros2 is what
+# people type. Both spellings are kept so habits and documentation agree.
+app.add_typer(ros_cmd.app, name="ros2", help=_("ros.help"))
+app.add_typer(choose_cmd.app, name="choose", help=_("choose.help"))
 app.add_typer(nav_cmd.app, name="nav", help=_("nav.help"))
 app.add_typer(moveit_cmd.app, name="moveit", help=_("moveit.help"))
 app.add_typer(control_cmd.app, name="control", help=_("control.help"))

@@ -10,6 +10,7 @@ import typer
 
 from .. import state
 from ..core import build as build_core
+from ..core import defaults as defaults_core
 from ..core import targets as targets_core
 from ..i18n import _
 from ..utils import output
@@ -47,7 +48,11 @@ def build_command(
     """Resource-aware workspace build delegating to colcon."""
     root = build_core.find_build_root()
 
-    target_name = target or "local"
+    target_name = defaults_core.resolve_target_name(state.cfg(), target)
+    note = defaults_core.target_note(state.cfg(), target)
+    if note and not output.wants_json(json_output):
+        output.echo(f"[dim]{note}[/dim]")
+
     target_obj = targets_core.find_target(state.cfg(), target_name)
     if target_obj is None:
         valid = ", ".join(t.name for t in targets_core.list_targets(state.cfg())) or "-"

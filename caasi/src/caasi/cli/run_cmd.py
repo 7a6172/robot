@@ -21,6 +21,7 @@ from rich.table import Table
 from .. import state
 from ..core import artifacts as artifacts_mod
 from ..core import experiment, provenance, runs
+from ..core import defaults as defaults_core
 from ..core.config import Config
 from ..i18n import _
 from ..utils import output
@@ -61,11 +62,13 @@ def launch_experiment(
     dry runs; failures exit via :func:`output.fail`.
     """
     cfg = state.cfg()
-    if target is not None and target != "local":
+    # -t wins, then the session choice, then `caasi choose target`, then local
+    resolved_target = defaults_core.resolve_target_name(cfg, target)
+    if resolved_target != "local":
         from ..core import targets as targets_core
-        target_obj = targets_core.find_target(cfg, target)
+        target_obj = targets_core.find_target(cfg, resolved_target)
         if not target_obj:
-            output.fail(_("target.not_found", name=target))
+            output.fail(_("target.not_found", name=resolved_target))
             return None
         if dry_run:
             output.echo(f"[bold]{_('sim.run.dry_title')}[/bold]")
@@ -375,7 +378,9 @@ def _line_matches(
 
 @app.command("logs", help=_("run.logs_help"))
 def run_logs(
-    query: str = typer.Argument(..., help=_("run.arg.query")),
+    # Optional so `caasi logs` alone reads the most recent run: that is almost always the one you
+    # mean, and typing its name first is friction. `latest` is an explicit synonym.
+    query: str = typer.Argument("latest", help=_("run.arg.query")),
     lines: int = typer.Option(50, "--lines", "-n", help=_("run.flag.lines")),
     follow: bool = typer.Option(False, "--follow", "-f", help=_("run.flag.follow")),
     stream: str = typer.Option("stdout", "--stream", "-s", help=_("run.flag.stream")),
