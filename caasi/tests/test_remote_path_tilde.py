@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from caasi.core import execution, runs
+from caasi.core import artifacts, build, execution, lifecycle, runs
 from caasi.core.targets import Target, remote_path_expr
 
 
@@ -153,3 +153,46 @@ def test_read_run_log_expands_tilde_in_the_command_it_sends(monkeypatch):
     assert sent, "no command was sent"
     assert "'~" not in sent[-1], sent[-1]
     assert '"$HOME"' in sent[-1], sent[-1]
+
+
+def test_artifact_inventory_expands_tilde_and_reports_relative_paths():
+    """`caasi run artifacts` listed nothing on a robot, for two reasons at once.
+
+    The inventory shelled `find '~/caasi/artifacts/<run>'` -- a literal ``~`` directory -- and then
+    computed each path relative to the *unexpanded* root, which could never match find's absolute
+    output. `-printf '%s %P'` makes find do the relative work, so neither mistake can come back.
+    """
+    src = Path(artifacts.__file__).read_text(encoding="utf-8")
+    assert 'find {shlex.quote(remote_root)}' not in src, "quoted tilde in the artifact inventory"
+    assert "remote_path_expr(remote_root)" in src
+    assert "'%s %P" in src or "%s %P" in src, "find must report paths relative to its own root"
+    # hashing happens in the root, so names match the relative rows
+    assert "cd {remote_path_expr(remote_root)} && sha256sum" in src
+
+
+def test_a_config_file_written_to_a_target_expands_tilde():
+    """`caasi sim/lab` config push used `mkdir -p '~'`, which is a real directory called `~`."""
+    src = Path(lifecycle.__file__).read_text(encoding="utf-8")
+    assert 'mkdir -p {shlex.quote' not in src
+    assert "remote_path_expr(str(Path(path).parent))" in src
+    assert "remote_path_expr(path)" in src
+
+
+def test_the_remote_build_runs_in_the_home_directory_it_finds_on_the_target():
+    src = Path(build.__file__).read_text(encoding="utf-8")
+    assert 'steps = [f"cd {dest}"]' not in src
+    assert "remote_path_expr(dest)" in src
+    assert "remote_path_expr(ros_setup)" in src
+
+
+def test_stopping_a_run_updates_the_manifest_on_the_targets_home():
+    """The target-side manifest was updated through *this* machine's home directory.
+
+    `$HOME` was substituted locally before the command was sent, so on the robot the path pointed at
+    a directory that does not exist and the `|| true` hid it: a stopped run never said so. The path
+    is now an argument the target's own shell expands.
+    """
+    src = Path(runs.__file__).read_text(encoding="utf-8")
+    assert 'os.environ.get("HOME", "~")' not in src
+    assert "p = sys.argv[1]" in src
+    assert "remote_path_expr(\n            record.remote_run_dir" in src

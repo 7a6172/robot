@@ -277,7 +277,7 @@ def groot_setup(
             )
             return
         output.echo(f"[bold]{_('groot.setup.title', repo=str(root))}[/bold]")
-        output.echo(f"  command: {' '.join(command)}")
+        output.echo(f"  command: {' '.join(command)}", soft_wrap=True)
         output.echo(f"  cwd:     {root}")
         output.echo(f"  [dim]{_('groot.setup.hint')}[/dim]")
         return

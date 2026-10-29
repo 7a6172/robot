@@ -54,6 +54,10 @@ OUTCOME_TRANSPORT = "transport"
 OUTCOME_SETUP = "setup"
 OUTCOME_NO_ROS2 = "no_ros2"
 
+#: `timeout(1)` exits 124 when it had to kill the command; caasi wraps every remote command in it so
+#: the process cannot outlive the caller.
+EXIT_TIMEOUT = 124
+
 
 @dataclass(frozen=True)
 class ExecRequest:
@@ -197,6 +201,15 @@ def _classify(result: "shell.ShellResult", request: ExecRequest, target_name: st
         out.error = "no usable 'ros2' on the target after environment setup"
         return out
 
+    if result.returncode == EXIT_TIMEOUT:
+        out.outcome = OUTCOME_TIMEOUT
+        out.timed_out = True
+        out.error = (
+            f"the command was still running after {int(request.timeout)}s on the target "
+            "and was stopped there"
+        )
+        return out
+
     if result.returncode == SSH_TRANSPORT_FAILURE:
         we_are_remote = request.timeout is not None  # always true; kept for clarity
         if we_are_remote and not out.stdout:
@@ -247,6 +260,12 @@ def run_on_target(target: "targets_core.Target", request: ExecRequest) -> ExecRe
         [shlex.quote("bash"), shlex.quote("-c"), shlex.quote(snippet), "--"]
         + [render_argv_word(a) for a in request.argv]
     )
+    # Bound it on the target too. Killing the local ssh client does not stop the remote process, and
+    # a ros2 call that outlives its caller can hold a network port for hours: a stray
+    # `ros2 service call` kept the LiDAR's UDP 7000 bound long after caasi had given up on it.
+    limit = int(request.timeout) if request.timeout else None
+    if limit and limit > 0:
+        remote_cmd = f"timeout -k 5 {limit} {remote_cmd}"
     raw = shell.run_cmd([*prefix, remote_cmd], timeout=request.timeout)
     return _classify(raw, request, target.name)
 

@@ -144,7 +144,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import Config
-from .targets import Target, target_ssh_prefix
+from .targets import Target, remote_path_expr, target_ssh_prefix
 
 # ---------------------------------------------------------------------------
 # Kind classification
@@ -621,7 +621,12 @@ def inventory_remote(
 
     prefix = target_ssh_prefix(target)
     budget = timeout if timeout is not None else max(15.0, float(target.ssh_timeout) * 3)
-    find_cmd = f"find {shlex.quote(remote_root)} -type f -printf '%s %p\\n' 2>/dev/null"
+    # %P is the path relative to the search root, so a root given as "~/caasi/..." needs no prefix
+    # arithmetic against find's absolute output -- and remote_path_expr expands the tilde on the
+    # target instead of quoting it into a directory literally named "~".
+    find_cmd = (
+        f"find {remote_path_expr(remote_root)} -type f -printf '%s %P\\n' 2>/dev/null"
+    )
     try:
         res = subprocess.run(prefix + [find_cmd], capture_output=True, text=True, timeout=budget)
     except subprocess.TimeoutExpired:
@@ -636,7 +641,7 @@ def inventory_remote(
         size_str, _, path = line.partition(" ")
         if not path:
             continue
-        rel = path[len(root) + 1:] if path.startswith(root + "/") else path.lstrip("/")
+        rel = path.strip()
         if is_bookkeeping(rel):
             continue
         if filter_to_declared and not _matches_any(rel, declarations):
@@ -652,16 +657,19 @@ def inventory_remote(
     hashes: dict[str, str] = {}
     want_hash = [rel for size, rel in rows if verify or size <= hash_max_bytes]
     if want_hash:
-        quoted = " ".join(shlex.quote(f"{root}/{rel}") for rel in want_hash)
-        hash_cmd = f"sha256sum {quoted} 2>/dev/null"
+        # Hash relative to the root so the names in the output are the same `rel` values, whatever
+        # the root looks like on the target.
+        quoted = " ".join(shlex.quote(rel) for rel in want_hash)
+        hash_cmd = (
+            f"cd {remote_path_expr(remote_root)} && sha256sum {quoted} 2>/dev/null"
+        )
         try:
             hres = subprocess.run(prefix + [hash_cmd], capture_output=True, text=True, timeout=budget)
             if hres.returncode == 0:
                 for line in hres.stdout.splitlines():
                     digest, _, p = line.partition("  ")
                     if digest and p:
-                        rel = p.strip()[len(root) + 1:] if p.strip().startswith(root + "/") else p.strip()
-                        hashes[rel] = digest.strip()
+                        hashes[p.strip()] = digest.strip()
         except subprocess.TimeoutExpired:
             pass
 

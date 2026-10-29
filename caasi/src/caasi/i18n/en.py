@@ -415,7 +415,18 @@ MESSAGES: dict[str, str] = {
     "run.col.size": "Size",
     "run.flag.lines": "Number of trailing log lines to show.",
     "run.flag.follow": "Follow the log until the run ends (Ctrl+C to stop).",
-    "run.flag.stream": "Log stream to show: 'stdout' or 'stderr'.",
+    "run.flag.stream": (
+        "Which output to show: 'both' (default), 'stdout' or 'stderr'. ROS 2 nodes write to "
+        "stderr."
+    ),
+    "run.note.others_active": "note: still running on this target: {runs}.",
+    "run.note.others_active_hint": (
+        "If the new run needs a device that one of those holds -- the LiDAR's UDP port, a camera -- "
+        "it will fail; 'caasi run stop <id>' first."
+    ),
+    "run.follow.stderr_only": (
+        "following stderr, where ROS 2 writes; pass --stream stdout for the other one"
+    ),
     "run.start.flag.target": "Execution target for the run (defaults to local).",
     "run.started.target": "Run {id} started in background on target '{target}'.",
     "run.col.target": "Target",

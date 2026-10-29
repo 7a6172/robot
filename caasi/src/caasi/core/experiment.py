@@ -64,10 +64,32 @@ class Experiment:
         return base.resolve()
 
 
+def experiment_not_found_message(path: Path) -> str:
+    """Say what was tried and, when a tree is chosen, that it was searched too.
+
+    "not found: /home/you/experiments/bringup.yaml" leaves the operator guessing why a file that
+    plainly exists in the project is invisible -- the answer is usually that they are standing in
+    the wrong directory and have not chosen a project or robot yet.
+    """
+    from . import project as project_core
+
+    message = f"experiment config not found: {path}"
+    roots = project_core.work_roots()
+    if roots:
+        searched = ", ".join(str(root / path) for root in roots)
+        message += f" (also tried {searched})"
+    else:
+        message += (
+            " -- no project or robot is chosen, so only the current directory was searched;"
+            " run 'caasi choose project <path>' or 'caasi choose robot <name>'"
+        )
+    return message
+
+
 def load_experiment(path: Path | str) -> Experiment:
     path = Path(path).expanduser().resolve()
     if not path.is_file():
-        raise ExperimentError(f"experiment config not found: {path}")
+        raise ExperimentError(experiment_not_found_message(path))
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:

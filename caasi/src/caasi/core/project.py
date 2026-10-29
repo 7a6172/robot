@@ -75,6 +75,13 @@ def valid_name(name: str) -> bool:
     return bool(_NAME_RE.match(name))
 
 
+#: True once the fallback has been decided for this process, by configuration or by an explicit
+#: call. Kept separate from the value so "explicitly none" is not confused with "not looked up yet".
+_fallback_decided = False
+
+#: Guards the lazy lookup below against a configuration load that itself asks for the project root.
+_resolving_fallback = False
+
 #: A project chosen with ``caasi choose project``, used when the working directory is not inside one.
 #: Process-wide because every command asks :func:`find_project_root` the same question, and threading
 #: a configuration object through every caller would put the choice in seventeen places instead of
@@ -88,8 +95,35 @@ def set_fallback_root(root: Path | None) -> None:
     Only used when :func:`find_project_root` is called *without* a starting directory: a caller that
     passes an explicit start is asking about that location and must not be redirected.
     """
-    global _fallback_root
+    global _fallback_root, _fallback_decided
     _fallback_root = Path(root).expanduser() if root is not None else None
+    _fallback_decided = True
+
+
+def _ensure_fallback_decided() -> None:
+    """Ask the configuration which project was chosen, once, without forcing it earlier.
+
+    A command that never touches the configuration (``caasi project info`` in a bare directory)
+    still has to honour a project chosen with ``caasi choose project``, so the lookup happens here
+    on first need. The flag stops a configuration load that itself asks for the project root from
+    recursing.
+    """
+    global _resolving_fallback
+    if _fallback_decided or _resolving_fallback:
+        return
+    _resolving_fallback = True
+    try:
+        from .. import state
+        from . import defaults as defaults_core
+
+        state.cfg()  # sets the fallback through `state.cfg`
+        if not _fallback_decided:
+            set_fallback_root(defaults_core.resolve_project_root(state.get().config))
+    except Exception:
+        # Never let a configuration problem turn "no project here" into a crash.
+        pass
+    finally:
+        _resolving_fallback = False
 
 
 def fallback_root() -> Path | None:
@@ -110,8 +144,56 @@ def find_project_root(start: Path | None = None) -> Path | None:
         if (candidate / PROJECT_FILE).is_file():
             return candidate
     if start is None:
+        _ensure_fallback_decided()
         return fallback_root()
     return None
+
+
+def chosen_robot_root() -> Path | None:
+    """The tree of the robot chosen with ``caasi choose robot``, when it is on this machine."""
+    from .. import state
+    from . import defaults as defaults_core
+
+    config = state.get().config
+    stored = config.get("defaults.robot") if config is not None else None
+    if not stored:
+        return None
+    name = defaults_core.name_from("robot", str(stored))
+    candidate = Path("~/caasi").expanduser() / "robots" / name
+    return candidate if (candidate / PROJECT_FILE).is_file() else None
+
+
+def work_roots() -> list[Path]:
+    """The trees a relative path may refer to, most specific first.
+
+    A project is your own code; a robot is the shipped tree, which on the robot *is* the deployed
+    project. Both are places you stand in when you type ``experiments/bringup.yaml``, so both are
+    searched -- that is what makes ``caasi choose robot swjtumover`` worth doing.
+    """
+    roots: list[Path] = []
+    project_root = find_project_root()
+    if project_root is not None:
+        roots.append(project_root)
+    robot_root = chosen_robot_root()
+    if robot_root is not None and robot_root not in roots:
+        roots.append(robot_root)
+    return roots
+
+
+def resolve_in_project(path: Path) -> Path:
+    """Resolve a relative path argument against the chosen project or robot.
+
+    `caasi choose project` / `caasi choose robot` fix *which tree* commands act on, so an experiment
+    given as ``experiments/bringup.yaml`` works from any directory -- otherwise the choice saves you
+    ``-t`` and then demands ``cd``. An existing path, and any absolute path, is left alone.
+    """
+    if path.is_absolute() or path.exists():
+        return path
+    for root in work_roots():
+        candidate = root / path
+        if candidate.exists():
+            return candidate
+    return path
 
 
 def load_project_meta(root: Path) -> dict[str, Any]:

@@ -462,7 +462,10 @@ def test_run_logs_json_envelope(runner):
     assert result.exit_code == 0
     data = json.loads(result.output)
     assert data["run"] == record.run_id
-    assert data["stream"] == "stdout"
+    # Both streams by default: ROS 2 writes to stderr, plain scripts to stdout, and showing one
+    # stream hid half of what a run did. `lines` still carries the first stream for older readers.
+    assert data["stream"] == "both"
+    assert set(data["streams"]) == {"stdout", "stderr"}
     assert len(data["lines"]) == 4
     by_component = {line["component"]: line for line in data["lines"] if line["component"]}
     assert by_component["nav2"]["severity"] == "ERROR"
@@ -479,3 +482,10 @@ def test_run_logs_filters_combine(runner):
     assert result.exit_code == 0
     assert "planner failed" not in result.output
     assert "all good" not in result.output
+
+
+def test_run_logs_can_still_name_one_stream(runner):
+    record = _tagged_run(runner)
+    result = runner.invoke(app, ["run", "logs", record.run_id, "--stream", "stdout"])
+    assert result.exit_code == 0
+    assert result.output.count("--- stdout ---") == 0  # no label when only one stream is shown

@@ -120,7 +120,7 @@ def teleop_record(
 
     if dry_run:
         output.echo(f"[bold]{_('sim.run.dry_title')}[/bold]")
-        output.echo(f"  command: {' '.join(command)}")
+        output.echo(f"  command: {' '.join(command)}", soft_wrap=True)
         output.echo(f"  dest:    {dest}")
         return
 
@@ -180,7 +180,7 @@ def teleop_replay(
 
     if dry_run:
         output.echo(f"[bold]{_('sim.run.dry_title')}[/bold]")
-        output.echo(f"  command: {' '.join(command)}")
+        output.echo(f"  command: {' '.join(command)}", soft_wrap=True)
         return
 
     record = runs.start_run(

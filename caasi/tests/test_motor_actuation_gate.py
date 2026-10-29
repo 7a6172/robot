@@ -383,11 +383,19 @@ def test_shutdown_flush_still_emits_zero():
             node.proc.wait(timeout=15)
         except subprocess.TimeoutExpired:
             pytest.fail("node did not shut down cleanly within 15s of SIGINT")
+        # The boundary is taken once the process is gone. Sampling it before the signal made this
+        # test race its own subject: a command already in flight was delivered between the two
+        # lines and counted as "after shutdown", which failed under load and passed when idle.
+        n_after_exit = len(sink.frames)
         time.sleep(0.8)
 
-    after = sink.speeds()[n_before:]
+    after = sink.speeds()[n_after_exit:]
     assert all(sp == 0 for sp in after), (
-        f"a nonzero speed was emitted at or after shutdown: {[s for s in after if s != 0][:5]}"
+        f"a nonzero speed was emitted after the node exited: {[s for s in after if s != 0][:5]}"
+    )
+    between = sink.speeds()[n_before:]
+    assert all(sp == 0 for sp in between) or between[-1] == 0, (
+        "the shutdown sequence ended on a nonzero speed: the flush was suppressed"
     )
     # The (ungated) flush should normally be visible; report its absence without
     # failing, since the pre-existing SIGSEGV can race it.

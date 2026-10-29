@@ -29,7 +29,7 @@ def _require_viewer(name: str) -> str:
 def _launch_or_show(name: str, command: list[str], dry_run: bool) -> None:
     if dry_run:
         output.echo(f"[bold]{_('replay.dry_title')}[/bold]")
-        output.echo(f"  command: {' '.join(command)}")
+        output.echo(f"  command: {' '.join(command)}", soft_wrap=True)
         return
     pid = viewers_core.launch(command)
     output.echo(f"[green]{_('view.started', viewer=name, pid=pid)}[/green]")
@@ -87,7 +87,7 @@ def view_attach(
     command = viewers_core.viewer_command(name, binary)
     if dry_run:
         output.echo(f"[bold]{_('replay.dry_title')}[/bold]")
-        output.echo(f"  command: {' '.join(command)}")
+        output.echo(f"  command: {' '.join(command)}", soft_wrap=True)
         return
     pid = viewers_core.launch(command, {"CAASI_RUN_DIR": str(record.directory)})
     output.echo(f"[green]{_('view.started', viewer=name, pid=pid)}[/green]")
@@ -136,7 +136,7 @@ def view_run(
     output.echo(f"  [bold]{_('replay.artifacts')}[/bold] " + ", ".join(payload["artifacts"]))
     if dry_run:
         output.echo(f"[bold]{_('replay.dry_title')}[/bold]")
-        output.echo(f"  command: {' '.join(command)}")
+        output.echo(f"  command: {' '.join(command)}", soft_wrap=True)
         return
     pid = viewers_core.launch(command, env)
     output.echo(f"[green]{_('view.started', viewer=name, pid=pid)}[/green]")

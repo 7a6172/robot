@@ -598,15 +598,16 @@ def remote_stop_run(record: RunRecord, config: Config, timeout: float = 5.0) -> 
 
     # 4. Update manifest on target and host
     if record.remote_run_dir:
-        # Expanded on the target: inside the python -c string a literal '~' is not a home
-        # directory, so the update silently did nothing.
-        dest_manifest = targets_core.remote_path_expr(
-            record.remote_run_dir + "/manifest.yaml").strip('"').replace(
-            '"$HOME"', os.environ.get("HOME", "~"))
+        # The path is passed as an argument, never embedded in the program: the target's shell expands
+        # ~ to *its* home, and Python receives a real path. Embedding it used to substitute this
+        # machine's home directory, so the update quietly wrote nowhere on the robot.
+        manifest_expr = targets_core.remote_path_expr(
+            record.remote_run_dir + "/manifest.yaml")
         update_remote = (
-            f"python3 -c 'import yaml; "
-            f"p=\"{dest_manifest}\"; "
-            f"d=yaml.safe_load(open(p)); d[\"stopped\"]=True; yaml.safe_dump(d, open(p,\"w\"))' 2>/dev/null || true"
+            "python3 -c 'import sys, yaml; "
+            "p = sys.argv[1]; d = yaml.safe_load(open(p)); "
+            "d[\"stopped\"] = True; yaml.safe_dump(d, open(p, \"w\"))' "
+            f"{manifest_expr} 2>/dev/null || true"
         )
         try:
             subprocess.run(ssh_prefix + [update_remote], capture_output=True, timeout=per_call)

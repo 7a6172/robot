@@ -76,13 +76,52 @@ def help_order() -> str:
     return resolve_help_order(state.cfg().help_order)
 
 
+def console_width() -> int | None:
+    """Width for the console, from ``COLUMNS`` when it is set to something sane.
+
+    rich otherwise measures the terminal, which is a different number in a pipe than on a TTY. CI
+    and tests set COLUMNS to make output reproducible; honouring it means a table is not silently
+    wrapped at 80 columns in one environment and 200 in another.
+    """
+    value = os.environ.get("COLUMNS", "").strip()
+    return int(value) if value.isdigit() and int(value) > 20 else None
+
+
+def console_height() -> int | None:
+    """Height to pair with :func:`console_width`.
+
+    rich reports 80x25 for a "dumb" terminal (``TERM=dumb``, which is what CI and some SSH sessions
+    present) *before* it looks at an explicit width. Giving it both dimensions takes the earlier
+    branch, so a requested width is actually used instead of being clamped to 80.
+    """
+    if console_width() is None:
+        return None
+    value = os.environ.get("LINES", "").strip()
+    return int(value) if value.isdigit() and int(value) > 5 else 25
+
+
 def _build_console(mode: str, stderr: bool) -> Console:
     """Console for the requested --color mode; 'auto' keeps rich's detection (TTY + NO_COLOR)."""
+    width = console_width()
+    height = console_height()
     if mode == "always":
-        return Console(stderr=stderr, force_terminal=True)
+        return Console(stderr=stderr, force_terminal=True, width=width, height=height)
     if mode == "never":
-        return Console(stderr=stderr, no_color=True)
-    return Console(stderr=stderr)
+        return Console(stderr=stderr, no_color=True, width=width, height=height)
+    return Console(stderr=stderr, width=width, height=height)
+
+
+def reset() -> None:
+    """Drop the cached consoles.
+
+    The console is built once and reused, which is right for one process. A caller that changes
+    COLUMNS or the colour mode afterwards (a test, a long-lived agent) must be able to rebuild it,
+    otherwise the first width it ever saw sticks silently.
+    """
+    global _console, _err_console, _console_color
+    _console = None
+    _err_console = None
+    _console_color = None
 
 
 def _consoles() -> tuple[Console, Console]:

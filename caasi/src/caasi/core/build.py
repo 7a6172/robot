@@ -568,11 +568,14 @@ def execute_target_build(
         return res
 
     # 6. Remote SSH build
-    steps = [f"cd {dest}"]
+    steps = [f"cd {targets_core.remote_path_expr(dest)}"]
     if clean:
         steps.append("rm -rf build install log")
     steps.append("ulimit -s unlimited 2>/dev/null || true")
-    steps.append(f"test -f {ros_setup} && . {ros_setup}")
+    steps.append(
+        f"test -f {targets_core.remote_path_expr(ros_setup)} && "
+        f". {targets_core.remote_path_expr(ros_setup)}"
+    )
     steps.append(shlex.join(colcon_cmd))
     remote_sh = " && ".join(steps)
 

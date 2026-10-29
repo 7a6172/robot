@@ -108,7 +108,7 @@ def nav_launch(
 
     if dry_run:
         output.echo(f"[bold]{_('replay.dry_title')}[/bold]")
-        output.echo(f"  command: {' '.join(command)}")
+        output.echo(f"  command: {' '.join(command)}", soft_wrap=True)
         return
 
     record = runs.start_run(

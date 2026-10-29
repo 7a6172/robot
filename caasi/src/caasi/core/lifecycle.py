@@ -43,7 +43,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import Config
-from .targets import Target, target_ssh_prefix
+from .targets import Target, remote_path_expr, target_ssh_prefix
 
 # The native mechanisms caasi knows how to invoke. Only systemd is implemented;
 # the registry shape is left open so a container restart policy or another init
@@ -296,9 +296,11 @@ def _write_remote(target: Target, path: str, content: str, timeout: float | None
 
     import subprocess
 
+    # A path like "~/caasi/..." must expand on the target: quoting it whole makes `cat >` write to a
+    # directory literally named "~", which then fails or scatters files.
     cmd = (
-        f"mkdir -p {shlex.quote(str(Path(path).parent))} && "
-        f"cat > {shlex.quote(path)}"
+        f"mkdir -p {remote_path_expr(str(Path(path).parent))} && "
+        f"cat > {remote_path_expr(path)}"
     )
     prefix = target_ssh_prefix(target)
     try:

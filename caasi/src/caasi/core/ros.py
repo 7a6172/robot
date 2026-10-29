@@ -124,6 +124,20 @@ def _remote_ros_snippet(ros_setup: str | None, overlay_setup: str | None) -> str
     return f'{guard} ; {probe} ; exec ros2 "$@"'
 
 
+#: Subcommands whose answers come from the `ros2` daemon. The daemon caches discovery for two hours
+#: and holds UDP 7000 while it lives -- on this robot that is the LiDAR's own port, so a single
+#: `ros2 topic list` was enough to break the next bringup. Asking these queries for `--no-daemon`
+#: keeps caasi a good citizen: it never leaves a daemon behind.
+DAEMONLESS_VERBS = frozenset({"list", "info", "show", "get", "types", "names", "count"})
+
+
+def without_daemon(args: list[str]) -> list[str]:
+    """Append `--no-daemon` to a query that would otherwise start (or use) the ros2 daemon."""
+    if len(args) >= 2 and args[1] in DAEMONLESS_VERBS:
+        return [*args, "--no-daemon"]
+    return list(args)
+
+
 def remote_ros2(
     target: "Target",
     args: list[str],
@@ -153,7 +167,7 @@ def remote_ros2(
         env["ROS_DOMAIN_ID"] = str(domain_id)
 
     request = execution_core.ExecRequest(
-        argv=["ros2", *args],
+        argv=["ros2", *without_daemon(args)],
         env=env,
         ros_setup=ros_setup,
         overlay_setup=overlay_setup,

@@ -56,8 +56,12 @@ def isolated_env(tmp_path, monkeypatch):
     xdg.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(xdg))
-    # Wide terminal so Rich tables are never truncated in tests.
+    # Wide terminal so Rich tables are never truncated in tests. The output module caches its
+    # consoles, so a width seen by an earlier test would otherwise stick for the whole run.
     monkeypatch.setenv("COLUMNS", "200")
+    from caasi.utils import output as output_utils
+
+    output_utils.reset()
     for var in CLEAN_ENV_VARS:
         monkeypatch.delenv(var, raising=False)
 

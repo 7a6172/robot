@@ -64,7 +64,7 @@ def remote_connect(
 
     if dry_run:
         output.echo(f"[bold]{_('replay.dry_title')}[/bold]")
-        output.echo(f"  command: {' '.join(args)}")
+        output.echo(f"  command: {' '.join(args)}", soft_wrap=True)
         return
 
     if command:
@@ -99,7 +99,7 @@ def remote_run(
 
     if dry_run:
         output.echo(f"[bold]{_('replay.dry_title')}[/bold]")
-        output.echo(f"  command: {' '.join(command)}")
+        output.echo(f"  command: {' '.join(command)}", soft_wrap=True)
         return
 
     run_name = f"{machine.name}-{ctx.args[0]}"

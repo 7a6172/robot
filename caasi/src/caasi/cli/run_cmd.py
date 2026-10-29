@@ -22,6 +22,7 @@ from .. import state
 from ..core import artifacts as artifacts_mod
 from ..core import experiment, provenance, runs
 from ..core import defaults as defaults_core
+from ..core import project as projects
 from ..core.config import Config
 from ..i18n import _
 from ..utils import output
@@ -62,6 +63,9 @@ def launch_experiment(
     dry runs; failures exit via :func:`output.fail`.
     """
     cfg = state.cfg()
+    # A relative experiment path belongs to the chosen project, not to wherever the shell happens
+    # to be: `caasi choose project` is what makes the path meaningful from any directory.
+    config_path = projects.resolve_in_project(config_path)
     # -t wins, then the session choice, then `caasi choose target`, then local
     resolved_target = defaults_core.resolve_target_name(cfg, target)
     if resolved_target != "local":
@@ -75,6 +79,22 @@ def launch_experiment(
             output.echo(f"  target:  {target_obj.name} ({target_obj.transport})")
             output.echo(f"  config:  {config_path}")
             return None
+        # A run left alive on the target is the usual reason the next one fails in ways that look
+        # unrelated: on this robot a leftover camera held UDP 7000, so the LiDAR could not bind and
+        # the new bringup died in a restart loop. Say it before starting, without blocking -- some
+        # workflows legitimately run several experiments at once.
+        active = [
+            other.run_id
+            for other in runs.list_runs(cfg)
+            if other.target == target_obj.name
+            and runs.effective_status(other, cfg) == runs.RUNNING
+        ]
+        if active:
+            output.echo(
+                _("run.note.others_active", runs=", ".join(active[:3])) + " "
+                + _("run.note.others_active_hint"),
+                markup=False,
+            )
         try:
             record = runs.start_target_run(
                 target=target_obj,
@@ -128,7 +148,7 @@ def launch_experiment(
 
     if dry_run:
         output.echo(f"[bold]{_('sim.run.dry_title')}[/bold]")
-        output.echo(f"  command: {' '.join(command)}")
+        output.echo(f"  command: {' '.join(command)}", soft_wrap=True)
         output.echo(f"  cwd:     {exp.work_dir}")
         for key in sorted(env):
             if key in exp.env or key.startswith("ISAAC"):
@@ -383,16 +403,26 @@ def run_logs(
     query: str = typer.Argument("latest", help=_("run.arg.query")),
     lines: int = typer.Option(50, "--lines", "-n", help=_("run.flag.lines")),
     follow: bool = typer.Option(False, "--follow", "-f", help=_("run.flag.follow")),
-    stream: str = typer.Option("stdout", "--stream", "-s", help=_("run.flag.stream")),
+    stream: str = typer.Option("both", "--stream", "-s", help=_("run.flag.stream")),
     component: Optional[str] = typer.Option(None, "--component", help=_("run.flag.component")),
     errors: bool = typer.Option(False, "--errors", help=_("run.flag.errors")),
     since: Optional[str] = typer.Option(None, "--since", help=_("run.flag.since")),
     json_output: bool = typer.Option(False, "--json", help=_("flag.json")),
 ) -> None:
     record = _require_run(query)
-    if stream not in ("stdout", "stderr"):
+    if stream not in ("stdout", "stderr", "both"):
         output.fail(_("run.bad_stream", stream=stream))
         return
+    if stream == "both":
+        # ROS 2 nodes log to stderr while a plain python script prints to stdout, so showing only
+        # one stream hides half of what happened -- a failed teleop run looked completely silent.
+        # Show both, labelled, unless the caller asked to follow (which needs a single file).
+        streams = ["stdout", "stderr"]
+        if follow:
+            streams = ["stderr"]
+            output.echo(_("run.follow.stderr_only"), markup=False)
+    else:
+        streams = [stream]
     cutoff = None
     if since is not None:
         seconds = _parse_since(since)
@@ -401,33 +431,49 @@ def run_logs(
             return
         cutoff = datetime.now().astimezone() - timedelta(seconds=seconds)
     cfg = state.cfg()
-    path = runs.log_path(record, stream)
+    path = runs.log_path(record, streams[0])
     content = ""
-    if path is not None and path.is_file():
-        try:
-            content = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            content = ""
-    elif record.target != "local":
-        content = runs.read_run_log(record, cfg, stream=stream, lines=max(lines, 200))
-    else:
-        output.fail(_("run.no_log", stream=stream))
-        return
-
     def matches(parsed: dict) -> bool:
         return _line_matches(parsed, component, errors, cutoff)
 
-    selected = [
-        parsed
-        for parsed in (parse_log_line(line) for line in content.splitlines())
-        if matches(parsed)
-    ][-max(lines, 0):]
+    collected: dict[str, list[dict]] = {}
+    for one in streams:
+        where = runs.log_path(record, one)
+        text = ""
+        if where is not None and where.is_file():
+            try:
+                text = where.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                text = ""
+        elif record.target != "local":
+            text = runs.read_run_log(record, cfg, stream=one, lines=max(lines, 200))
+        elif len(streams) == 1:
+            output.fail(_("run.no_log", stream=one))
+            return
+        collected[one] = [
+            parsed
+            for parsed in (parse_log_line(line) for line in text.splitlines())
+            if matches(parsed)
+        ][-max(lines, 0):]
 
     if output.wants_json(json_output):
         output.echo_json(
             {
                 "run": record.run_id,
                 "stream": stream,
+                "streams": {
+                    one: [
+                        {
+                            "timestamp": parsed["timestamp"],
+                            "component": parsed["component"],
+                            "severity": "ERROR" if _ERROR_RE.search(parsed["message"]) else "INFO",
+                            "message": parsed["message"],
+                        }
+                        for parsed in lines_of
+                    ]
+                    for one, lines_of in collected.items()
+                },
+                # the flat list keeps older readers working
                 "lines": [
                     {
                         "timestamp": parsed["timestamp"],
@@ -435,14 +481,18 @@ def run_logs(
                         "severity": "ERROR" if _ERROR_RE.search(parsed["message"]) else "INFO",
                         "message": parsed["message"],
                     }
-                    for parsed in selected
+                    for parsed in collected[streams[0]]
                 ],
             }
         )
         return
 
-    for parsed in selected:
-        output.echo(parsed["line"], markup=False)
+    both = len(collected) > 1
+    for one, lines_of in collected.items():
+        if both and lines_of:
+            output.echo(f"[dim]--- {one} ---[/dim]")
+        for parsed in lines_of:
+            output.echo(parsed["line"], markup=False)
 
     if not follow:
         return
@@ -472,7 +522,9 @@ def run_logs(
         if t and record.remote_run_dir:
             ssh_prefix = targets_core.target_ssh_prefix(t)
             log_file = f"{record.remote_run_dir.rstrip('/')}/{stream}.log"
-            cmd = ssh_prefix + [f"tail -n 0 -f '{log_file}' 2>/dev/null"]
+            cmd = ssh_prefix + [
+                f"tail -n 0 -f {targets_core.remote_path_expr(log_file)} 2>/dev/null"
+            ]
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
             try:
                 while True:
@@ -527,7 +579,8 @@ def run_attach(query: str = typer.Argument(..., help=_("run.arg.query"))) -> Non
 
 @app.command("stop", help=_("run.stop_help"))
 def run_stop(
-    query: str = typer.Argument(..., help=_("run.arg.query")),
+    # Same default as `caasi logs`: the run you just started is the one you want to stop.
+    query: str = typer.Argument("latest", help=_("run.arg.query")),
     backend: Optional[str] = typer.Option(None, "--backend", help=_("run.flag.backend")),
 ) -> None:
     cfg = state.cfg()

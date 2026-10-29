@@ -553,7 +553,9 @@ def start_command(
     """Echo a dry run, or start *command* as a detached tracked run."""
     if dry_run:
         output.echo(f"[bold]{_('replay.dry_title')}[/bold]")
-        output.echo(f"  command: {' '.join(str(part) for part in command)}")
+        output.echo(
+            f"  command: {' '.join(str(part) for part in command)}", soft_wrap=True
+        )
         if cwd is not None:
             output.echo(f"  cwd:     {cwd}")
         if note:

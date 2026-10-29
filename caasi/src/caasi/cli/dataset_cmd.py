@@ -129,7 +129,7 @@ def dataset_generate(
     dataset_name = name or exp.name
     if dry_run:
         output.echo(f"[bold]{_('sim.run.dry_title')}[/bold]")
-        output.echo(f"  command: {' '.join(command)} --dataset-dir <dir>")
+        output.echo(f"  command: {' '.join(command)} --dataset-dir <dir>", soft_wrap=True)
         output.echo(f"  cwd:     {exp.work_dir}")
         return
 
@@ -313,7 +313,7 @@ def dataset_download(
 
     if dry_run:
         output.echo(f"[bold]{_('sim.run.dry_title')}[/bold]")
-        output.echo(f"  command: {' '.join(command)}")
+        output.echo(f"  command: {' '.join(command)}", soft_wrap=True)
         output.echo(f"  dest:    {dataset_dir}")
         return
 

@@ -190,7 +190,7 @@ def build_app(kind: str) -> typer.Typer:
                 return
             if dry_run:
                 output.echo(f"[bold]{_('sim.run.dry_title')}[/bold]")
-                output.echo(f"  command: {' '.join(converter.command)}")
+                output.echo(f"  command: {' '.join(converter.command)}", soft_wrap=True)
                 return
             record = runs.start_run(
                 cfg,
@@ -266,7 +266,7 @@ def build_app(kind: str) -> typer.Typer:
             env = {} if rosenv.is_sourced() else rosenv.sourced_env()
             if dry_run:
                 output.echo(f"[bold]{_('sim.run.dry_title')}[/bold]")
-                output.echo(f"  command: {' '.join(command)}")
+                output.echo(f"  command: {' '.join(command)}", soft_wrap=True)
                 output.echo(f"  dest:    {dest}")
                 return
             dest.mkdir(parents=True, exist_ok=True)
@@ -328,7 +328,7 @@ def build_app(kind: str) -> typer.Typer:
                     return
             if dry_run:
                 output.echo(f"[bold]{_('sim.run.dry_title')}[/bold]")
-                output.echo(f"  command: {' '.join(command)}")
+                output.echo(f"  command: {' '.join(command)}", soft_wrap=True)
                 return
             record = runs.start_run(
                 cfg,
