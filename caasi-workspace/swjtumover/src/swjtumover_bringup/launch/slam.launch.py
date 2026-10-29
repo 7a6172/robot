@@ -48,10 +48,20 @@ def generate_launch_description():
         parameters=[slam_params, {'use_sim_time': use_sim_time}])
 
     # Without this the node above stays unconfigured and publishes nothing.
+    #
+    # `bond_timeout: 0.0` disables the manager's health bond check. slam_toolbox does not create a
+    # bond connection (most nav2 servers do, which is why the default 4 s timeout exists), so with
+    # the default the manager reports "Server slam_toolbox was unable to be reached ... may be
+    # misconfigured" while the node is in fact active and publishing /map. Disabling the check for
+    # this one manager keeps the log honest; nav2's own manager keeps its bond.
     lifecycle_manager = Node(
         package='nav2_lifecycle_manager', executable='lifecycle_manager',
         name='lifecycle_manager_slam', output='screen',
-        parameters=[{'autostart': True, 'node_names': ['slam_toolbox']}])
+        parameters=[{
+            'autostart': True,
+            'node_names': ['slam_toolbox'],
+            'bond_timeout': 0.0,
+        }])
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='false'),

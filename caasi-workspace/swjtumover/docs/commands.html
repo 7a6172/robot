@@ -201,21 +201,26 @@ window first. Without any display the node exits with code 3 and says why.</p>
 <p>ROS 1: <code>rosrun swjtumover_bringup teleop_node.py</code></p>
 <hr />
 <h2 id="3-visualization">3. Visualization<a class="headerlink" href="#3-visualization" title="Permanent link">&para;</a></h2>
-<p><strong>Local</strong></p>
-<pre><code class="language-bash"># ROS 2
+<p>rviz needs a <strong>screen</strong>. The robot is normally headless, and a detached <code>caasi run</code> has no <code>DISPLAY</code>,
+so rviz there aborts with <code>could not connect to display</code> / <code>Could not load the Qt platform plugin
+"xcb"</code>. Two ways that work:</p>
+<p><strong>Local</strong> — on a machine with a desktop session</p>
+<pre><code class="language-bash"># on the robot, in its own desktop session (HDMI monitor, or a remote desktop)
 rviz2 -d &quot;$(ros2 pkg prefix swjtumover_bringup)/share/swjtumover_bringup/config/bringup.rviz&quot;
 
-# caasi, on the robot
-caasi run start experiments/rviz.yaml
+# on your workstation, reading the robot's topics (needs DDS reachability)
+caasi rviz2 --target &lt;target&gt;
 </code></pre>
-<p><strong>Remote</strong></p>
+<p><strong>Remote</strong> — through caasi, only when the target has a display</p>
 <pre><code class="language-bash"># start rviz with the bringup in one go
 caasi run start experiments/bringup_rviz.yaml -t &lt;target&gt;
 
 # or rviz against a bringup that is already running
 caasi run start experiments/rviz.yaml -t &lt;target&gt;
-caasi logs &lt;the rviz run&gt; -f
+caasi logs -f          # follows stderr, where the Qt error appears if it cannot open a display
 </code></pre>
+<p>If the log ends in <code>Could not load the Qt platform plugin "xcb"</code>, that is the missing display, not a
+broken configuration: run rviz on the machine that has the screen, pointing it at the robot's topics.</p>
 <p><strong>Check it worked:</strong> the robot body, <code>/scan</code> and the camera image draw with only the bringup running.
 The <code>/map</code> panel fills once something publishes a map; the two costmap panels need nav2 and are off by
 default.</p>
@@ -256,19 +261,28 @@ ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap \
 <code>rosrun map_server map_saver -f ~/maps/map</code></p>
 <hr />
 <h2 id="6-navigation">6. Navigation<a class="headerlink" href="#6-navigation" title="Permanent link">&para;</a></h2>
+<p>Navigation is <strong>two steps</strong>: the hardware first, then nav2. Do not merge them — the LiDAR must own
+UDP 7000 before any other ROS 2 node exists (see <a href="troubleshooting.html#the-lidar-cannot-bind-udp-7000">Troubleshooting</a>),
+and nav2's own nodes would take that port first.</p>
 <p><strong>Local</strong></p>
-<pre><code class="language-bash"># ROS 2 -- serves the map, localises, plans and drives
+<pre><code class="language-bash"># step 1 -- hardware: /scan, /odom, TF. Leave it running.
+ros2 launch swjtumover_bringup bringup.launch.py
+
+# step 2 -- in a second terminal: map, localisation, planning, control
 ros2 launch swjtumover_bringup navigation.launch.py
 
 # standalone test: let nav2 drive /cmd_vel directly
 ros2 launch swjtumover_bringup navigation.launch.py cmd_vel_topic:=/cmd_vel
 
-# caasi, on the robot
+# the same two steps through caasi, on the robot
+caasi run start experiments/bringup.yaml
 caasi run start experiments/navigation.yaml
 </code></pre>
 <p><strong>Remote</strong></p>
-<pre><code class="language-bash">caasi run start experiments/navigation.yaml -t &lt;target&gt;
+<pre><code class="language-bash">caasi run start experiments/bringup.yaml -t &lt;target&gt;
+caasi run start experiments/navigation.yaml -t &lt;target&gt;
 </code></pre>
+<p>Two runs, two logs: <code>caasi run stop</code> stops the most recent, so stop navigation before bringup.</p>
 <p><strong>Give it a pose</strong> — nav2 waits for one before activating its costmaps (the equivalent of rviz's
 "2D Pose Estimate"):</p>
 <pre><code class="language-bash">ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped \

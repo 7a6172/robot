@@ -18,7 +18,12 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import (DeclareLaunchArgument, OpaqueFunction, TimerAction)
+from launch.actions import (
+    DeclareLaunchArgument,
+    ExecuteProcess,
+    OpaqueFunction,
+    TimerAction,
+)
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
@@ -102,6 +107,15 @@ def generate_launch_description():
              arguments=['-d', os.path.join(share_dir, 'config', 'bringup.rviz')]),
     ]
 
+    # The `ros2` command-line daemon caches discovery for two hours and holds UDP 7000 while it
+    # lives, so a single `ros2 topic list` on the robot is enough to make this driver fail to bind
+    # until the daemon goes away. Stopping it costs nothing (it is only a cache and restarts on
+    # demand) and makes bringup independent of what anyone typed earlier. Must run before the
+    # LiDAR node, which is why it is the first action.
+    stop_daemon = ExecuteProcess(
+        cmd=['ros2', 'daemon', 'stop'], output='screen',
+        name='ros2_daemon_stop')
+
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument(
@@ -117,6 +131,7 @@ def generate_launch_description():
             'lidar_bind_lead', default_value='3.0',
             description='Seconds between starting the LiDAR driver and the rest of the stack. '
                         'The driver must own UDP 7000 before any other ROS 2 node binds it.'),
+        stop_daemon,
         lidar_first,
         TimerAction(period=lidar_bind_lead, actions=deferred),
     ])

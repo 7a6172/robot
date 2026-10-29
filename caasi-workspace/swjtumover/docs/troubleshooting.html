@@ -72,7 +72,7 @@
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#the-robot-does-not-move">The robot does not move</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#there-is-no-lidar-data">There is no LiDAR data</a>
+    <li class="toctree-l2"><a class="reference internal" href="#the-lidar-cannot-bind-udp-7000">The LiDAR cannot bind UDP 7000</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#navigation-does-nothing-nodes-stay-inactive">Navigation does nothing, nodes stay inactive</a>
     </li>
@@ -150,17 +150,53 @@ sensor. Any of them true is why. Restart after fixing the cause; the latch is de
 <p>If you are driving with nav2, remember it publishes <code>/cmd_vel/nav</code>, and the mission node is what
 sends that to <code>/cmd_vel</code>. For a standalone navigation test, launch it with
 <code>cmd_vel_topic:=/cmd_vel</code>.</p>
-<h2 id="there-is-no-lidar-data">There is no LiDAR data<a class="headerlink" href="#there-is-no-lidar-data" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">caasi exec -t swjtumover05 --ros -- ros2 topic hz /scan
+<h2 id="the-lidar-cannot-bind-udp-7000">The LiDAR cannot bind UDP 7000<a class="headerlink" href="#the-lidar-cannot-bind-udp-7000" title="Permanent link">&para;</a></h2>
+<p>The symptom, repeated every couple of seconds because the node is restarted automatically:</p>
+<pre><code>[vanjee_scan_node-1] [FATAL] cannot bind 192.168.110.10:7000: Address already in use
+(another process, or a DDS participant, already owns it; find it with `ss -lunp | grep :7000`)
 </code></pre>
-<p>Nothing, or the log says the adapter could not open a port: something else took <strong>UDP 7000</strong>. The
-LiDAR has to start before the other programs, which <code>bringup.launch.py</code> does for you — if you started
-nodes by hand, stop everything and use the launch file.</p>
+<p>The LiDAR sends its scans to <strong>192.168.110.10:7000</strong>, and in this ROS 2 environment <em>every</em> participant
+takes UDP 7000 as well. Whoever binds it first keeps it. The driver therefore has to be the first ROS 2
+process, which <code>bringup.launch.py</code> arranges by starting it three seconds ahead of everything else
+(<code>lidar_bind_lead</code>).</p>
+<p>It breaks in three situations, and none is a fault in the driver:</p>
+<ul>
+<li><strong>The <code>ros2</code> command-line daemon.</strong> This is the usual one: every <code>ros2</code> command starts a background
+  daemon that caches discovery for two hours and holds UDP 7000 while it lives, so a single
+  <code>ros2 topic list</code> is enough to break the next bringup. <code>bringup.launch.py</code> now stops the daemon
+  itself before starting the driver, so a fresh bringup recovers on its own — and caasi's own
+  queries ask for <code>--no-daemon</code>, so it does not leave one behind. If you started nodes by hand, do it
+  yourself:</li>
+</ul>
+<p><code>bash
+  caasi exec -t swjtumover05 --ros -- ros2 daemon stop</code></p>
+<ul>
+<li><strong>Something was already running.</strong> A leftover node, a <code>ros2 topic hz</code> you forgot, or a launch you
+  stopped with <code>Ctrl-C</code> but whose children survived. Ask who holds the port, then stop it:</li>
+</ul>
+<p><code>bash
+  caasi exec -t swjtumover05 -- bash -c 'ss -lunp | grep :7000'
+  caasi run stop          # stop the most recent run</code></p>
+<p>The name in brackets is the process: <code>vanjee_scan_nod</code> is the driver itself (fine), anything else
+  is a squatter. With a clean robot the port is free and bringup starts normally.</p>
+<ul>
+<li><strong>Navigation started the hardware for you.</strong> It must not: nav2's nodes bind 7000 before the LiDAR
+  gets there. Start <code>bringup.launch.py</code> first and leave it running, then start navigation — see
+  <a href="commands.html#6-navigation">Commands §6</a>.</li>
+</ul>
+<p>If <code>/scan</code> is missing but the log shows no bind error, check the network instead:</p>
+<pre><code class="language-bash">caasi exec -t swjtumover05 --ros -- ros2 topic hz /scan
+caasi exec -t swjtumover05 -- bash -c 'ping -c 2 192.168.110.100'
+</code></pre>
 <h2 id="navigation-does-nothing-nodes-stay-inactive">Navigation does nothing, nodes stay <code>inactive</code><a class="headerlink" href="#navigation-does-nothing-nodes-stay-inactive" title="Permanent link">&para;</a></h2>
 <pre><code class="language-bash">caasi exec -t swjtumover05 --ros -- ros2 lifecycle get /amcl
 </code></pre>
-<p><code>inactive</code> means nav2 has not been told where the robot is. Give it a pose; the equivalent of
-clicking "2D Pose Estimate" in rviz:</p>
+<p><code>inactive</code> has two causes. First, check the hardware is up at all — without <code>/scan</code> and TF, nav2 can
+only wait:</p>
+<pre><code class="language-bash">caasi exec -t swjtumover05 --ros -- ros2 topic hz /scan
+</code></pre>
+<p>Second, nav2 has not been told where the robot is. Give it a pose; the equivalent of clicking
+"2D Pose Estimate" in rviz:</p>
 <pre><code class="language-bash">caasi exec -t swjtumover05 --ros -- ros2 topic pub --once /initialpose \
   geometry_msgs/msg/PoseWithCovarianceStamped \
   &quot;{header: {frame_id: map}, pose: {pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}}&quot;

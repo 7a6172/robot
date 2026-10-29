@@ -5,7 +5,7 @@ onto it, starting a task, watching it, and what to do when it misbehaves. Each c
 its arguments and a real example, so you can adapt rather than memorise.
 
 It covers what this robot needs; caasi is a general tool with more to it. Its home is
-<https://github.com/7a6172/caasi/>, and every command answers `--help` with its own details.
+<https://pypi.org/project/caasi/>, and every command answers `--help` with its own details.
 
 ## First contact
 

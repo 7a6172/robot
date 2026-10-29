@@ -91,17 +91,21 @@ ROS 1: `rosrun swjtumover_bringup teleop_node.py`
 
 ## 3. Visualization
 
-**Local**
+rviz needs a **screen**. The robot is normally headless, and a detached `caasi run` has no `DISPLAY`,
+so rviz there aborts with `could not connect to display` / `Could not load the Qt platform plugin
+"xcb"`. Two ways that work:
+
+**Local** — on a machine with a desktop session
 
 ```bash
-# ROS 2
+# on the robot, in its own desktop session (HDMI monitor, or a remote desktop)
 rviz2 -d "$(ros2 pkg prefix swjtumover_bringup)/share/swjtumover_bringup/config/bringup.rviz"
 
-# caasi, on the robot
-caasi run start experiments/rviz.yaml
+# on your workstation, reading the robot's topics (needs DDS reachability)
+caasi rviz2 --target <target>
 ```
 
-**Remote**
+**Remote** — through caasi, only when the target has a display
 
 ```bash
 # start rviz with the bringup in one go
@@ -109,8 +113,11 @@ caasi run start experiments/bringup_rviz.yaml -t <target>
 
 # or rviz against a bringup that is already running
 caasi run start experiments/rviz.yaml -t <target>
-caasi logs <the rviz run> -f
+caasi logs -f          # follows stderr, where the Qt error appears if it cannot open a display
 ```
+
+If the log ends in `Could not load the Qt platform plugin "xcb"`, that is the missing display, not a
+broken configuration: run rviz on the machine that has the screen, pointing it at the robot's topics.
 
 **Check it worked:** the robot body, `/scan` and the camera image draw with only the bringup running.
 The `/map` panel fills once something publishes a map; the two costmap panels need nav2 and are off by
@@ -178,24 +185,35 @@ caasi exec --target <target> -- bash -c 'mkdir -p ~/maps && source /opt/ros/jazz
 
 ## 6. Navigation
 
+Navigation is **two steps**: the hardware first, then nav2. Do not merge them — the LiDAR must own
+UDP 7000 before any other ROS 2 node exists (see [Troubleshooting](troubleshooting.md#the-lidar-cannot-bind-udp-7000)),
+and nav2's own nodes would take that port first.
+
 **Local**
 
 ```bash
-# ROS 2 -- serves the map, localises, plans and drives
+# step 1 -- hardware: /scan, /odom, TF. Leave it running.
+ros2 launch swjtumover_bringup bringup.launch.py
+
+# step 2 -- in a second terminal: map, localisation, planning, control
 ros2 launch swjtumover_bringup navigation.launch.py
 
 # standalone test: let nav2 drive /cmd_vel directly
 ros2 launch swjtumover_bringup navigation.launch.py cmd_vel_topic:=/cmd_vel
 
-# caasi, on the robot
+# the same two steps through caasi, on the robot
+caasi run start experiments/bringup.yaml
 caasi run start experiments/navigation.yaml
 ```
 
 **Remote**
 
 ```bash
+caasi run start experiments/bringup.yaml -t <target>
 caasi run start experiments/navigation.yaml -t <target>
 ```
+
+Two runs, two logs: `caasi run stop` stops the most recent, so stop navigation before bringup.
 
 **Give it a pose** — nav2 waits for one before activating its costmaps (the equivalent of rviz's
 "2D Pose Estimate"):

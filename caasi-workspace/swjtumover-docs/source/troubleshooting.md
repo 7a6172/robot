@@ -48,15 +48,54 @@ If you are driving with nav2, remember it publishes `/cmd_vel/nav`, and the miss
 sends that to `/cmd_vel`. For a standalone navigation test, launch it with
 `cmd_vel_topic:=/cmd_vel`.
 
-## There is no LiDAR data
+## The LiDAR cannot bind UDP 7000
+
+The symptom, repeated every couple of seconds because the node is restarted automatically:
+
+```
+[vanjee_scan_node-1] [FATAL] cannot bind 192.168.110.10:7000: Address already in use
+(another process, or a DDS participant, already owns it; find it with `ss -lunp | grep :7000`)
+```
+
+The LiDAR sends its scans to **192.168.110.10:7000**, and in this ROS 2 environment *every* participant
+takes UDP 7000 as well. Whoever binds it first keeps it. The driver therefore has to be the first ROS 2
+process, which `bringup.launch.py` arranges by starting it three seconds ahead of everything else
+(`lidar_bind_lead`).
+
+It breaks in three situations, and none is a fault in the driver:
+
+* **The `ros2` command-line daemon.** This is the usual one: every `ros2` command starts a background
+  daemon that caches discovery for two hours and holds UDP 7000 while it lives, so a single
+  `ros2 topic list` is enough to break the next bringup. `bringup.launch.py` now stops the daemon
+  itself before starting the driver, so a fresh bringup recovers on its own — and caasi's own
+  queries ask for `--no-daemon`, so it does not leave one behind. If you started nodes by hand, do it
+  yourself:
+
+  ```bash
+  caasi exec -t swjtumover05 --ros -- ros2 daemon stop
+  ```
+
+* **Something was already running.** A leftover node, a `ros2 topic hz` you forgot, or a launch you
+  stopped with `Ctrl-C` but whose children survived. Ask who holds the port, then stop it:
+
+  ```bash
+  caasi exec -t swjtumover05 -- bash -c 'ss -lunp | grep :7000'
+  caasi run stop          # stop the most recent run
+  ```
+
+  The name in brackets is the process: `vanjee_scan_nod` is the driver itself (fine), anything else
+  is a squatter. With a clean robot the port is free and bringup starts normally.
+
+* **Navigation started the hardware for you.** It must not: nav2's nodes bind 7000 before the LiDAR
+  gets there. Start `bringup.launch.py` first and leave it running, then start navigation — see
+  [Commands §6](commands.md#6-navigation).
+
+If `/scan` is missing but the log shows no bind error, check the network instead:
 
 ```bash
 caasi exec -t swjtumover05 --ros -- ros2 topic hz /scan
+caasi exec -t swjtumover05 -- bash -c 'ping -c 2 192.168.110.100'
 ```
-
-Nothing, or the log says the adapter could not open a port: something else took **UDP 7000**. The
-LiDAR has to start before the other programs, which `bringup.launch.py` does for you — if you started
-nodes by hand, stop everything and use the launch file.
 
 ## Navigation does nothing, nodes stay `inactive`
 
@@ -64,8 +103,15 @@ nodes by hand, stop everything and use the launch file.
 caasi exec -t swjtumover05 --ros -- ros2 lifecycle get /amcl
 ```
 
-`inactive` means nav2 has not been told where the robot is. Give it a pose; the equivalent of
-clicking "2D Pose Estimate" in rviz:
+`inactive` has two causes. First, check the hardware is up at all — without `/scan` and TF, nav2 can
+only wait:
+
+```bash
+caasi exec -t swjtumover05 --ros -- ros2 topic hz /scan
+```
+
+Second, nav2 has not been told where the robot is. Give it a pose; the equivalent of clicking
+"2D Pose Estimate" in rviz:
 
 ```bash
 caasi exec -t swjtumover05 --ros -- ros2 topic pub --once /initialpose \

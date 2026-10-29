@@ -73,10 +73,14 @@ def generate_launch_description():
         # stayed at zero.
         remappings=[('cmd_vel', 'cmd_vel_nav_raw')])
 
+    # Recovery behaviours (spin, backup, drive-on-heading) publish velocity themselves, so they
+    # need the same remap as the controller: without it they write `/cmd_vel` directly and bypass
+    # the mission node, which is supposed to be the only publisher there.
     behaviors = LifecycleNode(
         package='nav2_behaviors', executable='behavior_server', name='behavior_server',
         namespace='', output='screen',
-        parameters=[nav2_params, {'use_sim_time': use_sim_time}])
+        parameters=[nav2_params, {'use_sim_time': use_sim_time}],
+        remappings=[('cmd_vel', 'cmd_vel_nav_raw')])
 
     bt_navigator = LifecycleNode(
         package='nav2_bt_navigator', executable='bt_navigator', name='bt_navigator',

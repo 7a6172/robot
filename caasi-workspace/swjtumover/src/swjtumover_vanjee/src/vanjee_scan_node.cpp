@@ -280,7 +280,9 @@ std::string port_conflict(const std::string & host, int port)
   std::string err;
   if (::bind(fd, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0) {
     err = std::string("cannot bind ") + host + ":" + std::to_string(port) + ": " +
-          std::strerror(errno) + " (another process, or a DDS participant, already owns it)";
+          std::strerror(errno) +
+          " (another process, or a DDS participant, already owns it; find it with "
+          "`ss -lunp | grep :" + std::to_string(port) + "`)";
   }
   ::close(fd);
   return err;
@@ -297,6 +299,10 @@ int main(int argc, char ** argv)
       !err.empty())
   {
     std::cerr << "[FATAL] " << err << std::endl;
+    // launch restarts a dead node immediately, so exiting straight away turns one unrecoverable
+    // conflict into a wall of identical lines (19 of them were counted in under a second). A short
+    // pause keeps the restart useful for a genuine hardware hiccup while leaving the log readable.
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     return 1;
   }
 
