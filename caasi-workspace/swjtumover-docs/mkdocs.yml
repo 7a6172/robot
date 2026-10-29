@@ -21,6 +21,7 @@ nav:
 - Getting started: getting-started.md
 - Concepts: concepts.md
 - Commands: commands.md
+- Developing: developing.md
 - caasi in depth: caasi.md
 - Inside the robot: ros2.md
 - Troubleshooting: troubleshooting.md

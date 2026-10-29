@@ -7,8 +7,9 @@ Every task, in the two places you might run it from:
 * **Remote** — from another machine, through caasi. This is the normal way to operate a deployed
   robot.
 
-`<target>` is the execution target you enrolled in caasi. Each section also names the ROS 1 command
-it replaces, for comparison.
+`<target>` is the execution target you enrolled in caasi — `swjtumover05` for the robot. Run
+`caasi choose target <target>` once and you can leave `-t` off everywhere; every command below works
+either way. Each section also names the ROS 1 command it replaces, for comparison.
 
 ---
 
@@ -395,3 +396,112 @@ colcon test-result --result-base build/swjtumover_bringup
 | remote logs | `caasi logs` | `caasi logs <run> -f` |
 | remote processes | `caasi run list` | `caasi run list` |
 | remote occupancy | `caasi node occupancy` | `caasi node occupancy` |
+
+## 13. Fixing the target and the project
+
+Set once instead of repeating `-t <target>` and `cd <project>`:
+
+| task | command | example |
+| --- | --- | --- |
+| use this machine from now on | `caasi choose target <name>` | `caasi choose target swjtumover05` |
+| use this robot (shipped software) | `caasi choose robot <name>` | `caasi choose robot swjtumover` |
+| work on your own code | `caasi choose project <name>` | `caasi choose project maze_run_1` |
+| point at a directory outside the tree | `caasi choose project <path>` | `caasi choose project ~/work/hw1` |
+| scope a choice to one terminal | `caasi choose --session …` | `eval "$(caasi choose --session target local)"` |
+| see what is set | `caasi choose` | `caasi choose` |
+| send simulation to a GPU machine | `caasi choose target <name> --role gpu` | `caasi choose target gpu-01 --role gpu` |
+| forget it | `caasi choose target --clear` | `caasi choose target --clear` |
+
+A **name** is looked up in caasi's layout (`~/caasi/robots`, `~/caasi/projects`,
+`~/caasi/workspaces`) **on the machine you are working on**: the chosen target if one is set, otherwise
+this computer, with the notice `no target set, defaulting to local machine`. Nothing found is reported
+with the places it looked.
+
+A flag always wins for a single command: `caasi exec -t local -- uptime`. When a command acts on a
+chosen target it prints one dim line naming it, so you are never guessing which machine is involved.
+
+## 14. Preparing a new robot
+
+| task | command | example |
+| --- | --- | --- |
+| copy the project there | `caasi deploy <target>` | `caasi deploy swjtumover05` |
+| install ROS 2 and everything else | `caasi run start experiments/provision.yaml -t <target>` | `caasi run start experiments/provision.yaml -t swjtumover05` |
+| on the robot instead | `scripts/provision.sh --apply` | `cd ~/caasi/robots/swjtumover && scripts/provision.sh --apply` |
+| show what it would do | `scripts/provision.sh` | `scripts/provision.sh --stage ros` |
+| give a robot its own ROS domain | `scripts/provision.sh --apply --domain <n>` | `scripts/provision.sh --apply --domain 5` |
+| check the result | `caasi target deps <target> --for bringup` | `caasi target deps swjtumover05 --for bringup` |
+
+Provisioning is idempotent and prints each command before running it. See
+[Getting started](getting-started.md#5-prepare-the-robot-once) for the stages.
+
+## 15. Remote inspection with caasi
+
+`caasi ros2` asks the robot's own ROS 2 system, so nothing needs to be installed or discovered on your
+side of the network.
+
+| task | caasi | example |
+| --- | --- | --- |
+| topics | `caasi ros2 list topics` | `caasi ros2 list topics -t swjtumover05` |
+| nodes | `caasi ros2 list nodes` | `caasi ros2 list nodes` |
+| one topic | `caasi ros2 topic <name>` | `caasi ros2 topic /scan` |
+| one message | `caasi ros2 topic <name> --echo --once` | `caasi ros2 topic /motor_state/left --echo --once` |
+| the graph | `caasi ros2 graph` | `caasi ros2 graph` |
+| services | `caasi ros2 service list` | `caasi ros2 service list` |
+| start the mission | `caasi ros2 service call …` | `caasi ros2 service call /line_then_home/start std_srvs/srv/Trigger "{}"` |
+| ROS 2's own check | `caasi ros2 doctor` | `caasi ros2 doctor` |
+| anything else | `caasi exec --ros -- …` | `caasi exec --ros -- ros2 topic hz /odom` |
+
+`caasi ros` and `caasi ros2` are the same command; both spellings work.
+
+## 16. Simulation on a GPU machine
+
+Isaac Sim and Isaac Lab need a GPU; the robot does not have one. These commands run where you point
+them, and default to this computer when no `gpu` target has been chosen.
+
+| task | command | example |
+| --- | --- | --- |
+| name the GPU machine once | `caasi choose target <name> --role gpu` | `caasi choose target gpu-01 --role gpu` |
+| run a sim experiment there | `caasi sim run <config> [-t <target>]` | `caasi sim run experiments/scene.yaml` |
+| run an Isaac Lab task | `caasi lab run <config> [-t <target>]` | `caasi lab run experiments/warehouse.yaml -t gpu-01` |
+| train | `caasi lab train <config> [-t <target>]` | `caasi lab train experiments/warehouse.yaml` |
+| replay a checkpoint | `caasi lab play <config> --checkpoint <file>` | `caasi lab play experiments/warehouse.yaml --checkpoint runs/last.pt` |
+| see what it would do | `--dry-run` | `caasi lab run experiments/warehouse.yaml --dry-run` |
+| register the GPU machine first | `caasi node enroll <name> --host <ip> --user <user>` | `caasi node enroll gpu-01 --host 10.212.19.50 --user dev` |
+
+A role is stored separately from the machine commands normally act on, so choosing the robot does not
+move your simulations to it.
+
+### What a simulation task is
+
+An Isaac Sim / Isaac Lab task is an ordinary Python script that Isaac's own launcher runs:
+
+```bash
+# what Isaac Lab itself would run on the GPU machine
+cd ~/IsaacLab && ./isaaclab.sh -p ~/work/tasks/22_train_nav.py --num_envs 64 --num_steps 2000
+```
+
+caasi wraps that in an experiment file, so it becomes one tracked run with a log and an exit code:
+
+```yaml
+name: nav-training
+backend: lab
+script: ../tasks/22_train_nav.py
+args:
+- --num_envs
+- "64"
+- --num_steps
+- "2000"
+description: Point-goal navigation training in Isaac Lab.
+```
+
+Two things must be true on the machine that runs it:
+
+```bash
+caasi config set tools.isaaclab.path /home/<you>/IsaacLab   # so caasi finds isaaclab.sh
+caasi lab status                                            # isaaclab registered and usable?
+caasi sim check                                             # the Isaac Sim side, same question
+caasi node check gpu-01                                     # the GPU machine is reachable and sane
+```
+
+`backend: sim` is the same idea for Isaac Sim, and resolves `tools.isaacsim.path`. A task that needs no
+Isaac at all uses `backend: python`.

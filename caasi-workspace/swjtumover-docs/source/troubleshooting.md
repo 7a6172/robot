@@ -10,7 +10,7 @@ Check in this order — each step rules out the one below it.
 **1. Is anything even publishing a command?**
 
 ```bash
-swj ros2 topic echo /cmd_vel --once
+caasi ros2 topic /cmd_vel --echo --once -t swjtumover05
 ```
 
 Nothing at all means no program is asking the robot to move — the mission is idle, or the controller
@@ -19,7 +19,7 @@ is not running. If it prints `linear: x: 0.0`, something is publishing but askin
 **2. Is the motor driver still alive?**
 
 ```bash
-swj ros2 topic echo /motor_state/left --once
+caasi ros2 topic /motor_state/left --echo --once -t swjtumover05
 ```
 
 If this prints nothing, the driver has stopped talking to the motor board. Its log says why:
@@ -51,7 +51,7 @@ sends that to `/cmd_vel`. For a standalone navigation test, launch it with
 ## There is no LiDAR data
 
 ```bash
-swj ros2 topic hz /scan
+caasi exec -t swjtumover05 --ros -- ros2 topic hz /scan
 ```
 
 Nothing, or the log says the adapter could not open a port: something else took **UDP 7000**. The
@@ -61,14 +61,15 @@ nodes by hand, stop everything and use the launch file.
 ## Navigation does nothing, nodes stay `inactive`
 
 ```bash
-swj ros2 lifecycle get /amcl
+caasi exec -t swjtumover05 --ros -- ros2 lifecycle get /amcl
 ```
 
 `inactive` means nav2 has not been told where the robot is. Give it a pose; the equivalent of
 clicking "2D Pose Estimate" in rviz:
 
 ```bash
-swj ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped \
+caasi exec -t swjtumover05 --ros -- ros2 topic pub --once /initialpose \
+  geometry_msgs/msg/PoseWithCovarianceStamped \
   "{header: {frame_id: map}, pose: {pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}}"
 ```
 
@@ -81,7 +82,7 @@ lifecycle transitions slow down badly on a small machine and the manager can giv
 ## The mission will not start
 
 ```bash
-caasi run start experiments/mission_start.yaml -t swjtumover-05
+caasi run start experiments/mission_start.yaml -t swjtumover05
 ```
 
 It prints the service's answer. The two common ones:
@@ -116,10 +117,10 @@ robot's desktop session, or through a remote desktop session (see [Remote access
 ## caasi cannot reach the robot
 
 ```bash
-caasi node check swjtumover-05
+caasi node check swjtumover05
 ```
 
-* **unreachable** — the robot is off, or on a different address. `caasi node refresh swjtumover-05`
+* **unreachable** — the robot is off, or on a different address. `caasi node refresh swjtumover05`
   re-verifies and follows it.
 * **identity mismatch** — the machine answering is not the one you enrolled. Do not re-enrol blindly:
   confirm which robot it is, then `caasi node reenroll` if the hardware legitimately changed.
@@ -134,16 +135,16 @@ caasi logs <run> --errors
 
 The usual causes: the service it needed was not running (see the mission above), the robot's build is
 older than the code you think it has (`caasi run status <run>` names the build), or a package is
-missing (`caasi target deps swjtumover-05 --for bringup`).
+missing (`caasi target deps swjtumover05 --for bringup`).
 
 ## Starting over cleanly
 
 ```bash
 caasi run list                     # stop anything running
 caasi run stop <each run>
-caasi build --target swjtumover-05 --clean
-caasi deploy swjtumover-05
-caasi build --target swjtumover-05
+caasi build --target swjtumover05 --clean
+caasi deploy swjtumover05
+caasi build --target swjtumover05
 ```
 
 If you moved or renamed the project directory on the robot, a clean build is required: the build

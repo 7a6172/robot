@@ -54,6 +54,18 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#caasi-in-ten-lines">caasi in ten lines</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#which-robot-am-i-talking-to">Which robot am I talking to?</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#three-machines-one-tool">Three machines, one tool</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#simulation-and-the-gpu">Simulation and the GPU</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#name-it-once-caasi-choose">Name it once: caasi choose</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#does-ros2-work-in-a-new-terminal">Does ros2 work in a new terminal?</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#words-used-in-this-manual">Words used in this manual</a>
     </li>
     </ul>
@@ -61,6 +73,10 @@
               </ul>
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="commands.html">Commands</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="developing.html">Developing</a>
                 </li>
               </ul>
               <ul>
@@ -245,6 +261,140 @@ ros2 launch swjtumover_bringup bringup.launch.py
 </tbody>
 </table>
 <p>A run is the thing you watch: <code>caasi run status &lt;run&gt;</code>, <code>caasi logs &lt;run&gt; -f</code>, <code>caasi run stop &lt;run&gt;</code>.</p>
+<h2 id="which-robot-am-i-talking-to">Which robot am I talking to?<a class="headerlink" href="#which-robot-am-i-talking-to" title="Permanent link">&para;</a></h2>
+<p>Three different things are easy to confuse, because one machine carries two of their names.</p>
+<table>
+<thead>
+<tr>
+<th>question</th>
+<th>answer</th>
+<th>example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Which machine?</strong></td>
+<td>the <strong>target</strong> — a registered <code>user@host</code> caasi can reach, or <code>local</code></td>
+<td><code>swjtumover05</code></td>
+</tr>
+<tr>
+<td><strong>Which robot?</strong></td>
+<td>the <strong>robot</strong> — the shipped software that drives its hardware</td>
+<td><code>swjtumover</code></td>
+</tr>
+<tr>
+<td><strong>Whose work?</strong></td>
+<td>the <strong>project</strong> — your own algorithm, task or homework, which <em>uses</em> that robot</td>
+<td><code>maze_run_1</code></td>
+</tr>
+</tbody>
+</table>
+<p>caasi keeps the two apart on every machine it manages, so temporary work cannot damage the robot's own
+code:</p>
+<pre><code>~/caasi/
+├── robots/&lt;robot&gt;/        the shipped robot: its code and deployed environment. You do not edit this
+├── projects/&lt;project&gt;/     your own work: algorithms, tasks, homework. It uses the robot's topics
+├── workspaces/&lt;name&gt;/      a source checkout
+├── data/                  run logs, datasets, recordings, results
+└── artifacts/  cache/     build outputs, and scratch space that is safe to clear
+</code></pre>
+<p>So <code>swjtumover</code> (robot) is the program that talks to motors, LiDAR and camera; <code>maze_run_1</code> (project)
+is your code that subscribes to <code>/scan</code> and publishes to <code>/cmd_vel</code>. Same robot, your files in your
+own directory.</p>
+<h3 id="three-machines-one-tool">Three machines, one tool<a class="headerlink" href="#three-machines-one-tool" title="Permanent link">&para;</a></h3>
+<p>The same distinction applies to <em>where</em> things run. A laptop may have no GPU and no robot attached:</p>
+<table>
+<thead>
+<tr>
+<th>role</th>
+<th>what runs there</th>
+<th>caasi target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>your dev machine</strong></td>
+<td>editing, small tests, nothing physical</td>
+<td><code>local</code> (reserved name)</td>
+</tr>
+<tr>
+<td><strong>the robot</strong></td>
+<td>the hardware: motors, sensors, navigation</td>
+<td><code>swjtumover05</code></td>
+</tr>
+<tr>
+<td><strong>a GPU server</strong></td>
+<td>Isaac Sim / Isaac Lab simulation, training</td>
+<td>e.g. <code>gpu-01</code></td>
+</tr>
+</tbody>
+</table>
+<p>All three are just <strong>targets</strong> to caasi; the difference is what you run on them. A robot has no GPU, so
+simulation goes to a GPU target — which may be your own machine if it has one, or a server elsewhere.</p>
+<h3 id="simulation-and-the-gpu">Simulation and the GPU<a class="headerlink" href="#simulation-and-the-gpu" title="Permanent link">&para;</a></h3>
+<p><code>caasi sim</code>, <code>caasi lab</code> and <code>caasi train</code> run Isaac Sim / Isaac Lab, which needs a real GPU. They take
+<code>--target</code> like everything else:</p>
+<pre><code class="language-bash">caasi lab run experiments/warehouse.yaml -t gpu-01
+caasi lab train experiments/warehouse.yaml -t gpu-01
+caasi sim run experiments/scene.yaml -t gpu-01
+</code></pre>
+<p>and, more usually, you name the GPU machine once:</p>
+<pre><code class="language-bash">caasi choose target gpu-01 --role gpu     # everything sim/lab/train now goes there
+caasi choose                              # the &quot;gpu work&quot; row shows where that is
+</code></pre>
+<p>A role never follows the machine you happen to be on. If no <code>gpu</code> target has been chosen, the work runs
+<strong>on this computer</strong> and says so — which is the right answer when your machine has the GPU, and an
+honest failure when it does not:</p>
+<pre><code>Error: Backend 'lab' needs a registered isaaclab install. Register one with
+'caasi config set tools.isaaclab...' or use backend 'python'.
+</code></pre>
+<p>That is caasi's whole point on this robot: the hardware work goes to the robot, the simulation goes to
+whatever machine has the GPU, and neither has to be the laptop you are typing on.</p>
+<h3 id="name-it-once-caasi-choose">Name it once: <code>caasi choose</code><a class="headerlink" href="#name-it-once-caasi-choose" title="Permanent link">&para;</a></h3>
+<p>Typing <code>-t swjtumover05</code> on every command, in every terminal, is the part caasi can hold for you:</p>
+<pre><code class="language-bash">caasi choose target swjtumover05     # which machine
+caasi choose robot swjtumover        # which robot on it
+caasi choose project maze_run_1      # whose work
+caasi choose                         # what is set, and where each answer came from
+</code></pre>
+<p>A <strong>name is enough</strong>. caasi looks in the layout above, on the machine you are working on:</p>
+<ul>
+<li>a target is set → it searches <strong>there</strong>: <code>ssh swjtumover05 'test -f ~/caasi/robots/swjtumover/caasi.yaml'</code></li>
+<li>no target is set → it says <code>no target set, defaulting to local machine</code>, and searches here</li>
+<li>nothing there → it names the places it looked:
+  <code>No project called 'maze_run_1' on 'swjtumover05'. Looked in ~/caasi/projects/maze_run_1, ~/caasi/workspaces/maze_run_1.</code></li>
+</ul>
+<p>A path still works for anything outside that tree: <code>caasi choose project ~/work/hw1</code>.</p>
+<p>Everything afterwards follows the choice:</p>
+<pre><code class="language-bash">caasi run start experiments/bringup.yaml    # on swjtumover05, no -t needed
+caasi ros2 list topics                      # the robot's topics
+caasi deploy                                # the chosen machine
+caasi logs                                  # the most recent run
+</code></pre>
+<p>Rules worth knowing:</p>
+<ul>
+<li><strong>A flag always wins.</strong> <code>caasi exec -t local -- uptime</code> acts on your own machine once, without
+  changing the choice.</li>
+<li><strong>One terminal only.</strong> <code>eval "$(caasi choose --session target local)"</code> scopes a choice to the shell
+  you run it in; close that shell and the remembered default returns.</li>
+<li><strong>You are told which machine.</strong> A command acting on a chosen target prints one dim line first, for
+  example <code>target: swjtumover05 (from selection)</code>. Nothing chosen is also said out loud — silently
+  acting on the wrong machine is the mistake a remembered default makes possible.</li>
+<li><strong>Forget it</strong> with <code>caasi choose target --clear</code>, <code>caasi choose robot --clear</code> or
+  <code>caasi choose project --clear</code>.</li>
+</ul>
+<p>The choices live in <code>~/.config/caasi/config.yaml</code> under <code>defaults:</code>, so <code>caasi config show</code> always
+prints exactly what will happen.</p>
+<h2 id="does-ros2-work-in-a-new-terminal">Does <code>ros2</code> work in a new terminal?<a class="headerlink" href="#does-ros2-work-in-a-new-terminal" title="Permanent link">&para;</a></h2>
+<p>Yes, once the robot has been provisioned — that is one command, described in
+<a href="getting-started.html">Getting started</a>. It adds two guarded lines to the robot's <code>~/.bashrc</code>:</p>
+<pre><code class="language-bash">[ -f /opt/ros/jazzy/setup.bash ] &amp;&amp; source /opt/ros/jazzy/setup.bash
+[ -f ~/caasi/robots/swjtumover/install/setup.bash ] &amp;&amp; source ~/caasi/robots/swjtumover/install/setup.bash
+</code></pre>
+<p>The guards mean a shell still opens when the workspace has not been built yet. With them in place you
+open a terminal and type <code>ros2 topic list</code> directly, as you would have typed <code>rostopic list</code> in ROS 1.
+You never need caasi to use ROS 2 — caasi is what saves you from doing it <em>remotely</em>, which ROS 2 on
+its own does not do well.</p>
 <h2 id="words-used-in-this-manual">Words used in this manual<a class="headerlink" href="#words-used-in-this-manual" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>bringup</strong> — starting the robot's basic drivers: motors, screen, LiDAR.</li>

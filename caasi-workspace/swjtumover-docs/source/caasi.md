@@ -12,12 +12,12 @@ It covers what this robot needs; caasi is a general tool with more to it. Its ho
 You have the robot's address and an account on it. Register it once:
 
 ```bash
-caasi node enroll swjtumover-05 --host 10.212.19.94 --user swjtumover
+caasi node enroll swjtumover05 --host 10.212.19.94 --user swjtumover
 ```
 
 | argument | meaning |
 | --- | --- |
-| `swjtumover-05` | the name you will use afterwards. It is the target's identity |
+| `swjtumover05` | the name you will use afterwards. It is the target's identity |
 | `--host` | where the robot answers *today*; it may change later |
 | `--user` | the account caasi logs in as |
 | `--port` | SSH port, default 22 |
@@ -30,11 +30,11 @@ impersonate yours.
 Confirm what it recorded, and that the address still points at the same machine:
 
 ```bash
-caasi node identity swjtumover-05
+caasi node identity swjtumover05
 ```
 
 ```
-name:         swjtumover-05
+name:         swjtumover05
 machine_id:   2c7c442a1da846c6b70f5a2d7712d7db   (from /etc/machine-id)
 cpu_model:    Intel(R) N150
 endpoint:     10.212.19.94:22, verified
@@ -43,15 +43,15 @@ endpoint:     10.212.19.94:22, verified
 If the robot moved to a new address, do not re-enrol — follow it:
 
 ```bash
-caasi node refresh swjtumover-05
+caasi node refresh swjtumover05
 ```
 
 Then see whether the machine is ready for this project at all:
 
 ```bash
-caasi node check swjtumover-05          # reachable, environment sane
-caasi node inspect swjtumover-05        # what hardware and software it has
-caasi target deps swjtumover-05 --for bringup
+caasi node check swjtumover05          # reachable, environment sane
+caasi node inspect swjtumover05        # what hardware and software it has
+caasi target deps swjtumover05 --for bringup
 ```
 
 `--for` picks the part of the project you are asking about (`bringup`, `build`, `project`, `sim`).
@@ -67,7 +67,7 @@ Anything missing names the package to install.
 ## Getting the code onto the robot
 
 ```bash
-caasi deploy swjtumover-05
+caasi deploy swjtumover05
 ```
 
 The first deploy copies the whole project to `~/caasi/robots/swjtumover`; later ones send only what
@@ -84,7 +84,7 @@ changed, which is why it is cheap to run after every edit.
 Then compile it there:
 
 ```bash
-caasi build --target swjtumover-05
+caasi build --target swjtumover05
 ```
 
 | option | when you want it |
@@ -101,7 +101,7 @@ A build is recorded, so a run can tell you which build it used.
 Every task is one file in `experiments/`. You do not need to remember commands; you point at a file:
 
 ```bash
-caasi run start experiments/bringup.yaml -t swjtumover-05
+caasi run start experiments/bringup.yaml -t swjtumover05
 ```
 
 | argument | meaning |
@@ -115,7 +115,7 @@ caasi run start experiments/bringup.yaml -t swjtumover-05
 It answers with the run's name, which is what you use from then on:
 
 ```
-Run 20261029-023042-swjtumover-bringup started in background on target 'swjtumover-05'.
+Run 20261029-023042-swjtumover-bringup started in background on target 'swjtumover05'.
   Follow it with: caasi logs 20261029-023042-swjtumover-bringup -f
 ```
 
@@ -155,7 +155,7 @@ which reports whether it is running, stopped or failed, **and which build and de
 the fastest way to answer "is the robot running the code I think it is".
 
 `caasi run attach <run>` joins the live output and detaches with Ctrl+C without stopping anything.
-`caasi run list` shows recent runs; `caasi run list -n 5 -t swjtumover-05` narrows to one robot.
+`caasi run list` shows recent runs; `caasi run list -n 5 -t swjtumover05` narrows to one robot.
 
 ## When something is wrong
 
@@ -179,42 +179,56 @@ finished run without touching the robot.
 
 ## Looking at the robot without a session
 
-`caasi exec` runs one command on the robot and prints the result:
+Two commands cover it. `caasi ros2` answers questions *about the robot's ROS 2 system*, and
+`caasi exec` runs anything else there.
 
 ```bash
-caasi exec --target swjtumover-05 -- uptime
+caasi ros2 list topics                 # every topic the robot publishes
+caasi ros2 list nodes                  # every node running on it
+caasi ros2 topic /scan                 # one topic: type, publishers, subscribers
+caasi ros2 node /motor_node            # one node and what it is connected to
+caasi ros2 graph                       # the whole picture, as text
+caasi ros2 status                      # distro, install path, RMW, topic count
+caasi ros2 service list                # services available on the robot
+caasi ros2 service call /line_then_home/start std_srvs/srv/Trigger "{}"
+caasi ros2 doctor                      # ROS 2's own health check, run there
 ```
 
-For anything ROS 2, let caasi prepare the environment instead of sourcing it yourself:
+Every one of them takes `--target, -t <name>`, and omits it when you have run
+`caasi choose target <name>`. They run *on* the robot, so no local ROS 2 installation, no `ROS_DOMAIN_ID`
+matching and no DDS across the network is involved.
+
+`caasi ros` is the same command under its older name; both spellings work.
+
+For a single message rather than a summary, ask for exactly one:
 
 ```bash
-caasi exec --target swjtumover-05 \
-  --ros --overlay '~/caasi/robots/swjtumover/install/setup.bash' \
-  -- ros2 topic hz /scan
+caasi ros2 topic /motor_state/left --echo --once
+caasi ros2 topic /cmd_vel --echo --once
+```
+
+An unbounded stream is a *run*, not a query, so caasi stops short of one here. For a rate, or for
+anything else the ROS 2 tools do:
+
+```bash
+caasi exec --ros -- ros2 topic hz /scan
+caasi exec --ros -- ros2 bag record -o /tmp/run1 /scan /odom
+caasi exec --ros -- bash -c 'ros2 param list /motor_node'
 ```
 
 | option | meaning |
 | --- | --- |
-| `--target, -t` | which robot |
+| `--target, -t` | which robot; unnecessary once chosen |
 | `--ros` | source the robot's ROS 2 setup first |
-| `--overlay <path>` | also source this project's workspace |
+| `--overlay <path>` | also source this project's workspace, when a command needs the project's own packages |
 | `--cwd <path>` | run the command in a given directory |
 | `--env KEY=VALUE, -e` | set an environment variable, repeatable |
 | `--timeout <seconds>` | give up after this long (default 60) |
 | `--detach, -d` | run in the background as a managed run; pair with `--name` |
 
-Because that prefix is long, put a function in your `~/.bashrc`:
-
-```bash
-swj() { caasi exec --target swjtumover-05 --ros \
-          --overlay '~/caasi/robots/swjtumover/install/setup.bash' -- bash -c "$*"; }
-```
-
-```bash
-swj ros2 topic echo /motor_state/left --once
-swj ros2 service call /line_then_home/start std_srvs/srv/Trigger "{}"
-swj ros2 bag record -o /tmp/run1 /scan /odom
-```
+`--ros` matters for a reason worth knowing: a non-interactive SSH session does not read `~/.bashrc`, so
+`ros2` is not on the path unless caasi puts it there. That is why `caasi exec -- ros2 …` can fail while
+`caasi exec --ros -- ros2 …` works, and why `caasi ros2 …` needs no such care.
 
 ## Tools you will reach for eventually
 
@@ -232,24 +246,32 @@ swj ros2 bag record -o /tmp/run1 /scan /odom
 | `caasi view foxglove` | the same data in Foxglove Studio |
 | `caasi teleop` | drive a robot, record demonstrations, replay bags |
 | `caasi replay` | replay a recorded run without re-running it |
-| `caasi ros list`, `caasi ros graph` | the ROS 2 graph on the machine you are sitting at |
+| `caasi ros2 list`, `caasi ros2 graph` | the ROS 2 graph, on this machine or on a chosen robot |
 
-`caasi ros` acts locally. On the robot, use `caasi exec --ros`.
+`caasi ros2` runs where you point it: with no target it queries the machine you are sitting at, and
+with `-t` (or a chosen target) it queries the robot.
 
 ## A whole session, end to end
 
+The remote form, with the machine and robot chosen so neither is repeated:
+
 ```bash
+caasi choose target swjtumover05                     # from here on, "the robot"
+caasi choose robot swjtumover                        # and the software on it
 cd <project>
-caasi node check swjtumover-05                        # is the robot there
-caasi target deps swjtumover-05 --for bringup         # does it have what we need
-caasi deploy swjtumover-05                            # copy the code
-caasi build --target swjtumover-05                    # compile
-caasi run start experiments/bringup.yaml -t swjtumover-05
-caasi logs latest -f                                  # watch until satisfied
-caasi exec --target swjtumover-05 --ros \
-  --overlay '~/caasi/robots/swjtumover/install/setup.bash' -- ros2 topic hz /odom
-caasi run stop latest
+caasi node check swjtumover05                        # is the robot there
+caasi target deps swjtumover05 --for bringup         # does it have what we need
+caasi deploy                                         # copy the code
+caasi build                                          # compile it there
+caasi run start experiments/bringup.yaml             # start the drivers
+caasi logs -f                                        # watch until satisfied
+caasi ros2 topic /odom                               # is odometry arriving
+caasi exec --ros -- ros2 topic hz /odom              # and at what rate
+caasi run stop latest                                # stop it
 ```
+
+The local form is the same page with the target set to `local`, or with `caasi exec -t local` for the
+one-off checks; the robot's own terminal needs none of it.
 
 ## What lives where
 
@@ -259,5 +281,5 @@ caasi run stop latest
 | its deployment record | `~/caasi/robots/swjtumover/.caasi-deployment.json` |
 | per-run output on the robot | `<project>/.caasi/runs/<run>/stdout.log`, `stderr.log`, `exit_code` |
 | your record of each run | `~/.caasi/runs/<run>/` |
-| registered targets | `~/.config/caasi/config.yaml` |
+| registered targets, and the chosen one | `~/.config/caasi/config.yaml` |
 | known host keys | `~/.caasi/identity/` |

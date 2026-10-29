@@ -5,48 +5,33 @@ robot doing something. Follow it in order the first time.
 
 Two machines are involved:
 
-* **the robot** — Ubuntu 24.04 with ROS 2 on it, reachable over the network,
+* **the robot** — Ubuntu 24.04, reachable over the network,
 * **your computer** — where you type commands. Linux or macOS; Windows works through WSL.
 
-## 1. Prepare the robot
+Nothing here assumes you have used caasi before, or ROS 2. Where a step has a local form (run on the
+robot itself) and a remote form (run from your computer), both are shown; you only need one.
 
-You need a shell on the robot (`ssh <user>@<robot-ip>`). Everything in this step runs there.
+## 1. Let your computer reach the robot
 
-### 1a. Enable SSH, if it is not already
+On the robot, over a keyboard and screen or an existing session:
 
 ```bash
 sudo apt update && sudo apt install -y openssh-server
 sudo systemctl enable --now ssh
 ```
 
-### 1b. Install ROS 2 and the packages this project needs
+| command | what it does |
+| --- | --- |
+| `apt install openssh-server` | installs the SSH server |
+| `systemctl enable --now ssh` | starts it now, and again after every reboot |
+
+Then, from your computer, confirm you can log in:
 
 ```bash
-# ROS 2 Jazzy (Ubuntu 24.04)
-sudo apt install -y software-properties-common
-sudo add-apt-repository -y universe
-sudo apt install -y ros-jazzy-desktop
-
-# the parts of the system swjtumover uses
-sudo apt install -y \
-  ros-jazzy-navigation2 ros-jazzy-nav2-bringup ros-jazzy-slam-toolbox \
-  ros-jazzy-realsense2-camera ros-jazzy-cv-bridge \
-  python3-opencv python3-pynput python3-colcon-common-extensions
-
-# so that a new shell knows about ROS 2
-echo 'source /opt/ros/jazzy/setup.bash' >> ~/.bashrc
+ssh swjtumover@10.212.19.94       # your user and address
 ```
 
-The robot's earlier ROS 1 installation used scripts named `1.ros_install.sh`,
-`2.realsense_install.sh`, `3.install.sh` and `4.make.sh` for the same purpose: install ROS, the
-camera driver, the Python extras, and then build the workspace. The commands above are the ROS 2
-equivalent; caasi checks the result for you in step 3.
-
-### 1c. Check that the camera is usable
-
-```bash
-sudo usermod -aG video "$USER"      # then log out and back in
-```
+Everything else can be done from your computer. You will not need the robot's keyboard again.
 
 ## 2. Install caasi on your computer
 
@@ -69,113 +54,193 @@ caasi version
 caasi info          # caasi, Python, and the toolchains it can see
 ```
 
-The project lives at <https://github.com/7a6172/caasi/> — its README covers installation options in
-more detail, and the issue tracker is where to ask about caasi itself.
+caasi lives at <https://github.com/7a6172/caasi/>; its README covers installation in more detail.
 
 ## 3. Register the robot with caasi
 
-A machine that caasi may control is called a **target**. Register it once:
+A machine caasi may control is called a **target**. Register it once:
 
 ```bash
-caasi node enroll swjtumover-05 --host 10.212.19.94 --user swjtumover
+caasi node enroll swjtumover05 --host 10.212.19.94 --user swjtumover
 ```
 
-`swjtumover-05` is the name you will use from now on; `--host` is where the robot answers today. On
-first contact caasi records the robot's SSH host keys and hardware identity, and it refuses to talk to
-a machine whose keys do not match that record later.
+| argument | meaning |
+| --- | --- |
+| `swjtumover05` | the name you use from now on. It identifies the machine |
+| `--host` | where the robot answers today; it may change later |
+| `--user` | the account caasi logs in as |
 
-Name targets after the machine (`swjtumover-05`, `swjtumover-10`). The software keeps the name
+On first contact caasi records the robot's SSH host keys and hardware identity, and later refuses to
+talk to a machine whose keys do not match that record.
+
+Name targets after the machine (`swjtumover05`, `swjtumover06`, …). The software keeps the name
 `swjtumover` everywhere, so nothing you type afterwards depends on the robot's number.
 
 Verify it:
 
 ```bash
 caasi node list                        # your target appears
-caasi node identity swjtumover-05      # enrolled keys and hardware, endpoint verified
-caasi node check swjtumover-05         # reachable? environment sane?
+caasi node identity swjtumover05       # enrolled keys and hardware, endpoint verified
+caasi node check swjtumover05          # reachable? environment sane?
 ```
 
-If the robot's address changes, tell caasi rather than re-enrolling:
-`caasi node refresh swjtumover-05`.
+If the robot's address changes, tell caasi rather than re-enrolling: `caasi node refresh swjtumover05`.
 
-## 4. Check the robot has what the project needs
+## 4. Put the code on the robot
+
+From the project directory — the one holding `caasi.yaml`:
 
 ```bash
-cd <this project>                       # the directory holding caasi.yaml
-caasi target deps swjtumover-05 --for bringup
+caasi deploy swjtumover05
 ```
 
-It reads the requirements declared in `caasi.yaml` and checks each one **on the robot**, telling you
-what is installed, what is missing, and what to install. Example:
+It copies the project to `~/caasi/robots/swjtumover` on the robot and verifies the copy. This needs
+nothing but SSH, so it works on a robot with no ROS 2 at all — which is exactly what step 5 then fixes.
+
+`caasi deploy --status` shows what is deployed and whether it verified. Re-run `caasi deploy` at any
+time; only what changed is transferred.
+
+## 5. Prepare the robot once
+
+This is the step the ROS 1 setup scripts (`1.ros_install.sh`, `2.realsense_install.sh`,
+`3.install.sh`, `4.make.sh`) used to do by hand. It is now one caasi command, it is re-runnable, and
+it prints every command before running it.
+
+```bash
+caasi run start experiments/provision.yaml -t swjtumover05
+caasi logs -f                                  # watch it work
+```
+
+| stage | what it installs or changes |
+| --- | --- |
+| `ros` | ROS 2 Jazzy and `colcon`, if they are not already there |
+| `packages` | the ROS 2 packages this project uses: navigation, mapping, camera, vision, teleop |
+| `camera` | the `video` group for the camera, and a note about Intel's `librealsense` repository |
+| `shell` | two guarded `source` lines in `~/.bashrc`, so `ros2` works in any new terminal |
+| `build` | compiles the project |
+
+Every stage is idempotent: running it a second time changes nothing. The shell lines it adds look
+like this, and are why `ros2 topic list` works in a fresh terminal afterwards:
+
+```bash
+[ -f /opt/ros/jazzy/setup.bash ] && source /opt/ros/jazzy/setup.bash
+[ -f ~/caasi/robots/swjtumover/install/setup.bash ] && source ~/caasi/robots/swjtumover/install/setup.bash
+```
+
+**Several robots on one network.** Give each its own ROS domain, so two robots do not see each
+other's topics:
+
+```bash
+caasi exec -t swjtumover05 -- \
+  bash ~/caasi/robots/swjtumover/scripts/provision.sh --apply --domain 5
+```
+
+**Local form.** On the robot itself, the same script:
+
+```bash
+cd ~/caasi/robots/swjtumover
+scripts/provision.sh                        # show what would be installed, change nothing
+scripts/provision.sh --apply                # do it
+scripts/provision.sh --apply --stage ros    # one stage only
+```
+
+If the robot cannot reach the package servers, install ROS 2 by hand and skip the `ros` and
+`packages` stages — the list is in the [ROS 2 chapter](ros2.md).
+
+## 6. Check the robot has what the project needs
+
+```bash
+caasi target deps swjtumover05 --for bringup
+```
+
+It reads the requirements declared in `caasi.yaml` and checks each one **on the robot**:
 
 ```
 17 installed, 0 missing, 0 incompatible, 0 optional-absent, 0 unknown
 ```
 
-Anything missing is a `sudo apt install …` away, and the table names the package.
+`--for` selects the part of the project you are asking about (`bringup`, `build`, `project`, `sim`).
+Anything missing is named, with the package to install.
 
-## 5. Put the software on the robot and build it
+## 7. Build
 
 ```bash
-caasi deploy swjtumover-05                 # copy the project to ~/caasi/robots/swjtumover
-caasi build  --target swjtumover-05        # compile it there
+caasi build --target swjtumover05
 ```
 
-`caasi deploy --status` shows what is deployed and whether it verified. Both commands can be re-run
-at any time; only what changed is transferred and rebuilt.
+This runs `colcon build` on the robot and records which build each run used. Step 5 already built it,
+so this is normally instant — run it again after you change code.
 
-## 6. Run something
+## 8. Run something
 
 ```bash
-caasi run start experiments/bringup.yaml -t swjtumover-05
+caasi run start experiments/bringup.yaml -t swjtumover05
 ```
 
 That starts the robot's drivers. It answers with a run name:
 
 ```
-Run 20261029-023042-swjtumover-bringup started in background on target 'swjtumover-05'.
+Run 20261029-023042-swjtumover-bringup started in background on target 'swjtumover05'.
   Follow it with: caasi logs 20261029-023042-swjtumover-bringup -f
 ```
 
 Watch it, then stop it:
 
 ```bash
-caasi logs 20261029-023042-swjtumover-bringup -f     # live output, Ctrl+C only stops watching
+caasi logs -f                                        # the newest run; Ctrl+C only stops watching
 caasi run status 20261029-023042-swjtumover-bringup  # running / stopped / failed
 caasi run stop   20261029-023042-swjtumover-bringup  # actually stop it
 ```
 
-**Ctrl+C when following logs does not stop the task** — use `caasi run stop` for that.
+**Ctrl+C while following logs does not stop the task.** Use `caasi run stop` for that.
 
-## 7. Confirm it works
+### Tired of typing `-t`?
 
-With the bringup running, from your computer:
-
-```bash
-caasi exec --target swjtumover-05 -- bash -c \
-  'source /opt/ros/jazzy/setup.bash; source ~/caasi/robots/swjtumover/install/setup.bash; ros2 topic hz /scan'
-```
-
-You should see about 14 readings per second. Then check the wheels' odometry:
+Set the robot once, and the rest of the manual gets shorter:
 
 ```bash
-caasi exec --target swjtumover-05 -- bash -c \
-  'source /opt/ros/jazzy/setup.bash; source ~/caasi/robots/swjtumover/install/setup.bash; ros2 topic hz /odom'
+caasi choose target swjtumover05
+caasi run start experiments/bringup.yaml      # the same command, without -t
+caasi ros2 list topics                        # the robot's topics
 ```
 
-About 50 per second. (Typing that prefix repeatedly is tedious — see the shortcut at the end of
-[caasi in depth](caasi.md).)
+`caasi choose` with no arguments shows what is set and where each answer came from. See
+[Concepts](concepts.md#which-robot-am-i-talking-to) for what a project and a target are, and for
+`--session`, which scopes a choice to one terminal.
+
+The rest of this page uses the short form, assuming you set the target once.
+
+## 9. Confirm it works
+
+```bash
+caasi ros2 list topics
+caasi ros2 topic /scan
+```
+
+The first lists what the robot publishes; the second prints one topic's type and how many nodes use
+it. You should see `/scan`, `/odom`, `/motor_state/*` and the rest. For rates and raw messages:
+
+```bash
+caasi exec --ros -- ros2 topic hz /scan         # about 14 per second
+caasi exec --ros -- ros2 topic echo /odom --once
+caasi exec --ros -- ros2 topic hz /odom         # about 50 per second
+```
+
+`--ros` makes caasi source the robot's ROS 2 setup for that one command, which is needed because a
+non-interactive SSH session does not read `~/.bashrc`.
 
 Stop the bringup when you are done:
 
 ```bash
-caasi run stop 20261029-023042-swjtumover-bringup
+caasi run stop latest
 ```
 
-## 8. Where next
+## 10. Where next
 
 * **[Commands](commands.md)** — drive it, map the space, navigate, run the mission. Each task has a
-  local form and a remote form and a way to check it.
+  local form, a remote form, and a way to check it.
+* **[Concepts](concepts.md)** — the words, and how project, target and deployment fit together.
 * **[caasi in depth](caasi.md)** — everything caasi can do while you develop.
+* **[Developing](developing.md)** — write your own node or task, and run it on the robot.
 * **[Troubleshooting](troubleshooting.md)** — when something misbehaves.
 * **[Hardware and safety](hardware.md)** — before driving on the floor.

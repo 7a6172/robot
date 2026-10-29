@@ -56,6 +56,10 @@
                 </li>
               </ul>
               <ul>
+                <li class="toctree-l1"><a class="reference internal" href="developing.html">Developing</a>
+                </li>
+              </ul>
+              <ul>
                 <li class="toctree-l1"><a class="reference internal" href="caasi.html">caasi in depth</a>
                 </li>
               </ul>
@@ -75,8 +79,18 @@
                 <li class="toctree-l1 current"><a class="reference internal current" href="#">Remote access</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#naming-and-identity">Naming and identity</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#working-on-one-of-several-robots">Working on one of several robots</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#keeping-two-robots-topics-apart">Keeping two robots' topics apart</a>
+    </li>
+        </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#seeing-the-robots-screen-remotely">Seeing the robot's screen remotely</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#rviz-on-your-own-machine-instead">rviz on your own machine instead</a>
+    </li>
+        </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#notes">Notes</a>
     </li>
@@ -112,16 +126,28 @@ to see a robot's screen without sitting in front of it.</p>
 <h2 id="naming-and-identity">Naming and identity<a class="headerlink" href="#naming-and-identity" title="Permanent link">&para;</a></h2>
 <p>Give caasi a target per <strong>machine</strong>, and let the software name stay <code>swjtumover</code> on all of them:</p>
 <pre><code class="language-yaml">targets:
-  swjtumover-05:
+  swjtumover05:
     host: 10.212.19.94
     user: swjtumover
     tags: [robot, swjtumover, jazzy]
     deployment_root: &quot;~/caasi/robots/swjtumover&quot;
-  swjtumover-10:
-    host: 10.212.19.104
+  swjtumover10:
+    host: 10.212.19.105
     user: swjtumover
     tags: [robot, swjtumover, jazzy]
     deployment_root: &quot;~/caasi/robots/swjtumover&quot;
+</code></pre>
+<p>A machine that runs <em>simulation</em> rather than a robot is a target too — the same commands reach it:</p>
+<pre><code class="language-yaml">targets:
+  gpu-01:
+    host: 10.212.19.50
+    user: dev
+    tags: [gpu, workstation, isaac]
+    # no deployment_root: a non-robot target uses ~/caasi/workspaces/gpu-01
+</code></pre>
+<pre><code class="language-bash">caasi choose target gpu-01        # run the simulator there instead of on the robot
+caasi node inspect gpu-01         # GPU model, VRAM, Isaac Sim / Isaac Lab availability
+caasi choose target swjtumover05  # back to the hardware
 </code></pre>
 <p>Why this shape:</p>
 <ul>
@@ -141,6 +167,25 @@ endpoint:  10.212.19.94:22, verified
 enrolled host key. A different machine answering on a reused address is refused.</p>
 <p>The same physical box can carry two targets when it dual-boots (one per operating system); they are
 distinguished by machine id, which is exactly what that field is for.</p>
+<h3 id="working-on-one-of-several-robots">Working on one of several robots<a class="headerlink" href="#working-on-one-of-several-robots" title="Permanent link">&para;</a></h3>
+<p>Every command takes <code>-t &lt;target&gt;</code>. Fix the one you are working on and stop repeating it:</p>
+<pre><code class="language-bash">caasi choose target swjtumover05      # from now on, &quot;the robot&quot;
+caasi choose target swjtumover10      # later, another one
+caasi choose                          # which one is active, and where that came from
+</code></pre>
+<p><code>caasi choose</code> prints the machine it is about to act on, so switching between robots is visible rather
+than remembered. <code>eval "$(caasi choose --session target swjtumover10)"</code> switches for one terminal only —
+handy when two robots are on the bench at once.</p>
+<h3 id="keeping-two-robots-topics-apart">Keeping two robots' topics apart<a class="headerlink" href="#keeping-two-robots-topics-apart" title="Permanent link">&para;</a></h3>
+<p>ROS 2 has no built-in isolation: two robots on one network, both on domain 0, see each other's topics.
+Give each its own domain when you provision it:</p>
+<pre><code class="language-bash">caasi exec -t swjtumover05 -- \
+  bash ~/caasi/robots/swjtumover/scripts/provision.sh --apply --domain 5
+</code></pre>
+<p>This writes <code>export ROS_DOMAIN_ID=5</code> into the robot's <code>~/.bashrc</code> with the same guards as the ROS 2
+lines, so every terminal on that robot uses its own domain. It also lets <code>caasi rviz2</code> attach without
+being told the domain explicitly: an unknown domain is refused rather than assumed, because an assumed
+domain silently shows an empty graph.</p>
 <h2 id="seeing-the-robots-screen-remotely">Seeing the robot's screen remotely<a class="headerlink" href="#seeing-the-robots-screen-remotely" title="Permanent link">&para;</a></h2>
 <p>The robot runs GNOME on Wayland, so classic VNC servers do not apply — they can only capture X11
 windows, not the desktop. GNOME's own remote desktop is already part of the system and streams only
@@ -163,6 +208,18 @@ manages:</p>
 <p>Install one of them on the machine you sit at (<code>apt install remmina</code> or <code>freerdp3-x11</code>).</p>
 <p><code>grdctl status</code> is also the health check: if it reports a missing or invalid certificate, re-running
 <code>grdctl rdp enable</code> regenerates one.</p>
+<h3 id="rviz-on-your-own-machine-instead">rviz on your own machine instead<a class="headerlink" href="#rviz-on-your-own-machine-instead" title="Permanent link">&para;</a></h3>
+<p>For data rather than a desktop, caasi can run rviz where you sit, against the robot's ROS 2 system:</p>
+<pre><code class="language-bash">caasi choose target swjtumover05
+caasi rviz2
+caasi rviz2 --domain 5      # when --domain was given at provisioning time
+</code></pre>
+<p>caasi resolves the target's distro, install path and domain, then runs the real <code>rviz2</code> locally — it
+implements none of it. This depends on ROS 2 discovery reaching across the network between the two
+machines, which it does on one LAN and does <strong>not</strong> across two LANs joined only by a VPN such as
+Tailscale: there the graph appears empty even though the target was resolved correctly. That is a
+network fact rather than something caasi can arrange, and the RDP route above is the answer
+when you hit it.</p>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li>The display is only needed for interactive work. Bringup, mapping, navigation and the mission all

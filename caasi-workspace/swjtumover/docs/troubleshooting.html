@@ -56,6 +56,10 @@
                 </li>
               </ul>
               <ul>
+                <li class="toctree-l1"><a class="reference internal" href="developing.html">Developing</a>
+                </li>
+              </ul>
+              <ul>
                 <li class="toctree-l1"><a class="reference internal" href="caasi.html">caasi in depth</a>
                 </li>
               </ul>
@@ -124,12 +128,12 @@ remote form; anything here also works locally, as in <a href="commands.html">Com
 <h2 id="the-robot-does-not-move">The robot does not move<a class="headerlink" href="#the-robot-does-not-move" title="Permanent link">&para;</a></h2>
 <p>Check in this order — each step rules out the one below it.</p>
 <p><strong>1. Is anything even publishing a command?</strong></p>
-<pre><code class="language-bash">swj ros2 topic echo /cmd_vel --once
+<pre><code class="language-bash">caasi ros2 topic /cmd_vel --echo --once -t swjtumover05
 </code></pre>
 <p>Nothing at all means no program is asking the robot to move — the mission is idle, or the controller
 is not running. If it prints <code>linear: x: 0.0</code>, something is publishing but asking for standstill.</p>
 <p><strong>2. Is the motor driver still alive?</strong></p>
-<pre><code class="language-bash">swj ros2 topic echo /motor_state/left --once
+<pre><code class="language-bash">caasi ros2 topic /motor_state/left --echo --once -t swjtumover05
 </code></pre>
 <p>If this prints nothing, the driver has stopped talking to the motor board. Its log says why:</p>
 <pre><code class="language-bash">caasi logs latest --errors
@@ -147,17 +151,18 @@ sensor. Any of them true is why. Restart after fixing the cause; the latch is de
 sends that to <code>/cmd_vel</code>. For a standalone navigation test, launch it with
 <code>cmd_vel_topic:=/cmd_vel</code>.</p>
 <h2 id="there-is-no-lidar-data">There is no LiDAR data<a class="headerlink" href="#there-is-no-lidar-data" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">swj ros2 topic hz /scan
+<pre><code class="language-bash">caasi exec -t swjtumover05 --ros -- ros2 topic hz /scan
 </code></pre>
 <p>Nothing, or the log says the adapter could not open a port: something else took <strong>UDP 7000</strong>. The
 LiDAR has to start before the other programs, which <code>bringup.launch.py</code> does for you — if you started
 nodes by hand, stop everything and use the launch file.</p>
 <h2 id="navigation-does-nothing-nodes-stay-inactive">Navigation does nothing, nodes stay <code>inactive</code><a class="headerlink" href="#navigation-does-nothing-nodes-stay-inactive" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">swj ros2 lifecycle get /amcl
+<pre><code class="language-bash">caasi exec -t swjtumover05 --ros -- ros2 lifecycle get /amcl
 </code></pre>
 <p><code>inactive</code> means nav2 has not been told where the robot is. Give it a pose; the equivalent of
 clicking "2D Pose Estimate" in rviz:</p>
-<pre><code class="language-bash">swj ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped \
+<pre><code class="language-bash">caasi exec -t swjtumover05 --ros -- ros2 topic pub --once /initialpose \
+  geometry_msgs/msg/PoseWithCovarianceStamped \
   &quot;{header: {frame_id: map}, pose: {pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}}&quot;
 </code></pre>
 <p>If a launch was already aborted by the time you set the pose, restart the navigation launch — a
@@ -165,7 +170,7 @@ lifecycle manager that has given up does not retry.</p>
 <p>Bring nav2 up <strong>before</strong> the camera. With the camera streaming at full rate during start-up, the
 lifecycle transitions slow down badly on a small machine and the manager can give up.</p>
 <h2 id="the-mission-will-not-start">The mission will not start<a class="headerlink" href="#the-mission-will-not-start" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">caasi run start experiments/mission_start.yaml -t swjtumover-05
+<pre><code class="language-bash">caasi run start experiments/mission_start.yaml -t swjtumover05
 </code></pre>
 <p>It prints the service's answer. The two common ones:</p>
 <table>
@@ -202,10 +207,10 @@ X11 window has focus, so click the rviz window first.</p>
 <p>If it exits with code 3 instead, there is no display at all — run it from a terminal inside the
 robot's desktop session, or through a remote desktop session (see <a href="fleet-and-display.html">Remote access</a>).</p>
 <h2 id="caasi-cannot-reach-the-robot">caasi cannot reach the robot<a class="headerlink" href="#caasi-cannot-reach-the-robot" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">caasi node check swjtumover-05
+<pre><code class="language-bash">caasi node check swjtumover05
 </code></pre>
 <ul>
-<li><strong>unreachable</strong> — the robot is off, or on a different address. <code>caasi node refresh swjtumover-05</code>
+<li><strong>unreachable</strong> — the robot is off, or on a different address. <code>caasi node refresh swjtumover05</code>
   re-verifies and follows it.</li>
 <li><strong>identity mismatch</strong> — the machine answering is not the one you enrolled. Do not re-enrol blindly:
   confirm which robot it is, then <code>caasi node reenroll</code> if the hardware legitimately changed.</li>
@@ -217,13 +222,13 @@ robot's desktop session, or through a remote desktop session (see <a href="fleet
 </code></pre>
 <p>The usual causes: the service it needed was not running (see the mission above), the robot's build is
 older than the code you think it has (<code>caasi run status &lt;run&gt;</code> names the build), or a package is
-missing (<code>caasi target deps swjtumover-05 --for bringup</code>).</p>
+missing (<code>caasi target deps swjtumover05 --for bringup</code>).</p>
 <h2 id="starting-over-cleanly">Starting over cleanly<a class="headerlink" href="#starting-over-cleanly" title="Permanent link">&para;</a></h2>
 <pre><code class="language-bash">caasi run list                     # stop anything running
 caasi run stop &lt;each run&gt;
-caasi build --target swjtumover-05 --clean
-caasi deploy swjtumover-05
-caasi build --target swjtumover-05
+caasi build --target swjtumover05 --clean
+caasi deploy swjtumover05
+caasi build --target swjtumover05
 </code></pre>
 <p>If you moved or renamed the project directory on the robot, a clean build is required: the build
 system records absolute paths and refuses to reuse them elsewhere.</p>

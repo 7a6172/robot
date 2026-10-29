@@ -78,7 +78,23 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#12-inspection">12. Inspection</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#13-fixing-the-target-and-the-project">13. Fixing the target and the project</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#14-preparing-a-new-robot">14. Preparing a new robot</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#15-remote-inspection-with-caasi">15. Remote inspection with caasi</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#16-simulation-on-a-gpu-machine">16. Simulation on a GPU machine</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#what-a-simulation-task-is">What a simulation task is</a>
+    </li>
+        </ul>
+    </li>
     </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="developing.html">Developing</a>
                 </li>
               </ul>
               <ul>
@@ -132,8 +148,9 @@
 <li><strong>Remote</strong> — from another machine, through caasi. This is the normal way to operate a deployed
   robot.</li>
 </ul>
-<p><code>&lt;target&gt;</code> is the execution target you enrolled in caasi. Each section also names the ROS 1 command
-it replaces, for comparison.</p>
+<p><code>&lt;target&gt;</code> is the execution target you enrolled in caasi — <code>swjtumover05</code> for the robot. Run
+<code>caasi choose target &lt;target&gt;</code> once and you can leave <code>-t</code> off everywhere; every command below works
+either way. Each section also names the ROS 1 command it replaces, for comparison.</p>
 <hr />
 <h2 id="1-bringup">1. Bringup<a class="headerlink" href="#1-bringup" title="Permanent link">&para;</a></h2>
 <p>Starts the LiDAR adapter, both state publishers, the motor driver and the screen driver.</p>
@@ -426,12 +443,250 @@ colcon test-result --result-base build/swjtumover_bringup
 </tr>
 </tbody>
 </table>
+<h2 id="13-fixing-the-target-and-the-project">13. Fixing the target and the project<a class="headerlink" href="#13-fixing-the-target-and-the-project" title="Permanent link">&para;</a></h2>
+<p>Set once instead of repeating <code>-t &lt;target&gt;</code> and <code>cd &lt;project&gt;</code>:</p>
+<table>
+<thead>
+<tr>
+<th>task</th>
+<th>command</th>
+<th>example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>use this machine from now on</td>
+<td><code>caasi choose target &lt;name&gt;</code></td>
+<td><code>caasi choose target swjtumover05</code></td>
+</tr>
+<tr>
+<td>use this robot (shipped software)</td>
+<td><code>caasi choose robot &lt;name&gt;</code></td>
+<td><code>caasi choose robot swjtumover</code></td>
+</tr>
+<tr>
+<td>work on your own code</td>
+<td><code>caasi choose project &lt;name&gt;</code></td>
+<td><code>caasi choose project maze_run_1</code></td>
+</tr>
+<tr>
+<td>point at a directory outside the tree</td>
+<td><code>caasi choose project &lt;path&gt;</code></td>
+<td><code>caasi choose project ~/work/hw1</code></td>
+</tr>
+<tr>
+<td>scope a choice to one terminal</td>
+<td><code>caasi choose --session …</code></td>
+<td><code>eval "$(caasi choose --session target local)"</code></td>
+</tr>
+<tr>
+<td>see what is set</td>
+<td><code>caasi choose</code></td>
+<td><code>caasi choose</code></td>
+</tr>
+<tr>
+<td>send simulation to a GPU machine</td>
+<td><code>caasi choose target &lt;name&gt; --role gpu</code></td>
+<td><code>caasi choose target gpu-01 --role gpu</code></td>
+</tr>
+<tr>
+<td>forget it</td>
+<td><code>caasi choose target --clear</code></td>
+<td><code>caasi choose target --clear</code></td>
+</tr>
+</tbody>
+</table>
+<p>A <strong>name</strong> is looked up in caasi's layout (<code>~/caasi/robots</code>, <code>~/caasi/projects</code>,
+<code>~/caasi/workspaces</code>) <strong>on the machine you are working on</strong>: the chosen target if one is set, otherwise
+this computer, with the notice <code>no target set, defaulting to local machine</code>. Nothing found is reported
+with the places it looked.</p>
+<p>A flag always wins for a single command: <code>caasi exec -t local -- uptime</code>. When a command acts on a
+chosen target it prints one dim line naming it, so you are never guessing which machine is involved.</p>
+<h2 id="14-preparing-a-new-robot">14. Preparing a new robot<a class="headerlink" href="#14-preparing-a-new-robot" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>task</th>
+<th>command</th>
+<th>example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>copy the project there</td>
+<td><code>caasi deploy &lt;target&gt;</code></td>
+<td><code>caasi deploy swjtumover05</code></td>
+</tr>
+<tr>
+<td>install ROS 2 and everything else</td>
+<td><code>caasi run start experiments/provision.yaml -t &lt;target&gt;</code></td>
+<td><code>caasi run start experiments/provision.yaml -t swjtumover05</code></td>
+</tr>
+<tr>
+<td>on the robot instead</td>
+<td><code>scripts/provision.sh --apply</code></td>
+<td><code>cd ~/caasi/robots/swjtumover &amp;&amp; scripts/provision.sh --apply</code></td>
+</tr>
+<tr>
+<td>show what it would do</td>
+<td><code>scripts/provision.sh</code></td>
+<td><code>scripts/provision.sh --stage ros</code></td>
+</tr>
+<tr>
+<td>give a robot its own ROS domain</td>
+<td><code>scripts/provision.sh --apply --domain &lt;n&gt;</code></td>
+<td><code>scripts/provision.sh --apply --domain 5</code></td>
+</tr>
+<tr>
+<td>check the result</td>
+<td><code>caasi target deps &lt;target&gt; --for bringup</code></td>
+<td><code>caasi target deps swjtumover05 --for bringup</code></td>
+</tr>
+</tbody>
+</table>
+<p>Provisioning is idempotent and prints each command before running it. See
+<a href="getting-started.html#5-prepare-the-robot-once">Getting started</a> for the stages.</p>
+<h2 id="15-remote-inspection-with-caasi">15. Remote inspection with caasi<a class="headerlink" href="#15-remote-inspection-with-caasi" title="Permanent link">&para;</a></h2>
+<p><code>caasi ros2</code> asks the robot's own ROS 2 system, so nothing needs to be installed or discovered on your
+side of the network.</p>
+<table>
+<thead>
+<tr>
+<th>task</th>
+<th>caasi</th>
+<th>example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>topics</td>
+<td><code>caasi ros2 list topics</code></td>
+<td><code>caasi ros2 list topics -t swjtumover05</code></td>
+</tr>
+<tr>
+<td>nodes</td>
+<td><code>caasi ros2 list nodes</code></td>
+<td><code>caasi ros2 list nodes</code></td>
+</tr>
+<tr>
+<td>one topic</td>
+<td><code>caasi ros2 topic &lt;name&gt;</code></td>
+<td><code>caasi ros2 topic /scan</code></td>
+</tr>
+<tr>
+<td>one message</td>
+<td><code>caasi ros2 topic &lt;name&gt; --echo --once</code></td>
+<td><code>caasi ros2 topic /motor_state/left --echo --once</code></td>
+</tr>
+<tr>
+<td>the graph</td>
+<td><code>caasi ros2 graph</code></td>
+<td><code>caasi ros2 graph</code></td>
+</tr>
+<tr>
+<td>services</td>
+<td><code>caasi ros2 service list</code></td>
+<td><code>caasi ros2 service list</code></td>
+</tr>
+<tr>
+<td>start the mission</td>
+<td><code>caasi ros2 service call …</code></td>
+<td><code>caasi ros2 service call /line_then_home/start std_srvs/srv/Trigger "{}"</code></td>
+</tr>
+<tr>
+<td>ROS 2's own check</td>
+<td><code>caasi ros2 doctor</code></td>
+<td><code>caasi ros2 doctor</code></td>
+</tr>
+<tr>
+<td>anything else</td>
+<td><code>caasi exec --ros -- …</code></td>
+<td><code>caasi exec --ros -- ros2 topic hz /odom</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>caasi ros</code> and <code>caasi ros2</code> are the same command; both spellings work.</p>
+<h2 id="16-simulation-on-a-gpu-machine">16. Simulation on a GPU machine<a class="headerlink" href="#16-simulation-on-a-gpu-machine" title="Permanent link">&para;</a></h2>
+<p>Isaac Sim and Isaac Lab need a GPU; the robot does not have one. These commands run where you point
+them, and default to this computer when no <code>gpu</code> target has been chosen.</p>
+<table>
+<thead>
+<tr>
+<th>task</th>
+<th>command</th>
+<th>example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name the GPU machine once</td>
+<td><code>caasi choose target &lt;name&gt; --role gpu</code></td>
+<td><code>caasi choose target gpu-01 --role gpu</code></td>
+</tr>
+<tr>
+<td>run a sim experiment there</td>
+<td><code>caasi sim run &lt;config&gt; [-t &lt;target&gt;]</code></td>
+<td><code>caasi sim run experiments/scene.yaml</code></td>
+</tr>
+<tr>
+<td>run an Isaac Lab task</td>
+<td><code>caasi lab run &lt;config&gt; [-t &lt;target&gt;]</code></td>
+<td><code>caasi lab run experiments/warehouse.yaml -t gpu-01</code></td>
+</tr>
+<tr>
+<td>train</td>
+<td><code>caasi lab train &lt;config&gt; [-t &lt;target&gt;]</code></td>
+<td><code>caasi lab train experiments/warehouse.yaml</code></td>
+</tr>
+<tr>
+<td>replay a checkpoint</td>
+<td><code>caasi lab play &lt;config&gt; --checkpoint &lt;file&gt;</code></td>
+<td><code>caasi lab play experiments/warehouse.yaml --checkpoint runs/last.pt</code></td>
+</tr>
+<tr>
+<td>see what it would do</td>
+<td><code>--dry-run</code></td>
+<td><code>caasi lab run experiments/warehouse.yaml --dry-run</code></td>
+</tr>
+<tr>
+<td>register the GPU machine first</td>
+<td><code>caasi node enroll &lt;name&gt; --host &lt;ip&gt; --user &lt;user&gt;</code></td>
+<td><code>caasi node enroll gpu-01 --host 10.212.19.50 --user dev</code></td>
+</tr>
+</tbody>
+</table>
+<p>A role is stored separately from the machine commands normally act on, so choosing the robot does not
+move your simulations to it.</p>
+<h3 id="what-a-simulation-task-is">What a simulation task is<a class="headerlink" href="#what-a-simulation-task-is" title="Permanent link">&para;</a></h3>
+<p>An Isaac Sim / Isaac Lab task is an ordinary Python script that Isaac's own launcher runs:</p>
+<pre><code class="language-bash"># what Isaac Lab itself would run on the GPU machine
+cd ~/IsaacLab &amp;&amp; ./isaaclab.sh -p ~/work/tasks/22_train_nav.py --num_envs 64 --num_steps 2000
+</code></pre>
+<p>caasi wraps that in an experiment file, so it becomes one tracked run with a log and an exit code:</p>
+<pre><code class="language-yaml">name: nav-training
+backend: lab
+script: ../tasks/22_train_nav.py
+args:
+- --num_envs
+- &quot;64&quot;
+- --num_steps
+- &quot;2000&quot;
+description: Point-goal navigation training in Isaac Lab.
+</code></pre>
+<p>Two things must be true on the machine that runs it:</p>
+<pre><code class="language-bash">caasi config set tools.isaaclab.path /home/&lt;you&gt;/IsaacLab   # so caasi finds isaaclab.sh
+caasi lab status                                            # isaaclab registered and usable?
+caasi sim check                                             # the Isaac Sim side, same question
+caasi node check gpu-01                                     # the GPU machine is reachable and sane
+</code></pre>
+<p><code>backend: sim</code> is the same idea for Isaac Sim, and resolves <code>tools.isaacsim.path</code>. A task that needs no
+Isaac at all uses <code>backend: python</code>.</p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href="concepts.html" class="btn btn-neutral float-left" title="Concepts"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="caasi.html" class="btn btn-neutral float-right" title="caasi in depth">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="developing.html" class="btn btn-neutral float-right" title="Developing">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -457,7 +712,7 @@ colcon test-result --result-base build/swjtumover_bringup
       <span><a href="concepts.html" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="caasi.html" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="developing.html" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

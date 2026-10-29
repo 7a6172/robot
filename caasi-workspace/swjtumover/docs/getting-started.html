@@ -46,29 +46,29 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="#">Getting started</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#1-prepare-the-robot">1. Prepare the robot</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#1a-enable-ssh-if-it-is-not-already">1a. Enable SSH, if it is not already</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#1b-install-ros-2-and-the-packages-this-project-needs">1b. Install ROS 2 and the packages this project needs</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#1c-check-that-the-camera-is-usable">1c. Check that the camera is usable</a>
-    </li>
-        </ul>
+    <li class="toctree-l2"><a class="reference internal" href="#1-let-your-computer-reach-the-robot">1. Let your computer reach the robot</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#2-install-caasi-on-your-computer">2. Install caasi on your computer</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#3-register-the-robot-with-caasi">3. Register the robot with caasi</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#4-check-the-robot-has-what-the-project-needs">4. Check the robot has what the project needs</a>
+    <li class="toctree-l2"><a class="reference internal" href="#4-put-the-code-on-the-robot">4. Put the code on the robot</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#5-put-the-software-on-the-robot-and-build-it">5. Put the software on the robot and build it</a>
+    <li class="toctree-l2"><a class="reference internal" href="#5-prepare-the-robot-once">5. Prepare the robot once</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#6-run-something">6. Run something</a>
+    <li class="toctree-l2"><a class="reference internal" href="#6-check-the-robot-has-what-the-project-needs">6. Check the robot has what the project needs</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#7-confirm-it-works">7. Confirm it works</a>
+    <li class="toctree-l2"><a class="reference internal" href="#7-build">7. Build</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#8-where-next">8. Where next</a>
+    <li class="toctree-l2"><a class="reference internal" href="#8-run-something">8. Run something</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#tired-of-typing-t">Tired of typing -t?</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#9-confirm-it-works">9. Confirm it works</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#10-where-next">10. Where next</a>
     </li>
     </ul>
                 </li>
@@ -79,6 +79,10 @@
               </ul>
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="commands.html">Commands</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="developing.html">Developing</a>
                 </li>
               </ul>
               <ul>
@@ -129,37 +133,38 @@
 robot doing something. Follow it in order the first time.</p>
 <p>Two machines are involved:</p>
 <ul>
-<li><strong>the robot</strong> — Ubuntu 24.04 with ROS 2 on it, reachable over the network,</li>
+<li><strong>the robot</strong> — Ubuntu 24.04, reachable over the network,</li>
 <li><strong>your computer</strong> — where you type commands. Linux or macOS; Windows works through WSL.</li>
 </ul>
-<h2 id="1-prepare-the-robot">1. Prepare the robot<a class="headerlink" href="#1-prepare-the-robot" title="Permanent link">&para;</a></h2>
-<p>You need a shell on the robot (<code>ssh &lt;user&gt;@&lt;robot-ip&gt;</code>). Everything in this step runs there.</p>
-<h3 id="1a-enable-ssh-if-it-is-not-already">1a. Enable SSH, if it is not already<a class="headerlink" href="#1a-enable-ssh-if-it-is-not-already" title="Permanent link">&para;</a></h3>
+<p>Nothing here assumes you have used caasi before, or ROS 2. Where a step has a local form (run on the
+robot itself) and a remote form (run from your computer), both are shown; you only need one.</p>
+<h2 id="1-let-your-computer-reach-the-robot">1. Let your computer reach the robot<a class="headerlink" href="#1-let-your-computer-reach-the-robot" title="Permanent link">&para;</a></h2>
+<p>On the robot, over a keyboard and screen or an existing session:</p>
 <pre><code class="language-bash">sudo apt update &amp;&amp; sudo apt install -y openssh-server
 sudo systemctl enable --now ssh
 </code></pre>
-<h3 id="1b-install-ros-2-and-the-packages-this-project-needs">1b. Install ROS 2 and the packages this project needs<a class="headerlink" href="#1b-install-ros-2-and-the-packages-this-project-needs" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash"># ROS 2 Jazzy (Ubuntu 24.04)
-sudo apt install -y software-properties-common
-sudo add-apt-repository -y universe
-sudo apt install -y ros-jazzy-desktop
-
-# the parts of the system swjtumover uses
-sudo apt install -y \
-  ros-jazzy-navigation2 ros-jazzy-nav2-bringup ros-jazzy-slam-toolbox \
-  ros-jazzy-realsense2-camera ros-jazzy-cv-bridge \
-  python3-opencv python3-pynput python3-colcon-common-extensions
-
-# so that a new shell knows about ROS 2
-echo 'source /opt/ros/jazzy/setup.bash' &gt;&gt; ~/.bashrc
+<table>
+<thead>
+<tr>
+<th>command</th>
+<th>what it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>apt install openssh-server</code></td>
+<td>installs the SSH server</td>
+</tr>
+<tr>
+<td><code>systemctl enable --now ssh</code></td>
+<td>starts it now, and again after every reboot</td>
+</tr>
+</tbody>
+</table>
+<p>Then, from your computer, confirm you can log in:</p>
+<pre><code class="language-bash">ssh swjtumover@10.212.19.94       # your user and address
 </code></pre>
-<p>The robot's earlier ROS 1 installation used scripts named <code>1.ros_install.sh</code>,
-<code>2.realsense_install.sh</code>, <code>3.install.sh</code> and <code>4.make.sh</code> for the same purpose: install ROS, the
-camera driver, the Python extras, and then build the workspace. The commands above are the ROS 2
-equivalent; caasi checks the result for you in step 3.</p>
-<h3 id="1c-check-that-the-camera-is-usable">1c. Check that the camera is usable<a class="headerlink" href="#1c-check-that-the-camera-is-usable" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">sudo usermod -aG video &quot;$USER&quot;      # then log out and back in
-</code></pre>
+<p>Everything else can be done from your computer. You will not need the robot's keyboard again.</p>
 <h2 id="2-install-caasi-on-your-computer">2. Install caasi on your computer<a class="headerlink" href="#2-install-caasi-on-your-computer" title="Permanent link">&para;</a></h2>
 <pre><code class="language-bash">pipx install caasi        # recommended: keeps caasi in its own environment
 </code></pre>
@@ -172,71 +177,164 @@ python3 -m venv ~/.venvs/caasi &amp;&amp; ~/.venvs/caasi/bin/pip install caasi  
 <pre><code class="language-bash">caasi version
 caasi info          # caasi, Python, and the toolchains it can see
 </code></pre>
-<p>The project lives at <a href="https://github.com/7a6172/caasi/">https://github.com/7a6172/caasi/</a> — its README covers installation options in
-more detail, and the issue tracker is where to ask about caasi itself.</p>
+<p>caasi lives at <a href="https://github.com/7a6172/caasi/">https://github.com/7a6172/caasi/</a>; its README covers installation in more detail.</p>
 <h2 id="3-register-the-robot-with-caasi">3. Register the robot with caasi<a class="headerlink" href="#3-register-the-robot-with-caasi" title="Permanent link">&para;</a></h2>
-<p>A machine that caasi may control is called a <strong>target</strong>. Register it once:</p>
-<pre><code class="language-bash">caasi node enroll swjtumover-05 --host 10.212.19.94 --user swjtumover
+<p>A machine caasi may control is called a <strong>target</strong>. Register it once:</p>
+<pre><code class="language-bash">caasi node enroll swjtumover05 --host 10.212.19.94 --user swjtumover
 </code></pre>
-<p><code>swjtumover-05</code> is the name you will use from now on; <code>--host</code> is where the robot answers today. On
-first contact caasi records the robot's SSH host keys and hardware identity, and it refuses to talk to
-a machine whose keys do not match that record later.</p>
-<p>Name targets after the machine (<code>swjtumover-05</code>, <code>swjtumover-10</code>). The software keeps the name
+<table>
+<thead>
+<tr>
+<th>argument</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>swjtumover05</code></td>
+<td>the name you use from now on. It identifies the machine</td>
+</tr>
+<tr>
+<td><code>--host</code></td>
+<td>where the robot answers today; it may change later</td>
+</tr>
+<tr>
+<td><code>--user</code></td>
+<td>the account caasi logs in as</td>
+</tr>
+</tbody>
+</table>
+<p>On first contact caasi records the robot's SSH host keys and hardware identity, and later refuses to
+talk to a machine whose keys do not match that record.</p>
+<p>Name targets after the machine (<code>swjtumover05</code>, <code>swjtumover06</code>, …). The software keeps the name
 <code>swjtumover</code> everywhere, so nothing you type afterwards depends on the robot's number.</p>
 <p>Verify it:</p>
 <pre><code class="language-bash">caasi node list                        # your target appears
-caasi node identity swjtumover-05      # enrolled keys and hardware, endpoint verified
-caasi node check swjtumover-05         # reachable? environment sane?
+caasi node identity swjtumover05       # enrolled keys and hardware, endpoint verified
+caasi node check swjtumover05          # reachable? environment sane?
 </code></pre>
-<p>If the robot's address changes, tell caasi rather than re-enrolling:
-<code>caasi node refresh swjtumover-05</code>.</p>
-<h2 id="4-check-the-robot-has-what-the-project-needs">4. Check the robot has what the project needs<a class="headerlink" href="#4-check-the-robot-has-what-the-project-needs" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">cd &lt;this project&gt;                       # the directory holding caasi.yaml
-caasi target deps swjtumover-05 --for bringup
+<p>If the robot's address changes, tell caasi rather than re-enrolling: <code>caasi node refresh swjtumover05</code>.</p>
+<h2 id="4-put-the-code-on-the-robot">4. Put the code on the robot<a class="headerlink" href="#4-put-the-code-on-the-robot" title="Permanent link">&para;</a></h2>
+<p>From the project directory — the one holding <code>caasi.yaml</code>:</p>
+<pre><code class="language-bash">caasi deploy swjtumover05
 </code></pre>
-<p>It reads the requirements declared in <code>caasi.yaml</code> and checks each one <strong>on the robot</strong>, telling you
-what is installed, what is missing, and what to install. Example:</p>
+<p>It copies the project to <code>~/caasi/robots/swjtumover</code> on the robot and verifies the copy. This needs
+nothing but SSH, so it works on a robot with no ROS 2 at all — which is exactly what step 5 then fixes.</p>
+<p><code>caasi deploy --status</code> shows what is deployed and whether it verified. Re-run <code>caasi deploy</code> at any
+time; only what changed is transferred.</p>
+<h2 id="5-prepare-the-robot-once">5. Prepare the robot once<a class="headerlink" href="#5-prepare-the-robot-once" title="Permanent link">&para;</a></h2>
+<p>This is the step the ROS 1 setup scripts (<code>1.ros_install.sh</code>, <code>2.realsense_install.sh</code>,
+<code>3.install.sh</code>, <code>4.make.sh</code>) used to do by hand. It is now one caasi command, it is re-runnable, and
+it prints every command before running it.</p>
+<pre><code class="language-bash">caasi run start experiments/provision.yaml -t swjtumover05
+caasi logs -f                                  # watch it work
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>stage</th>
+<th>what it installs or changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ros</code></td>
+<td>ROS 2 Jazzy and <code>colcon</code>, if they are not already there</td>
+</tr>
+<tr>
+<td><code>packages</code></td>
+<td>the ROS 2 packages this project uses: navigation, mapping, camera, vision, teleop</td>
+</tr>
+<tr>
+<td><code>camera</code></td>
+<td>the <code>video</code> group for the camera, and a note about Intel's <code>librealsense</code> repository</td>
+</tr>
+<tr>
+<td><code>shell</code></td>
+<td>two guarded <code>source</code> lines in <code>~/.bashrc</code>, so <code>ros2</code> works in any new terminal</td>
+</tr>
+<tr>
+<td><code>build</code></td>
+<td>compiles the project</td>
+</tr>
+</tbody>
+</table>
+<p>Every stage is idempotent: running it a second time changes nothing. The shell lines it adds look
+like this, and are why <code>ros2 topic list</code> works in a fresh terminal afterwards:</p>
+<pre><code class="language-bash">[ -f /opt/ros/jazzy/setup.bash ] &amp;&amp; source /opt/ros/jazzy/setup.bash
+[ -f ~/caasi/robots/swjtumover/install/setup.bash ] &amp;&amp; source ~/caasi/robots/swjtumover/install/setup.bash
+</code></pre>
+<p><strong>Several robots on one network.</strong> Give each its own ROS domain, so two robots do not see each
+other's topics:</p>
+<pre><code class="language-bash">caasi exec -t swjtumover05 -- \
+  bash ~/caasi/robots/swjtumover/scripts/provision.sh --apply --domain 5
+</code></pre>
+<p><strong>Local form.</strong> On the robot itself, the same script:</p>
+<pre><code class="language-bash">cd ~/caasi/robots/swjtumover
+scripts/provision.sh                        # show what would be installed, change nothing
+scripts/provision.sh --apply                # do it
+scripts/provision.sh --apply --stage ros    # one stage only
+</code></pre>
+<p>If the robot cannot reach the package servers, install ROS 2 by hand and skip the <code>ros</code> and
+<code>packages</code> stages — the list is in the <a href="ros2.html">ROS 2 chapter</a>.</p>
+<h2 id="6-check-the-robot-has-what-the-project-needs">6. Check the robot has what the project needs<a class="headerlink" href="#6-check-the-robot-has-what-the-project-needs" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi target deps swjtumover05 --for bringup
+</code></pre>
+<p>It reads the requirements declared in <code>caasi.yaml</code> and checks each one <strong>on the robot</strong>:</p>
 <pre><code>17 installed, 0 missing, 0 incompatible, 0 optional-absent, 0 unknown
 </code></pre>
-<p>Anything missing is a <code>sudo apt install …</code> away, and the table names the package.</p>
-<h2 id="5-put-the-software-on-the-robot-and-build-it">5. Put the software on the robot and build it<a class="headerlink" href="#5-put-the-software-on-the-robot-and-build-it" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">caasi deploy swjtumover-05                 # copy the project to ~/caasi/robots/swjtumover
-caasi build  --target swjtumover-05        # compile it there
+<p><code>--for</code> selects the part of the project you are asking about (<code>bringup</code>, <code>build</code>, <code>project</code>, <code>sim</code>).
+Anything missing is named, with the package to install.</p>
+<h2 id="7-build">7. Build<a class="headerlink" href="#7-build" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi build --target swjtumover05
 </code></pre>
-<p><code>caasi deploy --status</code> shows what is deployed and whether it verified. Both commands can be re-run
-at any time; only what changed is transferred and rebuilt.</p>
-<h2 id="6-run-something">6. Run something<a class="headerlink" href="#6-run-something" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">caasi run start experiments/bringup.yaml -t swjtumover-05
+<p>This runs <code>colcon build</code> on the robot and records which build each run used. Step 5 already built it,
+so this is normally instant — run it again after you change code.</p>
+<h2 id="8-run-something">8. Run something<a class="headerlink" href="#8-run-something" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi run start experiments/bringup.yaml -t swjtumover05
 </code></pre>
 <p>That starts the robot's drivers. It answers with a run name:</p>
-<pre><code>Run 20261029-023042-swjtumover-bringup started in background on target 'swjtumover-05'.
+<pre><code>Run 20261029-023042-swjtumover-bringup started in background on target 'swjtumover05'.
   Follow it with: caasi logs 20261029-023042-swjtumover-bringup -f
 </code></pre>
 <p>Watch it, then stop it:</p>
-<pre><code class="language-bash">caasi logs 20261029-023042-swjtumover-bringup -f     # live output, Ctrl+C only stops watching
+<pre><code class="language-bash">caasi logs -f                                        # the newest run; Ctrl+C only stops watching
 caasi run status 20261029-023042-swjtumover-bringup  # running / stopped / failed
 caasi run stop   20261029-023042-swjtumover-bringup  # actually stop it
 </code></pre>
-<p><strong>Ctrl+C when following logs does not stop the task</strong> — use <code>caasi run stop</code> for that.</p>
-<h2 id="7-confirm-it-works">7. Confirm it works<a class="headerlink" href="#7-confirm-it-works" title="Permanent link">&para;</a></h2>
-<p>With the bringup running, from your computer:</p>
-<pre><code class="language-bash">caasi exec --target swjtumover-05 -- bash -c \
-  'source /opt/ros/jazzy/setup.bash; source ~/caasi/robots/swjtumover/install/setup.bash; ros2 topic hz /scan'
+<p><strong>Ctrl+C while following logs does not stop the task.</strong> Use <code>caasi run stop</code> for that.</p>
+<h3 id="tired-of-typing-t">Tired of typing <code>-t</code>?<a class="headerlink" href="#tired-of-typing-t" title="Permanent link">&para;</a></h3>
+<p>Set the robot once, and the rest of the manual gets shorter:</p>
+<pre><code class="language-bash">caasi choose target swjtumover05
+caasi run start experiments/bringup.yaml      # the same command, without -t
+caasi ros2 list topics                        # the robot's topics
 </code></pre>
-<p>You should see about 14 readings per second. Then check the wheels' odometry:</p>
-<pre><code class="language-bash">caasi exec --target swjtumover-05 -- bash -c \
-  'source /opt/ros/jazzy/setup.bash; source ~/caasi/robots/swjtumover/install/setup.bash; ros2 topic hz /odom'
+<p><code>caasi choose</code> with no arguments shows what is set and where each answer came from. See
+<a href="concepts.html#which-robot-am-i-talking-to">Concepts</a> for what a project and a target are, and for
+<code>--session</code>, which scopes a choice to one terminal.</p>
+<p>The rest of this page uses the short form, assuming you set the target once.</p>
+<h2 id="9-confirm-it-works">9. Confirm it works<a class="headerlink" href="#9-confirm-it-works" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">caasi ros2 list topics
+caasi ros2 topic /scan
 </code></pre>
-<p>About 50 per second. (Typing that prefix repeatedly is tedious — see the shortcut at the end of
-<a href="caasi.html">caasi in depth</a>.)</p>
+<p>The first lists what the robot publishes; the second prints one topic's type and how many nodes use
+it. You should see <code>/scan</code>, <code>/odom</code>, <code>/motor_state/*</code> and the rest. For rates and raw messages:</p>
+<pre><code class="language-bash">caasi exec --ros -- ros2 topic hz /scan         # about 14 per second
+caasi exec --ros -- ros2 topic echo /odom --once
+caasi exec --ros -- ros2 topic hz /odom         # about 50 per second
+</code></pre>
+<p><code>--ros</code> makes caasi source the robot's ROS 2 setup for that one command, which is needed because a
+non-interactive SSH session does not read <code>~/.bashrc</code>.</p>
 <p>Stop the bringup when you are done:</p>
-<pre><code class="language-bash">caasi run stop 20261029-023042-swjtumover-bringup
+<pre><code class="language-bash">caasi run stop latest
 </code></pre>
-<h2 id="8-where-next">8. Where next<a class="headerlink" href="#8-where-next" title="Permanent link">&para;</a></h2>
+<h2 id="10-where-next">10. Where next<a class="headerlink" href="#10-where-next" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong><a href="commands.html">Commands</a></strong> — drive it, map the space, navigate, run the mission. Each task has a
-  local form and a remote form and a way to check it.</li>
+  local form, a remote form, and a way to check it.</li>
+<li><strong><a href="concepts.html">Concepts</a></strong> — the words, and how project, target and deployment fit together.</li>
 <li><strong><a href="caasi.html">caasi in depth</a></strong> — everything caasi can do while you develop.</li>
+<li><strong><a href="developing.html">Developing</a></strong> — write your own node or task, and run it on the robot.</li>
 <li><strong><a href="troubleshooting.html">Troubleshooting</a></strong> — when something misbehaves.</li>
 <li><strong><a href="hardware.html">Hardware and safety</a></strong> — before driving on the floor.</li>
 </ul>

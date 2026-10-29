@@ -23,7 +23,8 @@ Read in this order:
 2. **[Concepts](concepts.md)** — the handful of words you need: node, topic, service, launch, target,
    run. Skim it if you know ROS 2 already.
 3. **[Commands](commands.md)** — every task, in both forms, with an example and a way to check it.
-4. **[Troubleshooting](troubleshooting.md)** — what to do when something does not behave.
+4. **[Developing](developing.md)** — write your own node or task, and run it on the robot.
+5. **[Troubleshooting](troubleshooting.md)** — what to do when something does not behave.
 
 Before driving the robot, read **[Hardware and safety](hardware.md)**.
 
